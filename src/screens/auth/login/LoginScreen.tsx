@@ -60,7 +60,6 @@ export const LoginScreen = () => {
     const {
         control,
         handleSubmit,
-        setValue,
         formState: { errors },
         setError,
     } = useForm<FormData>({
@@ -100,11 +99,6 @@ export const LoginScreen = () => {
             localStorage.setItem("refreshToken", refreshToken);
             // Store user data for profile hook
             if (responseData.user) {
-                const digits = data.phone.replace(/[^\d]/g, "");
-                if (digits.endsWith("1111111111") || data.phone.includes("111) 111-11-11")) {
-                    responseData.user.role = "admin";
-                    responseData.user.accountType = "admin";
-                }
                 const normalizedUser = normalizeUserProfile(responseData.user);
                 localStorage.setItem("user", JSON.stringify(normalizedUser));
                 // Обновляем React Query кэш с новыми данными
@@ -212,20 +206,6 @@ export const LoginScreen = () => {
                                 {loading ? "Вход..." : "Войти"}
                             </Button>
                         </ButtonWrapper>
-
-                        <Box sx={{ mt: 2, textAlign: "center" }}>
-                            <Button
-                                variant="outlined"
-                                type="button"
-                                isFullWidth
-                                onClick={() => {
-                                    setValue("phone", "+7 (111) 111-11-11", { shouldValidate: true });
-                                    setValue("password", "111111", { shouldValidate: true });
-                                }}
-                            >
-                                Войти как Админ (+7 111 111-11-11)
-                            </Button>
-                        </Box>
 
                         <HintWrapper>
                             <HintTitle>Еще нет аккаунта?</HintTitle>
