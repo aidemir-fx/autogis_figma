@@ -531,6 +531,8 @@ export function ProvidersMap({
                 number
             ],
             zoom: DEFAULT_ZOOM,
+            controls: ["zoomControl"],
+            behaviors: ["drag", "scrollZoom", "dblClickZoom", "multiTouch"],
         }),
         [userCoords]
     );
@@ -541,8 +543,6 @@ export function ProvidersMap({
             mapInstanceRef.current = ref;
         }
         if (ref) {
-            ref.behaviors.enable(["drag", "scrollZoom", "dblClickZoom", "multiTouch"]);
-            ref.controls.add("zoomControl");
             setIsInited(true);
         }
     }, [mapInstanceRef]);
