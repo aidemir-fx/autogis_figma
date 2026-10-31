@@ -40,8 +40,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: backend.Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: autogis_backend
     restart: always
     environment:
@@ -53,6 +53,8 @@ services:
       - DB_NAME=auto_masters
       - DB_SSLMODE=disable
       - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key}
+      - JWT_ACCESS_EXPIRE=60
+      - JWT_REFRESH_EXPIRE=720
       - S3_ENDPOINT=rustfs:9000
       - S3_BUCKET=autogis-media-dev
       - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
