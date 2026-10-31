@@ -14,9 +14,6 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Tidy dependencies with Go 1.25
-RUN go mod tidy
-
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o autogis-backend ./cmd/server
 
