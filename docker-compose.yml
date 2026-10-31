@@ -60,6 +60,7 @@ services:
       - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - S3_USE_SSL=false
+      - CDN_BASE_URL=${CDN_BASE_URL:-${PUBLIC_URL:-http://localhost}/api/v1/media/files}
     ports:
       - "3001:3001"
     depends_on:
