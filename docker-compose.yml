@@ -16,38 +16,27 @@ services:
       timeout: 5s
       retries: 5
 
-  minio:
-    image: bitnami/minio:latest
-    container_name: autogis_minio
-    environment:
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
-      - MINIO_DEFAULT_BUCKets=autogis-media-dev
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: autogis_rustfs
+    restart: always
     ports:
       - "9000:9000"
       - "9001:9001"
+    environment:
+      - RUSTFS_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - RUSTFS_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_ADDRESS=:9000
+      - RUSTFS_CONSOLE_ADDRESS=:9001
     volumes:
-      - minio_data:/bitnami/minio/data
+      - rustfs_data:/data
+    command: /data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "sh", "-c", "nc -z localhost 9000 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-
-  minio-init:
-    image: quay.io/minio/mc:latest
-    container_name: autogis_minio_init
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-        mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin};
-        mc mb --ignore-existing local/autogis-media-dev;
-        mc anonymous set download local/autogis-media-dev;
-        echo 'MinIO bucket ready';
-      "
-    restart: "no"
 
   backend:
     build:
@@ -66,7 +55,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key}
       - JWT_ACCESS_EXPIRE=60
       - JWT_REFRESH_EXPIRE=720
-      - S3_ENDPOINT=minio:9000
+      - S3_ENDPOINT=rustfs:9000
       - S3_BUCKET=autogis-media-dev
       - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -76,7 +65,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
+      rustfs:
         condition: service_healthy
 
   frontend:
@@ -92,4 +81,4 @@ services:
 
 volumes:
   postgres_data:
-  minio_data:
+  rustfs_data:
