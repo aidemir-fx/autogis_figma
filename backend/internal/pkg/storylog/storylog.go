@@ -1,6 +1,7 @@
 package storylog
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -36,4 +37,19 @@ func (l *Logger) Close() error {
 		return l.file.Close()
 	}
 	return nil
+}
+
+func (l *Logger) Printf(format string, args ...any) {
+	if l == nil || l.Logger == nil {
+		return
+	}
+	l.Logger.Printf(format, args...)
+}
+
+func Event(name string, fields ...any) string {
+	message := name
+	for i := 0; i+1 < len(fields); i += 2 {
+		message += fmt.Sprintf(" %v=%v", fields[i], fields[i+1])
+	}
+	return message
 }
