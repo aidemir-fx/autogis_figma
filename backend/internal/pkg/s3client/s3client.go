@@ -2,7 +2,7 @@ package s3client
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"time"
 
@@ -30,7 +30,7 @@ func New(cfg *config.Config) (*Client, error) {
 				SigningRegion: cfg.S3Region,
 			}, nil
 		}
-		return aws.Endpoint{}, aws.ErrEndpointNotFound
+		return aws.Endpoint{}, errors.New("endpoint not found")
 	})
 
 	opts := []func(*awsconfig.LoadOptions) error{

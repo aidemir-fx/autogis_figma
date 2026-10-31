@@ -40,18 +40,18 @@ func JWTMiddleware(
 			c.Abort()
 			return
 		}
-		if professionalApplicationRepo != nil {
-			invalidation, err := professionalApplicationRepo.GetTokenInvalidation(c.Request.Context(), claims.UserID)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, apperrors.ErrInternalServer)
-				c.Abort()
-				return
-			}
-			if invalidation != nil && claims.IssuedAt != nil && claims.IssuedAt.Time.Before(invalidation.InvalidatedAt) {
-				c.JSON(http.StatusUnauthorized, apperrors.ErrInvalidToken)
-				c.Abort()
-				return
-			}
+		
+		// Check token invalidation
+		invalidation, err := professionalApplicationRepo.GetTokenInvalidation(c.Request.Context(), claims.UserID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, apperrors.ErrInternalServer)
+			c.Abort()
+			return
+		}
+		if invalidation != nil {
+			c.JSON(http.StatusUnauthorized, apperrors.ErrInvalidToken)
+			c.Abort()
+			return
 		}
 
 		// Add user info to context

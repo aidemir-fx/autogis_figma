@@ -42,6 +42,7 @@ type Config struct {
 	S3Bucket          string
 	S3Region          string
 	S3Endpoint        string // custom endpoint for dev (MinIO / LocalStack); empty = use AWS
+	S3UseSSL          bool   // use HTTPS for S3 endpoint
 	S3PublicEndpoint  string // public endpoint used when generating browser presigned URLs
 	S3PublicRead      bool   // allow anonymous GETs for locally hosted media
 	S3AccessKeyID     string // leave empty to use IAM role in production
@@ -75,10 +76,11 @@ func Load() (*Config, error) {
 		S3Bucket:          getOrDefault(os.Getenv("S3_BUCKET"), "autogis-media-dev"),
 		S3Region:          getOrDefault(os.Getenv("S3_REGION"), "us-east-1"),
 		S3Endpoint:        os.Getenv("S3_ENDPOINT"),
+		S3UseSSL:          parseBool(os.Getenv("S3_USE_SSL"), false),
 		S3PublicEndpoint:  os.Getenv("S3_PUBLIC_ENDPOINT"),
 		S3PublicRead:      parseBool(os.Getenv("S3_PUBLIC_READ"), false),
-		S3AccessKeyID:     os.Getenv("S3_ACCESS_KEY_ID"),
-		S3SecretAccessKey: os.Getenv("S3_SECRET_ACCESS_KEY"),
+		S3AccessKeyID:     os.Getenv("S3_ACCESS_KEY"),
+		S3SecretAccessKey: os.Getenv("S3_SECRET_KEY"),
 		S3KMSKeyID:        os.Getenv("S3_KMS_KEY_ID"),
 		CDNBaseURL:        getOrDefault(os.Getenv("CDN_BASE_URL"), "http://localhost:9000/autogis-media-dev"),
 		StoryLogPath:      getOrDefault(os.Getenv("STORIES_LOG_PATH"), "runtime-logs/stories.log"),
