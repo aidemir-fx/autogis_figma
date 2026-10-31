@@ -51,7 +51,10 @@ func (uc *ProfessionalApplicationUseCase) AutoActivate(ctx context.Context, acto
 		return apperrors.New("FORBIDDEN", "Forbidden", http.StatusForbidden)
 	}
 	if app.Status == domain.ProfessionalApplicationStatusApproved {
-		return nil
+		return uc.ensureProfessionalAccess(ctx, app)
+	}
+	if err := uc.ensureProfessionalAccess(ctx, app); err != nil {
+		return err
 	}
 	now := time.Now()
 	app.Status = domain.ProfessionalApplicationStatusApproved
@@ -71,6 +74,26 @@ func (uc *ProfessionalApplicationUseCase) AutoActivate(ctx context.Context, acto
 		if err := uc.repo.UpdateCase(ctx, caseRow); err != nil {
 			return apperrors.ErrInternalServer
 		}
+	}
+	return nil
+}
+
+func (uc *ProfessionalApplicationUseCase) ensureProfessionalAccess(ctx context.Context, app *domain.ProfessionalApplication) error {
+	role, ok := professionalApplicationRole(app.ActivityGroupCode)
+	if !ok {
+		return apperrors.New("INVALID_APPLICATION", "Не удалось определить тип профессионального аккаунта", http.StatusBadRequest)
+	}
+	user, err := uc.userRepo.GetByID(ctx, app.UserID)
+	if err != nil {
+		return apperrors.ErrUserNotFound
+	}
+	if user.IsProfessional && user.Role == role {
+		return nil
+	}
+	user.IsProfessional = true
+	user.Role = role
+	if err := uc.userRepo.Update(ctx, user); err != nil {
+		return apperrors.ErrInternalServer
 	}
 	return nil
 }

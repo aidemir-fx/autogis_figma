@@ -131,6 +131,33 @@ func TestProfessionalApplicationApproveRepairsStaleRoleWhenProfessionalFlagAlrea
 	}
 }
 
+func TestAutoActivateApprovesApplicationAndEnablesProfessionalAccess(t *testing.T) {
+	t.Parallel()
+
+	groupCode := "auto_shop"
+	app := &domain.ProfessionalApplication{
+		ID:                "app-auto-1",
+		UserID:            "user-auto-1",
+		Status:            domain.ProfessionalApplicationStatusPending,
+		ActivityGroupCode: &groupCode,
+	}
+	repo := &professionalApplicationRepoStub{app: app}
+	userRepo := &professionalApplicationUserRepoStub{
+		user: &domain.User{ID: app.UserID, Role: domain.RoleCustomer},
+	}
+	uc := NewProfessionalApplicationUseCase(repo, userRepo, nil, nil)
+
+	if err := uc.AutoActivate(context.Background(), app.UserID, app.ID); err != nil {
+		t.Fatalf("AutoActivate returned error: %v", err)
+	}
+	if repo.app.Status != domain.ProfessionalApplicationStatusApproved {
+		t.Fatalf("expected approved application, got %q", repo.app.Status)
+	}
+	if !userRepo.user.IsProfessional || userRepo.user.Role != domain.RoleAutoShop {
+		t.Fatalf("expected active auto-shop account, got role=%q professional=%t", userRepo.user.Role, userRepo.user.IsProfessional)
+	}
+}
+
 type professionalApplicationRepoStub struct {
 	app               *domain.ProfessionalApplication
 	moderationCase    *domain.ModerationCase

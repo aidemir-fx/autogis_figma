@@ -94,17 +94,12 @@ func (uc *BusinessApplicationUseCase) Submit(
 	if err != nil {
 		return nil, err
 	}
-	if uc.masterUC != nil {
-		if err := uc.masterUC.ActivateFromBusinessApplication(ctx, userID, app, revision); err != nil {
-			return nil, err
-		}
-		if err := uc.professionalUC.AutoActivate(ctx, userID, app.ID); err != nil {
-			return nil, err
-		}
-		app, err = uc.professionalUC.repo.GetApplicationByID(ctx, app.ID)
-		if err != nil {
-			return nil, apperrors.ErrInternalServer
-		}
+	if err := uc.activateApplication(ctx, userID, app, revision); err != nil {
+		return nil, err
+	}
+	app, err = uc.professionalUC.repo.GetApplicationByID(ctx, app.ID)
+	if err != nil {
+		return nil, apperrors.ErrInternalServer
 	}
 	return toBusinessApplicationResponse(app, revision), nil
 }
@@ -130,7 +125,31 @@ func (uc *BusinessApplicationUseCase) GetMyLatest(
 	if app == nil || revision == nil {
 		return nil, nil
 	}
+	if app.Status == domain.ProfessionalApplicationStatusPending {
+		if err := uc.activateApplication(ctx, userID, app, revision); err != nil {
+			return nil, err
+		}
+		app, err = uc.professionalUC.repo.GetApplicationByID(ctx, app.ID)
+		if err != nil {
+			return nil, apperrors.ErrInternalServer
+		}
+	}
 	return toBusinessApplicationResponse(app, revision), nil
+}
+
+func (uc *BusinessApplicationUseCase) activateApplication(
+	ctx context.Context,
+	userID string,
+	app *domain.ProfessionalApplication,
+	revision *domain.ProfessionalApplicationRevision,
+) error {
+	if uc.masterUC == nil {
+		return apperrors.New("PROFESSIONAL_ACTIVATION_UNAVAILABLE", "Не настроена активация профессионального профиля", http.StatusInternalServerError)
+	}
+	if err := uc.masterUC.ActivateFromBusinessApplication(ctx, userID, app, revision); err != nil {
+		return err
+	}
+	return uc.professionalUC.AutoActivate(ctx, userID, app.ID)
 }
 
 func (uc *BusinessApplicationUseCase) UpdateStatus(
