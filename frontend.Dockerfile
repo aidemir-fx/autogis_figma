@@ -1,5 +1,7 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
+ARG VITE_YMAPS_API_KEY
+ENV VITE_YMAPS_API_KEY=$VITE_YMAPS_API_KEY
 COPY package.json package-lock.json* bun.lock* ./
 RUN npm install
 COPY . .

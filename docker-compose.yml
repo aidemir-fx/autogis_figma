@@ -73,6 +73,8 @@ services:
     build:
       context: .
       dockerfile: frontend.Dockerfile
+      args:
+        VITE_YMAPS_API_KEY: ${VITE_YMAPS_API_KEY:-}
     container_name: autogis_frontend
     restart: always
     ports:
