@@ -531,7 +531,6 @@ export function ProvidersMap({
                 number
             ],
             zoom: DEFAULT_ZOOM,
-            controls: ["zoomControl"],
             behaviors: ["drag", "scrollZoom", "dblClickZoom", "multiTouch"],
         }),
         [userCoords]
