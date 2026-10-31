@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
 import {
     Map,
@@ -535,15 +535,17 @@ export function ProvidersMap({
         [userCoords]
     );
 
-    const setMapRef = (ref: ymaps.Map | null) => {
+    const setMapRef = useCallback((ref: ymaps.Map | null) => {
         mapRef.current = ref;
         if (mapInstanceRef) {
             mapInstanceRef.current = ref;
         }
         if (ref) {
+            ref.behaviors.enable(["drag", "scrollZoom", "dblClickZoom", "multiTouch"]);
+            ref.controls.add("zoomControl");
             setIsInited(true);
         }
-    };
+    }, [mapInstanceRef]);
 
     const isReady = isInited && !isLoading;
     const handleMapClick = () => {
