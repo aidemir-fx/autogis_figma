@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: autogis_postgres
+    environment:
+      POSTGRES_DB: auto_masters
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: autogis_rustfs
+    restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - RUSTFS_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - RUSTFS_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_ADDRESS=:9000
+      - RUSTFS_CONSOLE_ADDRESS=:9001
+    volumes:
+      - rustfs_data:/data
+    command: /data
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z localhost 9000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: autogis_backend
+    restart: always
+    environment:
+      - PORT=3001
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - DB_NAME=auto_masters
+      - DB_SSLMODE=disable
+      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key}
+      - S3_ENDPOINT=rustfs:9000
+      - S3_BUCKET=autogis-media-dev
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - S3_USE_SSL=false
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    container_name: autogis_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  rustfs_data:
