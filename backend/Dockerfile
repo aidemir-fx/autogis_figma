@@ -8,11 +8,14 @@ RUN apk add --no-cache git
 # Copy go mod files
 COPY go.mod go.sum ./
 
-# Download dependencies and tidy
-RUN go mod download && go mod tidy
+# Download dependencies
+RUN go mod download
 
 # Copy source code
 COPY . .
+
+# Tidy dependencies with source code present
+RUN go mod tidy
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o autogis-backend ./cmd/server
