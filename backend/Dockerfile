@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -13,9 +13,6 @@ RUN go mod download
 
 # Copy source code
 COPY . .
-
-# Tidy dependencies with source code present
-RUN go mod tidy
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o autogis-backend ./cmd/server
