@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Pull AutoGis Updates",
+      "trigger": "UserPromptSubmit",
+      "description": "Синхронизирует локальную копию AutoGis с последними обновлениями из GitHub",
+      "action": {
+        "type": "command",
+        "command": "cd /Users/a123/AutoGis && git pull origin main 2>&1"
+      }
+    }
+  ]
+}

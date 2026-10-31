@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+!.env.example
+node_modules
+dist
+build
+.gocache
+.deploy
+backend/.env
+backend/autogis-backend
+*.log
+*.tmp
+.DS_Store

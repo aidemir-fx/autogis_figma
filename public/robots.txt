@@ -1,0 +1,30 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://autogis.pro/sitemap.xml
+
+Crawl-delay: 1
+
+Disallow: /login
+Disallow: /register
+Disallow: /cabinet
+Disallow: /api/
+Disallow: /admin/
+Disallow: /*.json$
+Disallow: /*?*
+
+Allow: /images/
+Allow: /icons/
+Allow: /*.css$
+Allow: /*.js$
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Yandex
+Allow: /
+Crawl-delay: 0.5
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1

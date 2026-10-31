@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <title>АвтоГис — поиск автосервисов, мастеров и автомоек на карте</title>
+        <meta
+            name="title"
+            content="АвтоГис — поиск автосервисов, мастеров и автомоек на карте"
+        />
+        <meta
+            name="description"
+            content="Быстрый поиск автомобильных услуг на карте: автосервисы, частные автомеханики, автомагазины и автомойки рядом с вами. Онлайн-запись, контакты и честные отзывы."
+        />
+        <meta
+            name="keywords"
+            content="автогис, автосервис на карте, автомеханик, автомойка, автозапчасти, ремонт авто, шиномонтаж, кузовной ремонт, автоэлектрик"
+        />
+        <meta name="author" content="AutoGIS" />
+        <meta
+            name="robots"
+            content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+        />
+        <link rel="canonical" href="https://autogis.pro/" />
+
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://autogis.pro/" />
+        <meta
+            property="og:title"
+            content="АвтоГис — поиск автосервисов, мастеров и автомоек на карте"
+        />
+        <meta
+            property="og:description"
+            content="Быстрый поиск автомобильных услуг на карте: автосервисы, частные мастера, автомагазины и автомойки рядом с вами."
+        />
+        <meta property="og:image" content="https://autogis.pro/og-image.jpg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:locale" content="ru_RU" />
+        <meta property="og:site_name" content="Мастера на карте" />
+
+        <!-- Twitter -->
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content="https://autogis.pro/" />
+        <meta
+            property="twitter:title"
+            content="Мастера на карте - Найди специалиста рядом с тобой"
+        />
+        <meta
+            property="twitter:description"
+            content="Быстрый поиск проверенных мастеров на карте. Электрики, сантехники, ремонтники и другие специалисты в твоем районе."
+        />
+        <meta
+            property="twitter:image"
+            content="https://autogis.pro/twitter-image.jpg"
+        />
+
+        <!-- Favicons -->
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="32x32"
+            href="/favicon-32x32.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="16x16"
+            href="/favicon-16x16.png"
+        />
+        <link
+            rel="apple-touch-icon"
+            sizes="180x180"
+            href="/apple-touch-icon.png"
+        />
+        <link rel="manifest" href="/site.webmanifest" />
+
+        <!-- Theme Color -->
+        <meta name="theme-color" content="#1976d2" />
+        <meta name="msapplication-TileColor" content="#1976d2" />
+
+        <!-- Preconnect to external domains -->
+        <link rel="preconnect" href="https://api-maps.yandex.ru" />
+        <link rel="preconnect" href="https://mc.yandex.ru" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+
+        <script
+            src="https://api-maps.yandex.ru/2.1/?apikey=%VITE_YMAPS_API_KEY%&lang=ru_RU"
+            type="text/javascript"
+        ></script>
+
+        <!-- Yandex.Metrika counter -->
+        <!-- <script type="text/javascript">
+            (function (m, e, t, r, i, k, a) {
+                m[i] =
+                    m[i] ||
+                    function () {
+                        (m[i].a = m[i].a || []).push(arguments);
+                    };
+                m[i].l = 1 * new Date();
+                for (var j = 0; j < document.scripts.length; j++) {
+                    if (document.scripts[j].src === r) {
+                        return;
+                    }
+                }
+                (k = e.createElement(t)),
+                    (a = e.getElementsByTagName(t)[0]),
+                    (k.async = 1),
+                    (k.src = r),
+                    a.parentNode.insertBefore(k, a);
+            })(
+                window,
+                document,
+                "script",
+                "https://mc.yandex.ru/metrika/tag.js?id=104061406",
+                "ym"
+            );
+
+            ym(104061406, "init", {
+                ssr: true,
+                webvisor: true,
+                clickmap: true,
+                ecommerce: "dataLayer",
+                accurateTrackBounce: true,
+                trackLinks: true,
+            });
+        </script> -->
+
+        <!-- /Yandex.Metrika counter -->
+
+        <!-- Structured Data (JSON-LD) -->
+        <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                "name": "Мастера на карте",
+                "alternateName": "AutoGIS",
+                "description": "Быстрый поиск проверенных мастеров на карте. Электрики, сантехники, ремонтники и другие специалисты в твоем районе. Отзывы, цены, контакты. Закажи услугу онлайн!",
+                "url": "https://autogis.pro/",
+                "sameAs": ["https://vk.com/autogis", "https://t.me/autogis"],
+                "potentialAction": {
+                    "@type": "SearchAction",
+                    "target": "https://autogis.pro/?search={search_term_string}",
+                    "query-input": "required name=search_term_string"
+                }
+            }
+        </script>
+
+        <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "LocalBusiness",
+                "name": "Мастера на карте",
+                "description": "Платформа для поиска и заказа услуг мастеров на дому",
+                "url": "https://autogis.pro/",
+                "logo": "https://autogis.pro/logo.png",
+                "image": "https://autogis.pro/og-image.jpg",
+                "address": {
+                    "@type": "PostalAddress",
+                    "addressCountry": "RU"
+                },
+                "geo": {
+                    "@type": "GeoCoordinates",
+                    "latitude": 55.7558,
+                    "longitude": 37.6173
+                },
+                "areaServed": {
+                    "@type": "Country",
+                    "name": "Россия"
+                },
+                "serviceType": [
+                    "Ремонтные услуги",
+                    "Строительные работы",
+                    "Электромонтажные работы",
+                    "Сантехнические услуги",
+                    "Услуги по уборке"
+                ],
+                "priceRange": "₽₽"
+            }
+        </script>
+    </head>
+    <body>
+        <div id="root"></div>
+        <script type="module" src="/src/main.tsx"></script>
+    </body>
+</html>

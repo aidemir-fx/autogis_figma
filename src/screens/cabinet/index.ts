@@ -1,0 +1,35 @@
+export * from "./Settings";
+export * from "./Dashboard";
+export * from "./ActivityTypes";
+export * from "./ActivityTypesSelection";
+export * from "./MasterSettings";
+export * from "./AutoWashSettings";
+export * from "./AutoServiceSettings";
+export * from "./AutoServiceRegistration";
+export * from "./AutoShopSettings";
+export * from "./Chats";
+export * from "./Applications";
+export * from "./Bookings";
+export * from "./ProfessionalCabinet";
+export * from "./ForBusiness";
+export * from "./Calendar";
+export * from "./Stories";
+export * from "./BusinessCRM";
+
+// Экспорт компонентов с явным указанием для избежания конфликтов имен
+export { Dashboard } from "./Dashboard";
+export { ActivityTypes } from "./ActivityTypes";
+export { ActivityTypesSelection } from "./ActivityTypesSelection";
+export { MasterSettings } from "./MasterSettings";
+export { AutoWashSettings } from "./AutoWashSettings";
+export { AutoServiceSettings } from "./AutoServiceSettings";
+export { AutoServiceRegistration } from "./AutoServiceRegistration";
+export { AutoShopSettings } from "./AutoShopSettings";
+export { Chats } from "./Chats";
+export { Applications } from "./Applications";
+export { Bookings } from "./Bookings";
+export { ProfessionalCabinet } from "./ProfessionalCabinet";
+export { ForBusiness } from "./ForBusiness";
+export { Calendar } from "./Calendar";
+export { Stories } from "./Stories";
+export { BusinessCRM } from "./BusinessCRM";
