@@ -52,6 +52,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD:-postgres}}
       - DB_NAME=auto_masters
       - DB_SSLMODE=disable
+      - ENABLE_RUNTIME_MIGRATIONS=true
       - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key}
       - JWT_ACCESS_EXPIRE=60
       - JWT_REFRESH_EXPIRE=720
