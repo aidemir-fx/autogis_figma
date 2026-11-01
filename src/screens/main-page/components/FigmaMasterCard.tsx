@@ -1,6 +1,5 @@
 import React from "react";
 import { Provider } from "@modules/providers";
-import { IMAGES } from "../../../assets/images";
 
 interface FigmaMasterCardProps {
     provider: Provider;
@@ -15,23 +14,21 @@ export const FigmaMasterCard: React.FC<FigmaMasterCardProps> = ({
     onChat,
     onClick,
 }) => {
-    const displayName = provider.fullName || provider.name || "Первый мастер";
-    const rating = provider.rating ?? 5.0;
-    const reviewsCount = provider.reviewsCount ?? 21;
+    const displayName = provider.fullName || provider.name || "Мастер";
+    const rating = provider.rating ?? 0;
+    const reviewsCount = provider.reviewsCount ?? 0;
     const distanceText = provider.distance
         ? provider.distance < 1000
             ? `${Math.round(provider.distance)} м`
             : `${(provider.distance / 1000).toFixed(1)} км`
-        : "200 м";
+        : "—";
 
-    const isOpen = provider.status !== "unavailable";
-    const professions = provider.professions && provider.professions.length > 0
-        ? provider.professions
-        : ["Автомаляр", "Кузовщик", "Сварщик", "Автоинженер", "Автоэлектрик"];
+    const isOpen = provider.currentStatus === "available" || provider.status === "available";
+    const professions = provider.professions ?? [];
     const visibleProfessions = professions.slice(0, 5);
-    const extraCount = Math.max(0, professions.length - 5) + 4; // Matching mock "+4"
+    const extraCount = Math.max(0, professions.length - 5);
 
-    const avatarSrc = provider.avatar || IMAGES.masterAvatar;
+    const avatarSrc = provider.avatarUrl || provider.avatar;
 
     return (
         <div
@@ -57,17 +54,17 @@ export const FigmaMasterCard: React.FC<FigmaMasterCardProps> = ({
             {/* Top row: Avatar & Main Info */}
             <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <div style={{ position: "relative", width: 48, height: 48, flexShrink: 0 }}>
-                    <img
-                        src={avatarSrc}
-                        alt={displayName}
-                        style={{
-                            width: 48,
-                            height: 48,
-                            borderRadius: 10,
-                            objectFit: "cover",
-                            backgroundColor: "#E2E8F0",
-                        }}
-                    />
+                    {avatarSrc ? (
+                        <img
+                            src={avatarSrc}
+                            alt={displayName}
+                            style={{ width: 48, height: 48, borderRadius: 10, objectFit: "cover" }}
+                        />
+                    ) : (
+                        <div style={{ width: 48, height: 48, borderRadius: 10, display: "grid", placeItems: "center", backgroundColor: "#E2E8F0", color: "#475569", fontWeight: 700 }}>
+                            {displayName.trim().charAt(0).toUpperCase() || "М"}
+                        </div>
+                    )}
                     {/* Green online badge */}
                     <span
                         style={{
@@ -107,13 +104,13 @@ export const FigmaMasterCard: React.FC<FigmaMasterCardProps> = ({
                             fontSize: 12,
                         }}
                     >
-                        <span style={{ color: "#EAB308", display: "inline-flex", alignItems: "center" }}>
-                            ★
-                        </span>
-                        <span style={{ fontWeight: 600, color: "#1E293B" }}>
-                            {rating.toFixed(1)}
-                        </span>
-                        <span style={{ color: "#94A3B8" }}>({reviewsCount})</span>
+                        {reviewsCount > 0 ? (
+                            <>
+                                <span style={{ color: "#EAB308", display: "inline-flex", alignItems: "center" }}>★</span>
+                                <span style={{ fontWeight: 600, color: "#1E293B" }}>{rating.toFixed(1)}</span>
+                                <span style={{ color: "#94A3B8" }}>({reviewsCount})</span>
+                            </>
+                        ) : <span style={{ color: "#64748B" }}>Нет отзывов</span>}
 
                         <span
                             style={{
@@ -165,7 +162,7 @@ export const FigmaMasterCard: React.FC<FigmaMasterCardProps> = ({
                             fontSize: 11,
                         }}
                     >
-                        Пн - Вс
+                        {provider.workingDays?.some(Boolean) ? "График указан" : "График не указан"}
                     </span>
                     <span
                         style={{
@@ -176,7 +173,7 @@ export const FigmaMasterCard: React.FC<FigmaMasterCardProps> = ({
                             fontSize: 11,
                         }}
                     >
-                        {provider.workFrom || "8:00"} - {provider.workTo || "19:00"}
+                        {provider.workFrom && provider.workTo ? `${provider.workFrom} - ${provider.workTo}` : "Время не указано"}
                     </span>
                 </div>
             </div>
@@ -202,7 +199,7 @@ export const FigmaMasterCard: React.FC<FigmaMasterCardProps> = ({
                             {prof}
                         </span>
                     ))}
-                    <span
+                    {extraCount > 0 && <span
                         style={{
                             backgroundColor: "#F1F5F9",
                             color: "#64748B",
@@ -213,7 +210,8 @@ export const FigmaMasterCard: React.FC<FigmaMasterCardProps> = ({
                         }}
                     >
                         +{extraCount}
-                    </span>
+                    </span>}
+                    {professions.length === 0 && <span style={{ color: "#64748B", fontSize: 11 }}>Специализация не указана</span>}
                 </div>
             </div>
 
@@ -224,9 +222,9 @@ export const FigmaMasterCard: React.FC<FigmaMasterCardProps> = ({
                     onClick={(e) => {
                         e.stopPropagation();
                         if (onCall) {
-                            onCall(provider.phone || "+7 (999) 111-22-33");
+                            if (provider.phone) onCall(provider.phone);
                         } else {
-                            window.location.href = `tel:${provider.phone || "+79991112233"}`;
+                            if (provider.phone) window.location.href = `tel:${provider.phone}`;
                         }
                     }}
                     style={{

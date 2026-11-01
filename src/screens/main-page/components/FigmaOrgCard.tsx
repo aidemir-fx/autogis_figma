@@ -1,6 +1,5 @@
 import React from "react";
 import { Provider, ActivityType } from "@modules/providers";
-import { IMAGES } from "../../../assets/images";
 
 interface FigmaOrgCardProps {
     provider: Provider;
@@ -23,13 +22,7 @@ export const FigmaOrgCard: React.FC<FigmaOrgCardProps> = ({
     const isWash = categoryType === ActivityType.auto_wash;
     const isService = categoryType === ActivityType.auto_service;
 
-    // Pick appropriate cover image
-    let coverSrc = provider.avatar;
-    if (!coverSrc) {
-        if (isService) coverSrc = IMAGES.autoServiceCover;
-        else if (isShop) coverSrc = IMAGES.autoShopCover;
-        else coverSrc = IMAGES.autoWashCover;
-    }
+    const coverSrc = provider.coverImageUrl || provider.coverImage || provider.avatarUrl || provider.avatar;
 
     // Default titles matching mock
     let defaultTitle = "Организация";
@@ -38,35 +31,26 @@ export const FigmaOrgCard: React.FC<FigmaOrgCardProps> = ({
     if (isWash) defaultTitle = "Автомойка";
 
     const title = provider.businessName || provider.fullName || provider.name || defaultTitle;
-    const rating = provider.rating ?? 5.0;
-    const reviewsCount = provider.reviewsCount ?? 21;
+    const rating = provider.rating ?? 0;
+    const reviewsCount = provider.reviewsCount ?? 0;
     const distanceText = provider.distance
         ? provider.distance < 1000
             ? `${Math.round(provider.distance)} м`
             : `${(provider.distance / 1000).toFixed(1)} км`
-        : "200 м";
+        : "—";
 
     // For shop, mock showed one closed shop for demonstration
-    const isClosed = isShop && provider.status === "unavailable";
-    const isOpen = !isClosed;
+    const status = provider.currentStatus || provider.status;
+    const hasStatus = status === "available" || status === "unavailable";
+    const isOpen = status === "available";
 
     // Section label: "Товары" for auto shops, "Услуги" for service and wash
     const itemsLabel = isShop ? "Товары" : "Услуги";
 
-    // Item tags
-    let rawTags = provider.services || [];
-    if (rawTags.length === 0) {
-        if (isShop) {
-            rawTags = ["Запчасти", "Шины", "Краска", "Масло", "Ходовая"];
-        } else if (isWash) {
-            rawTags = ["Химчистка салона", "Полировка", "Нано-мойка", "Антидождь"];
-        } else {
-            rawTags = ["Диагностика", "ТО", "Ходовая", "ДВС", "Электрика"];
-        }
-    }
+    const rawTags = provider.services ?? [];
 
     const visibleTags = rawTags.slice(0, 5);
-    const extraCount = Math.max(0, rawTags.length - 5) + 3;
+    const extraCount = Math.max(0, rawTags.length - 5);
 
     // Actions logic:
     // Auto Service & Auto Wash lead with "Записаться" (Green) + Phone button
@@ -95,18 +79,13 @@ export const FigmaOrgCard: React.FC<FigmaOrgCardProps> = ({
         >
             {/* Top Cover Image with Rating Badge */}
             <div style={{ position: "relative", width: "100%", height: 149, flexShrink: 0, backgroundColor: "#E2E8F0" }}>
-                <img
+                {coverSrc && <img
                     src={coverSrc}
                     alt={title}
-                    style={{
-                        width: "100%",
-                        height: 149,
-                        objectFit: "cover",
-                        display: "block",
-                    }}
-                />
+                    style={{ width: "100%", height: 149, objectFit: "cover", display: "block" }}
+                />}
                 {/* Floating rating badge in top-left */}
-                <div
+                {reviewsCount > 0 && <div
                     style={{
                         position: "absolute",
                         top: 8,
@@ -127,7 +106,7 @@ export const FigmaOrgCard: React.FC<FigmaOrgCardProps> = ({
                     <span style={{ color: "#EAB308", fontSize: 13 }}>★</span>
                     <span>{rating.toFixed(1)}</span>
                     <span style={{ color: "#64748B", fontWeight: 400 }}>({reviewsCount})</span>
-                </div>
+                </div>}
             </div>
 
             {/* Bottom Content Area: height ~232px */}
@@ -183,7 +162,7 @@ export const FigmaOrgCard: React.FC<FigmaOrgCardProps> = ({
                     </div>
 
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
-                        <span
+                        {hasStatus && <span
                             style={{
                                 backgroundColor: isOpen ? "#DCFCE7" : "#FEE2E2",
                                 color: isOpen ? "#16A34A" : "#DC2626",
@@ -194,8 +173,8 @@ export const FigmaOrgCard: React.FC<FigmaOrgCardProps> = ({
                             }}
                         >
                             {isOpen ? "Открыто" : "Закрыто"}
-                        </span>
-                        <span
+                        </span>}
+                        {provider.workingDays?.some(Boolean) && <span
                             style={{
                                 backgroundColor: "#F1F5F9",
                                 color: "#475569",
@@ -204,9 +183,9 @@ export const FigmaOrgCard: React.FC<FigmaOrgCardProps> = ({
                                 fontSize: 11,
                             }}
                         >
-                            Пн - Вс
-                        </span>
-                        <span
+                            {provider.workingDays?.filter(Boolean).length} дн./нед.
+                        </span>}
+                        {provider.workFrom && provider.workTo && <span
                             style={{
                                 backgroundColor: "#F1F5F9",
                                 color: "#475569",
@@ -215,8 +194,8 @@ export const FigmaOrgCard: React.FC<FigmaOrgCardProps> = ({
                                 fontSize: 11,
                             }}
                         >
-                            {provider.workFrom || "8:00"} - {provider.workTo || "19:00"}
-                        </span>
+                            {provider.workFrom} - {provider.workTo}
+                        </span>}
                     </div>
                 </div>
 
@@ -241,7 +220,7 @@ export const FigmaOrgCard: React.FC<FigmaOrgCardProps> = ({
                                 {tag}
                             </span>
                         ))}
-                        <span
+                        {extraCount > 0 && <span
                             style={{
                                 backgroundColor: "#F1F5F9",
                                 color: "#64748B",
@@ -252,7 +231,8 @@ export const FigmaOrgCard: React.FC<FigmaOrgCardProps> = ({
                             }}
                         >
                             +{extraCount}
-                        </span>
+                        </span>}
+                        {visibleTags.length === 0 && <span style={{ color: "#64748B", fontSize: 11 }}>Услуги не указаны</span>}
                     </div>
                 </div>
 
@@ -290,9 +270,9 @@ export const FigmaOrgCard: React.FC<FigmaOrgCardProps> = ({
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     if (onCall) {
-                                        onCall(provider.phone || "+7 (495) 777-88-99");
+                                        if (provider.phone) onCall(provider.phone);
                                     } else {
-                                        window.location.href = `tel:${provider.phone || "+74957778899"}`;
+                                        if (provider.phone) window.location.href = `tel:${provider.phone}`;
                                     }
                                 }}
                                 title="Позвонить"
@@ -322,9 +302,9 @@ export const FigmaOrgCard: React.FC<FigmaOrgCardProps> = ({
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     if (onCall) {
-                                        onCall(provider.phone || "+7 (495) 555-44-33");
+                                        if (provider.phone) onCall(provider.phone);
                                     } else {
-                                        window.location.href = `tel:${provider.phone || "+74955554433"}`;
+                                        if (provider.phone) window.location.href = `tel:${provider.phone}`;
                                     }
                                 }}
                                 style={{

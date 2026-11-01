@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ActivityType, Provider } from "@modules/providers";
 import { fetchProviderByTypeAndId } from "@modules/providers/api";
 import { useCoords } from "@common/hooks";
-import { IMAGES } from "../../assets/images";
 import { BookingModal } from "../main-page/components/BookingModal";
 import { toast } from "react-toastify";
 import { Map, Placemark, YMaps } from "@pbe/react-yandex-maps";
@@ -583,7 +582,7 @@ export const MasterDetailsScreen: React.FC = () => {
     const isMaster = activityType === ActivityType.master;
 
     // Interactive states
-    const [isFavorite, setIsFavorite] = useState(true);
+    const [isFavorite, setIsFavorite] = useState(false);
     const [isBookingOpen, setIsBookingOpen] = useState(false);
     const [activePhotoIndex, setActivePhotoIndex] = useState(0);
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
@@ -596,16 +595,14 @@ export const MasterDetailsScreen: React.FC = () => {
 
     const [isScheduleExpanded, setIsScheduleExpanded] = useState(false);
     const [isServicesExpanded, setIsServicesExpanded] = useState(false);
-    const [reviewsList, setReviewsList] = useState<ReviewItem[]>(REVIEWS_BY_TYPE[activityType] || REVIEWS_BY_TYPE[ActivityType.master]);
+    const [reviewsList, setReviewsList] = useState<ReviewItem[]>([]);
     const [isAddReviewOpen, setIsAddReviewOpen] = useState(false);
     const [newReviewAuthor, setNewReviewAuthor] = useState("");
     const [newReviewText, setNewReviewText] = useState("");
     const [newReviewRating, setNewReviewRating] = useState(5);
 
     // Highlights for the current category
-    const highlights = useMemo(() => {
-        return HIGHLIGHTS_BY_TYPE[activityType] || HIGHLIGHTS_BY_TYPE[ActivityType.master];
-    }, [activityType]);
+    const highlights: HighlightGroup[] = [];
 
     // Stories timer effect (advances progress bar & slides)
     useEffect(() => {
@@ -692,75 +689,41 @@ export const MasterDetailsScreen: React.FC = () => {
         retry: false,
     });
 
-    // Formatted data with realistic defaults matching activity type
+    // Display only provider data returned by the API, never demo profile details.
     const providerData = useMemo(() => {
-        let defaultName = "Первый мастер";
-        let defaultSub = "Автомаляр, автоинженер, кузовщик, сварщик";
-        let defaultCover = IMAGES.masterAvatar;
-        let defaultPhone = "+7 (928) 555-12-34";
-        let defaultAddress = "Респ. Дагестан, г. Кизилюрт, ул. Буйнакского 8А";
-
-        if (isService) {
-            defaultName = "АвтоТехЦентр «Премиум Моторс»";
-            defaultSub = "Мультибрендовый автотехцентр • Слесарный цех, ТО, компьютерная диагностика";
-            defaultCover = IMAGES.autoServiceCover;
-            defaultPhone = "+7 (495) 777-88-99";
-            defaultAddress = "г. Москва, Таганская ул., 36";
-        } else if (isShop) {
-            defaultName = "АвтоЗапчасти «Деталь-Маркет»";
-            defaultSub = "Магазин автозапчастей • 50 000+ наименований в наличии и под заказ";
-            defaultCover = IMAGES.autoShopCover;
-            defaultPhone = "+7 (495) 555-44-33";
-            defaultAddress = "г. Москва, ул. Большая Полянка, 28";
-        } else if (isWash) {
-            defaultName = "AquaSpa Detailing & Автомойка";
-            defaultSub = "Автомоечный комплекс & детейлинг-центр • Трехфазная нано-мойка, керамика";
-            defaultCover = IMAGES.autoWashCover;
-            defaultPhone = "+7 (495) 333-22-11";
-            defaultAddress = "г. Москва, Олимпийский просп., 16";
-        }
-
-        const defaultDesc = isShop
-            ? "Широкий ассортимент оригинальных автозапчастей и качественных аналогов в наличии и под заказ. Подбор по электронным дилерским каталогам и VIN за 5 минут, экспресс-доставка по городу, гарантия возврата и обмена."
-            : isService
-            ? "Мультибрендовый современный автосервис. Полный комплекс услуг: от регулярного ТО до сложного кузовного и агрегатного ремонта. Сертифицированные мастера и гарантия на все работы."
-            : isWash
-            ? "Премиальная автомойка и детейлинг-центр. Безопасная трехфазная нано-мойка, глубокая полировка, защита кузова керамикой 9H, химчистка салона и озонирование."
-            : "Опытный автомастер с многолетним стажем. Качественный ремонт, честные цены и внимательное отношение к каждому автомобилю.";
-
-        const name = fetchedProvider?.businessName || fetchedProvider?.fullName || fetchedProvider?.name || defaultName;
-        const professions = fetchedProvider?.professions?.length
-            ? fetchedProvider.professions.join(", ")
-            : defaultSub;
-        const phone = fetchedProvider?.workingPhone || fetchedProvider?.phone || defaultPhone;
-        const address = fetchedProvider?.address || defaultAddress;
-        const rating = fetchedProvider?.rating ?? (isService ? 4.9 : isShop ? 4.8 : isWash ? 4.9 : 5.0);
-        const reviewsCount = fetchedProvider?.reviewsCount ?? (isService ? 142 : isShop ? 76 : isWash ? 110 : 41);
-        const workFrom = fetchedProvider?.workFrom || (isWash ? "08:00" : isService ? "08:00" : "09:00");
-        const workTo = fetchedProvider?.workTo || (isWash ? "23:00" : isService ? "22:00" : "21:00");
-        const avatar = fetchedProvider?.avatar || defaultCover;
-        const description = fetchedProvider?.description || defaultDesc;
-        let lat = 55.7558;
-        let lng = 37.6173;
+        const name = fetchedProvider?.businessName || fetchedProvider?.fullName || fetchedProvider?.name || "Профиль исполнителя";
+        const professions = fetchedProvider?.professions?.join(", ") ?? "";
+        const phone = fetchedProvider?.workingPhone || fetchedProvider?.phone || "";
+        const address = fetchedProvider?.address || "";
+        const rating = fetchedProvider?.rating ?? 0;
+        const reviewsCount = fetchedProvider?.reviewsCount ?? 0;
+        const workFrom = fetchedProvider?.workFrom || "";
+        const workTo = fetchedProvider?.workTo || "";
+        const avatar = fetchedProvider?.coverImageUrl || fetchedProvider?.coverImage || fetchedProvider?.avatarUrl || fetchedProvider?.avatar || "";
+        const description = fetchedProvider?.description || "";
+        let hasCoordinates = false;
+        let lat = 0;
+        let lng = 0;
         if (fetchedProvider?.coordinates) {
             const c = fetchedProvider.coordinates;
             if (typeof c.x === "number" && typeof c.y === "number") {
                 lat = c.x;
                 lng = c.y;
+                hasCoordinates = c.x !== 0 || c.y !== 0;
             } else if (Array.isArray(c.coordinates) && c.coordinates.length >= 2) {
                 lng = c.coordinates[0];
                 lat = c.coordinates[1];
+                hasCoordinates = lat !== 0 || lng !== 0;
             } else if (Array.isArray(c) && c.length >= 2) {
                 lat = c[0];
                 lng = c[1];
+                hasCoordinates = lat !== 0 || lng !== 0;
             }
-        } else if (isMaster) {
-            lat = 43.2007;
-            lng = 46.8528;
         }
         const coordinates: [number, number] = [lat, lng];
 
-        const payments = fetchedProvider?.payments || ["cash", "card", "sbp"];
+        const payments = fetchedProvider?.payments ?? [];
+        const services = fetchedProvider?.services ?? [];
 
         return {
             name,
@@ -774,126 +737,52 @@ export const MasterDetailsScreen: React.FC = () => {
             avatar,
             description,
             coordinates,
+            hasCoordinates,
             payments,
+            services,
             activityType: fetchedProvider?.activityType || activityType,
         };
     }, [fetchedProvider, isService, isShop, isWash, activityType]);
 
-    // Synthetic provider for BookingModal
     const bookingProvider = useMemo(() => {
         return {
-            id: id || "provider-default-1",
-            userId: id || "provider-default-1",
+            ...fetchedProvider,
+            id: fetchedProvider?.id || id || "",
+            userId: fetchedProvider?.userId || id || "",
             name: providerData.name,
             fullName: providerData.name,
             businessName: providerData.name,
             activityType: activityType,
             phone: providerData.phone,
             address: providerData.address,
-            coordinates: { x: 43.2007, y: 46.8528 },
-            status: "available",
-            currentStatus: "available",
+            coordinates: { x: providerData.coordinates[0], y: providerData.coordinates[1] },
             description: providerData.professions,
             rating: providerData.rating,
             reviewsCount: providerData.reviewsCount,
-            services: isService
-                ? [
-                      "Плановое техническое обслуживание",
-                      "Компьютерная диагностика",
-                      "Ремонт ходовой части",
-                      "Замена моторного масла и фильтров",
-                      "Замена тормозных колодок и дисков",
-                      "3D Сход-развал",
-                  ]
-                : isWash
-                ? [
-                      "Трехфазная нано-мойка",
-                      "Комплексная уборка салона",
-                      "Химчистка передних сидений",
-                      "Нанесение гидрофобного полимера",
-                      "Озонирование и устранение запахов",
-                  ]
-                : [
-                      "Легковой автосервис",
-                      "Ремонт ходовой части автомобиля",
-                      "Кузовной ремонт",
-                      "Локальная покраска деталей",
-                  ],
+            services: providerData.services,
         } as unknown as Provider;
-    }, [id, providerData, activityType, isService, isWash]);
+    }, [id, fetchedProvider, providerData, activityType]);
 
     // Hero gallery photos
-    const heroPhotos = useMemo(() => {
-        const list = PHOTOS_BY_TYPE[activityType] || PHOTOS_BY_TYPE[ActivityType.master];
-        return list.map((p) => p.url);
-    }, [activityType]);
+    const heroPhotos = [fetchedProvider?.coverImageUrl || fetchedProvider?.coverImage]
+        .filter((url): url is string => Boolean(url));
 
-    // Services list
-    const allServices = useMemo(() => {
-        if (isShop) {
-            return [
-                "Моторные масла и техжидкости",
-                "Масляные, воздушные и салонные фильтры",
-                "Тормозные колодки и диски",
-                "Детали подвески и рулевого управления",
-                "Свечи зажигания и накаливания",
-                "Аккумуляторы с гарантией",
-                "Автохимия и автокосметика",
-                "Лампы, предохранители и автоэлектрика",
-            ];
-        }
-        if (isService) {
-            return [
-                "Плановое техническое обслуживание (ТО)",
-                "Компьютерная диагностика всех систем",
-                "Ремонт ходовой части и подвески",
-                "3D Сход-развал на лазерном стенде",
-                "Ремонт двигателей и трансмиссий",
-                "Замена масел в ДВС, АКПП, редукторах",
-                "Заправка и антибактериальная чистка кондиционера",
-                "Кузовной ремонт и восстановление геометрии",
-            ];
-        }
-        if (isWash) {
-            return [
-                "Трехфазная нано-мойка кузова",
-                "Комплексная влажная уборка салона",
-                "Глубокая химчистка салона с сушкой",
-                "Полировка фар и нанесение бронепленки",
-                "Защитное покрытие «Антидождь» на стекла",
-                "Нанесение твердого воска и кварцевых составов",
-                "Озонирование и дезинфекция кондиционера",
-                "Бережная мойка двигателя паром",
-            ];
-        }
-        return [
-            "Легковой автосервис",
-            "Ремонт ходовой части автомобиля",
-            "Кузовной ремонт",
-            "Локальная и полная покраска",
-            "Полировка кузова и оптики",
-            "Стапельные и сварочные работы",
-            "Компьютерная диагностика",
-            "Замена масел и фильтров",
-        ];
-    }, [isShop, isService, isWash]);
+    const allServices: string[] = providerData.services;
 
     const visibleServices = isServicesExpanded ? allServices : allServices.slice(0, 3);
 
     // Schedule week
     const scheduleWeek = useMemo(() => {
-        const from = providerData.workFrom;
-        const to = providerData.workTo;
-        return [
-            { day: "Понедельник", hours: `${from} - ${to}`, active: true },
-            { day: "Вторник", hours: `${from} - ${to}`, active: true },
-            { day: "Среда", hours: `${from} - ${to}`, active: true },
-            { day: "Четверг", hours: `${from} - ${to}`, active: true },
-            { day: "Пятница", hours: `${from} - ${to}`, active: true },
-            { day: "Суббота", hours: `${from} - ${to}`, active: true },
-            { day: "Воскресенье", hours: isService ? "10:00 - 20:00" : `${from} - ${to}`, active: true },
-        ];
-    }, [providerData.workFrom, providerData.workTo, isService]);
+        const days = fetchedProvider?.workingDays ?? [];
+        const labels = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+        return labels
+            .map((day, index) => ({
+                day,
+                hours: `${providerData.workFrom} - ${providerData.workTo}`,
+                active: days[index] === true,
+            }))
+            .filter((item) => item.active);
+    }, [fetchedProvider?.workingDays, providerData.workFrom, providerData.workTo]);
 
     const handleToggleFavorite = () => {
         setIsFavorite((prev) => {
@@ -1019,8 +908,7 @@ export const MasterDetailsScreen: React.FC = () => {
                 </h1>
             </header>
 
-            {/* 2. HERO IMAGE GALLERY */}
-            <div
+            {heroPhotos.length > 0 && <div
                 style={{
                     position: "relative",
                     width: "100%",
@@ -1148,7 +1036,7 @@ export const MasterDetailsScreen: React.FC = () => {
                     </svg>
                     <span>{heroPhotos.length}</span>
                 </button>
-            </div>
+            </div>}
 
             {/* MAIN CONTENT BODY */}
             <main style={{ padding: "16px 16px 24px", display: "flex", flexDirection: "column", gap: 24 }}>
@@ -1213,10 +1101,10 @@ export const MasterDetailsScreen: React.FC = () => {
                         </button>
                     </div>
 
-                    {/* Rating row */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                    {/* Rating is shown only when reviews exist. */}
+                    {providerData.reviewsCount > 0 && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
                         <div style={{ display: "flex", color: "#EAB308", fontSize: 14 }}>
-                            {"★".repeat(5)}
+                            {"★".repeat(Math.round(providerData.rating))}
                         </div>
                         <span style={{ fontSize: 14, fontWeight: 700, color: "#1E293B" }}>
                             {providerData.rating.toFixed(1)}
@@ -1224,18 +1112,17 @@ export const MasterDetailsScreen: React.FC = () => {
                         <span style={{ fontSize: 13, color: "#94A3B8" }}>
                             ({providerData.reviewsCount})
                         </span>
-                    </div>
+                    </div>}
 
                     {/* Status badge & Payment icons row */}
                     <div style={{ marginTop: 8, fontSize: 13, fontWeight: 600, color: "#16A34A", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                            <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#16A34A", flexShrink: 0 }} />
-                            <span>Открыто до {providerData.workTo}</span>
-                            {isService && <span style={{ color: "#64748B", fontWeight: 400 }}>• 6 подъемников в работе</span>}
-                            {isWash && <span style={{ color: "#64748B", fontWeight: 400 }}>• Свободно 2 поста</span>}
-                            {isShop && <span style={{ color: "#64748B", fontWeight: 400 }}>• 50 000+ товаров</span>}
+                            {fetchedProvider?.currentStatus === "available" && <>
+                                <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#16A34A", flexShrink: 0 }} />
+                                <span>{providerData.workTo ? `Открыто до ${providerData.workTo}` : "Открыто"}</span>
+                            </>}
+                            {fetchedProvider?.currentStatus === "unavailable" && <span style={{ color: "#64748B", fontWeight: 400 }}>Сейчас закрыто</span>}
                         </div>
-
                         {providerData.payments && providerData.payments.length > 0 && (
                             <div style={{ display: "flex", gap: 6, alignItems: "flex-start", flexShrink: 0 }}>
                                 {providerData.payments.map((p: string) => {
@@ -1369,8 +1256,8 @@ export const MasterDetailsScreen: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 4. АКТУАЛЬНЫЕ АКЦИИ (INSTAGRAM STORIES HIGHLIGHTS) */}
-                <div>
+                {/* Provider stories are shown only when supplied by the API. */}
+                {highlights.length > 0 && <div>
                     <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#0F172A" }}>
                         Актуальные акции
                     </h3>
@@ -1455,7 +1342,7 @@ export const MasterDetailsScreen: React.FC = () => {
                             </div>
                         ))}
                     </div>
-                </div>
+                </div>}
 
                 {/* 5. ОПИСАНИЕ ИЗ ПРОФИЛЯ */}
                 {providerData.description && (
@@ -1477,7 +1364,7 @@ export const MasterDetailsScreen: React.FC = () => {
                 )}
 
                 {/* 6. УСЛУГИ / КАТАЛОГ */}
-                <div>
+                {allServices.length > 0 && <div>
                     <div
                         onClick={() => setIsServicesExpanded(!isServicesExpanded)}
                         style={{
@@ -1543,10 +1430,10 @@ export const MasterDetailsScreen: React.FC = () => {
                             </button>
                         )}
                     </div>
-                </div>
+                </div>}
 
                 {/* 8. ФОТО РАБОТ / СЕРВИСА / МАГАЗИНА */}
-                <div>
+                {heroPhotos.length > 0 && <div>
                     <div
                         style={{
                             display: "flex",
@@ -1604,10 +1491,10 @@ export const MasterDetailsScreen: React.FC = () => {
                             </div>
                         ))}
                     </div>
-                </div>
+                </div>}
 
                 {/* 9. ГРАФИК РАБОТЫ */}
-                <div>
+                {scheduleWeek.length > 0 && <div>
                     <div
                         onClick={() => setIsScheduleExpanded(!isScheduleExpanded)}
                         style={{
@@ -1671,10 +1558,10 @@ export const MasterDetailsScreen: React.FC = () => {
                             ))}
                         </div>
                     )}
-                </div>
+                </div>}
 
                 {/* 10. АДРЕС & КАРТА */}
-                <div>
+                {providerData.address && providerData.hasCoordinates && <div>
                     <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#0F172A" }}>
                         Адрес
                     </h3>
@@ -1769,9 +1656,10 @@ export const MasterDetailsScreen: React.FC = () => {
                             </svg>
                         </button>
                     </div>
-                </div>
+                </div>}
 
                 {/* 11. ОТЗЫВЫ */}
+                {(providerData.reviewsCount > 0 || reviewsList.length > 0) && (
                 <div>
                     <div
                         style={{
@@ -1801,17 +1689,19 @@ export const MasterDetailsScreen: React.FC = () => {
                         </button>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 14 }}>
-                        <span style={{ fontSize: 24, fontWeight: 700, color: "#0F172A" }}>
-                            {providerData.rating.toFixed(1)}
-                        </span>
-                        <div style={{ display: "flex", color: "#EAB308", fontSize: 16 }}>
-                            {"★".repeat(5)}
+                    {providerData.reviewsCount > 0 && (
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 14 }}>
+                            <span style={{ fontSize: 24, fontWeight: 700, color: "#0F172A" }}>
+                                {providerData.rating.toFixed(1)}
+                            </span>
+                            <div style={{ display: "flex", color: "#EAB308", fontSize: 16 }}>
+                                {"★".repeat(5)}
+                            </div>
+                            <span style={{ fontSize: 13, color: "#64748B" }}>
+                                {providerData.reviewsCount} отзыв
+                            </span>
                         </div>
-                        <span style={{ fontSize: 13, color: "#64748B" }}>
-                            {providerData.reviewsCount} отзыв
-                        </span>
-                    </div>
+                    )}
 
                     {/* Review Cards list */}
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1881,6 +1771,7 @@ export const MasterDetailsScreen: React.FC = () => {
                         </button>
                     )}
                 </div>
+                )}
             </main>
 
             {/* LIGHTBOX / FULLSCREEN GALLERY MODAL */}

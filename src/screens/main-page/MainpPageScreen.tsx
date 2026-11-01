@@ -18,7 +18,6 @@ import { FigmaMasterCard } from "./components/FigmaMasterCard";
 import { FigmaOrgCard } from "./components/FigmaOrgCard";
 import { FigmaStoryStrip } from "./components/FigmaStoryStrip";
 import { BookingModal } from "./components/BookingModal";
-import { IMAGES } from "../../assets/images";
 
 type ProviderCategory = {
     type: ActivityType;
@@ -486,20 +485,17 @@ export function MainpPageScreen() {
                     >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                                <img
-                                    src={
-                                        selectedMapProvider.avatar ||
-                                        (selectedMapProvider.activityType === ActivityType.auto_service
-                                            ? IMAGES.autoServiceCover
-                                            : selectedMapProvider.activityType === ActivityType.auto_shop
-                                            ? IMAGES.autoShopCover
-                                            : selectedMapProvider.activityType === ActivityType.auto_wash
-                                            ? IMAGES.autoWashCover
-                                            : IMAGES.masterAvatar)
-                                    }
-                                    alt=""
-                                    style={{ width: 46, height: 46, borderRadius: 12, objectFit: "cover", flexShrink: 0, backgroundColor: "#E2E8F0" }}
-                                />
+                                {selectedMapProvider.avatarUrl || selectedMapProvider.avatar ? (
+                                    <img
+                                        src={selectedMapProvider.avatarUrl || selectedMapProvider.avatar}
+                                        alt=""
+                                        style={{ width: 46, height: 46, borderRadius: 12, objectFit: "cover", flexShrink: 0, backgroundColor: "#E2E8F0" }}
+                                    />
+                                ) : (
+                                    <div aria-hidden="true" style={{ width: 46, height: 46, borderRadius: 12, display: "grid", placeItems: "center", flexShrink: 0, backgroundColor: "#E2E8F0", color: "#475569", fontWeight: 700 }}>
+                                        {(selectedMapProvider.fullName || selectedMapProvider.businessName || selectedMapProvider.name || "").trim().charAt(0).toUpperCase()}
+                                    </div>
+                                )}
                                 <div>
                                     <div style={{ fontSize: 15, fontWeight: 700, color: "#0F172A", lineHeight: 1.25 }}>
                                         {selectedMapProvider.businessName || selectedMapProvider.fullName || selectedMapProvider.name}
@@ -523,9 +519,11 @@ export function MainpPageScreen() {
                                                 ? "Автомойка"
                                                 : "Частный мастер"}
                                         </span>
-                                        <span style={{ fontSize: 12, fontWeight: 700, color: "#1E293B" }}>
-                                            ★ {selectedMapProvider.rating ? selectedMapProvider.rating.toFixed(1) : "5.0"}
-                                        </span>
+                                        {(selectedMapProvider.reviewsCount ?? 0) > 0 && (
+                                            <span style={{ fontSize: 12, fontWeight: 700, color: "#1E293B" }}>
+                                                ★ {(selectedMapProvider.rating ?? 0).toFixed(1)} ({selectedMapProvider.reviewsCount})
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -549,20 +547,20 @@ export function MainpPageScreen() {
                         </div>
 
                         {/* Address & Key stats nuance */}
-                        <div style={{ fontSize: 12, color: "#64748B", display: "flex", alignItems: "center", gap: 4 }}>
+                        {selectedMapProvider.address && <div style={{ fontSize: 12, color: "#64748B", display: "flex", alignItems: "center", gap: 4 }}>
                             <span>📍</span>
                             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {selectedMapProvider.address || "Адрес уточняется"}
+                                {selectedMapProvider.address}
                             </span>
-                        </div>
+                        </div>}
 
                         {/* Action buttons row */}
                         <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
                             <button
                                 type="button"
                                 onClick={() => {
-                                    const phone = selectedMapProvider.workingPhone || selectedMapProvider.phone || "+7 (999) 000-00-00";
-                                    window.location.href = `tel:${phone.replace(/[^\d+]/g, "")}`;
+                                    const phone = selectedMapProvider.workingPhone || selectedMapProvider.phone;
+                                    if (phone) window.location.href = `tel:${phone.replace(/[^\d+]/g, "")}`;
                                 }}
                                 style={{
                                     flex: 1,
