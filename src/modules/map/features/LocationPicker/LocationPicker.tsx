@@ -229,21 +229,41 @@ export const LocationPicker = ({
                 throw new Error("Yandex Maps API is not loaded");
             }
 
-            const result = await window.ymaps.geocode(
-                [coords.x, coords.y],
-                { results: 1 },
-            );
-            const geoObject = result.geoObjects.get(0);
-            const properties = geoObject?.properties as any;
-            const resolvedAddress =
-                (geoObject as any)?.getAddressLine?.() ||
-                properties?.get?.("text", "") ||
-                properties?.get?.("name", "");
+            const readAddress = (geoObject: any): string => {
+                const properties = geoObject?.properties;
+                const metadata = properties?.get?.("metaDataProperty")
+                    ?.get?.("GeocoderMetaData");
+                const candidates = [
+                    geoObject?.getAddressLine?.(),
+                    metadata?.get?.("text"),
+                    metadata?.get?.("Address")?.get?.("formatted"),
+                    properties?.get?.("text"),
+                    properties?.get?.("name"),
+                ];
 
-            setAddress(resolvedAddress || "Адрес не найден");
+                return candidates.find(
+                    (value): value is string =>
+                        typeof value === "string" && value.trim().length > 0,
+                )?.trim() ?? "";
+            };
+
+            const point = [coords.x, coords.y];
+            const result = await window.ymaps.geocode(point, { results: 1 });
+            let resolvedAddress = readAddress(result.geoObjects.get(0));
+
+            // Some points have no house-level result; fall back to their locality.
+            if (!resolvedAddress) {
+                const localityResult = await window.ymaps.geocode(point, {
+                    kind: "locality",
+                    results: 1,
+                });
+                resolvedAddress = readAddress(localityResult.geoObjects.get(0));
+            }
+
+            setAddress(resolvedAddress);
         } catch (error) {
             console.error("Geocoding error:", error);
-            setAddress("Адрес не найден");
+            setAddress("");
         }
     };
 
@@ -333,7 +353,9 @@ export const LocationPicker = ({
                             {coordinates?.y?.toFixed(6)}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                            Адрес: {address}
+                            {address
+                                ? `Адрес: ${address}`
+                                : "Адрес не распознан; выбранная точка сохранится по координатам."}
                         </Typography>
                     </Box>
                 )}
