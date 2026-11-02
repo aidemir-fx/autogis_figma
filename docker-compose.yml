@@ -6,8 +6,6 @@ services:
       POSTGRES_DB: auto_masters
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DB_PASSWORD:-${POSTGRES_PASSWORD:-postgres}}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -20,9 +18,6 @@ services:
     image: rustfs/rustfs:latest
     container_name: autogis_rustfs
     restart: always
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     environment:
       - RUSTFS_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - RUSTFS_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
