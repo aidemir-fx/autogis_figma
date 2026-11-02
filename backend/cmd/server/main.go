@@ -164,6 +164,7 @@ func main() {
 	mediaHandler := handler.NewMediaHandler(mediaUseCase)
 	activityHandler := handler.NewActivityHandler(activityUseCase)
 	catalogHandler := handler.NewCatalogHandler(catalogUseCase)
+	geocodingHandler := handler.NewGeocodingHandler(cfg.YandexMapsAPIKey)
 	storyHandler := handler.NewStoryHandler(storyUseCase)
 	notificationHandler := handler.NewNotificationHandler(db)
 	chatHub := realtime.NewHub()
@@ -183,7 +184,7 @@ func main() {
 	router.Use(middleware.CORSMiddleware(cfg.FrontendURL))
 
 	// Setup routes
-	setupRoutes(router, authHandler, userHandler, orderHandler, searchHandler, reviewHandler, masterHandler, chatHandler, chatWSHandler, businessApplicationHandler, professionalApplicationHandler, mediaHandler, activityHandler, catalogHandler, storyHandler, notificationHandler, supportChatHandler, jwtService, professionalApplicationRepo, db)
+	setupRoutes(router, authHandler, userHandler, orderHandler, searchHandler, reviewHandler, masterHandler, chatHandler, chatWSHandler, businessApplicationHandler, professionalApplicationHandler, mediaHandler, activityHandler, catalogHandler, geocodingHandler, storyHandler, notificationHandler, supportChatHandler, jwtService, professionalApplicationRepo, db)
 
 	// Build the HTTP server explicitly (instead of router.Run) so we can hook
 	// into Shutdown() for graceful drain.
@@ -901,6 +902,7 @@ func setupRoutes(
 	mediaHandler *handler.MediaHandler,
 	activityHandler *handler.ActivityHandler,
 	catalogHandler *handler.CatalogHandler,
+	geocodingHandler *handler.GeocodingHandler,
 	storyHandler *handler.StoryHandler,
 	notificationHandler *handler.NotificationHandler,
 	supportChatHandler *handler.SupportChatHandler,
@@ -942,6 +944,12 @@ func setupRoutes(
 		catalogGroup.GET("/product-categories", catalogHandler.ListProductCategories)
 		catalogGroup.GET("/vehicle-brands", catalogHandler.ListVehicleBrands)
 	}
+
+	geocodingLimiter := ratelimit.New(60, time.Minute)
+	router.GET("/api/geocoding/reverse",
+		middleware.RateLimit(geocodingLimiter, middleware.ClientIPKey),
+		geocodingHandler.Reverse,
+	)
 
 	// Public profile stories are visible when a user opens a professional profile.
 	// The protected home feed contains all active professional stories for now;

@@ -10,6 +10,7 @@ import {
     CircularProgress,
 } from "@mui/material";
 import { Coordinates } from "@common/types";
+import { http } from "@common/lib/http";
 
 interface LocationPickerProps {
     open: boolean;
@@ -222,6 +223,7 @@ export const LocationPicker = ({
     };
 
     const getAddressFromCoordinates = async (coords: Coordinates) => {
+        let yandexError: unknown = null;
         try {
             setAddress("Определяем адрес…");
 
@@ -260,11 +262,30 @@ export const LocationPicker = ({
                 resolvedAddress = readAddress(localityResult.geoObjects.get(0));
             }
 
-            setAddress(resolvedAddress);
+            if (resolvedAddress) {
+                setAddress(resolvedAddress);
+                return;
+            }
         } catch (error) {
-            console.error("Geocoding error:", error);
-            setAddress("");
+            yandexError = error;
         }
+
+        try {
+            const { data } = await http.get<{ address?: string }>(
+                "/geocoding/reverse",
+                { params: { lat: coords.x, lng: coords.y } },
+            );
+            const resolvedAddress = data?.address?.trim() ?? "";
+            setAddress(resolvedAddress);
+            if (resolvedAddress) {
+                return;
+            }
+        } catch (fallbackError) {
+            console.warn("Backend reverse geocoding fallback failed:", fallbackError);
+        }
+
+        console.warn("Geocoding did not resolve an address", yandexError);
+        setAddress("");
     };
 
     const handleConfirm = () => {

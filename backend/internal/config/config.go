@@ -31,6 +31,9 @@ type Config struct {
 	// Environment
 	Environment string
 
+	// Yandex Maps reverse geocoding
+	YandexMapsAPIKey string
+
 	// Frontend URL for CORS
 	FrontendURL string
 
@@ -68,6 +71,7 @@ func Load() (*Config, error) {
 		JWTAccessExpire:         parseInt(os.Getenv("JWT_ACCESS_EXPIRE"), 15),
 		JWTRefreshExpire:        parseInt(os.Getenv("JWT_REFRESH_EXPIRE"), 24),
 		Environment:             getOrDefault(os.Getenv("ENVIRONMENT"), "development"),
+		YandexMapsAPIKey:        getFirstNonEmpty(os.Getenv("YANDEX_MAPS_API_KEY"), os.Getenv("VITE_YMAPS_API_KEY")),
 		FrontendURL:             os.Getenv("FRONTEND_URL"),
 		RequirePostGIS:          parseBool(os.Getenv("REQUIRE_POSTGIS"), false),
 		EnableRuntimeMigrations: parseBool(os.Getenv("ENABLE_RUNTIME_MIGRATIONS"), false),
@@ -136,6 +140,15 @@ func getOrDefault(s, defaultVal string) string {
 		return defaultVal
 	}
 	return s
+}
+
+func getFirstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func parseBool(s string, defaultVal bool) bool {
