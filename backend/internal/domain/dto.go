@@ -178,6 +178,7 @@ type ProviderSearchResult struct {
 	Address              *string                `json:"address,omitempty"`
 	Role                 UserRole               `json:"role"`
 	Coordinates          *Point                 `json:"coordinates,omitempty"`
+	AvatarURL            *string                `json:"avatarUrl,omitempty"`
 	CoverImageURL        *string                `json:"coverImageUrl,omitempty"`
 	CoverImageAssetID    *string                `json:"coverImageAssetId,omitempty"`
 	Distance             float64                `json:"distance,omitempty"`
@@ -196,6 +197,11 @@ type ProviderSearchResult struct {
 	Payments             []string               `json:"payments,omitempty"`
 	HasParking           *bool                  `json:"hasParking,omitempty"`
 	LiftCount            *int                   `json:"liftCount,omitempty"`
+	HasWifi              *bool                  `json:"hasWifi,omitempty"`
+	HasWaitingArea       *bool                  `json:"hasWaitingArea,omitempty"`
+	OffersCoffee         *bool                  `json:"offersCoffee,omitempty"`
+	HasEvacuation        *bool                  `json:"hasEvacuation,omitempty"`
+	HasPartsInStock      *bool                  `json:"hasPartsInStock,omitempty"`
 	Warranty             *bool                  `json:"warranty,omitempty"`
 	Hotline              *string                `json:"hotline,omitempty"`
 	BrandSupport         []string               `json:"brandSupport,omitempty"`
@@ -253,6 +259,7 @@ type MasterProfileResponse struct {
 	Description          *string                `json:"description,omitempty"`
 	Address              *string                `json:"address,omitempty"`
 	Coordinates          *Point                 `json:"coordinates,omitempty"`
+	CoverImageAssetID    *string                `json:"coverImageAssetId,omitempty"`
 	Status               string                 `json:"status"`
 	CurrentStatus        string                 `json:"currentStatus"`
 	OnlineBookingEnabled bool                   `json:"onlineBookingEnabled"`
@@ -266,6 +273,13 @@ type MasterProfileResponse struct {
 	Services             []string               `json:"services,omitempty"`
 	AutoMarks            []string               `json:"autoMarks,omitempty"`
 	Payments             []string               `json:"payments,omitempty"`
+	HasParking           bool                   `json:"hasParking"`
+	HasWifi              bool                   `json:"hasWifi"`
+	HasWaitingArea       bool                   `json:"hasWaitingArea"`
+	OffersCoffee         bool                   `json:"offersCoffee"`
+	HasEvacuation        bool                   `json:"hasEvacuation"`
+	HasPartsInStock      bool                   `json:"hasPartsInStock"`
+	LiftCount            int                    `json:"liftCount"`
 	ActivityTypes        []ActivityTypeResponse `json:"activityTypes,omitempty"`
 	ActivityGroup        *ActivityGroupRef      `json:"activityGroup,omitempty"`
 	ActivitySubtype      *ActivitySubtypeRef    `json:"activitySubtype,omitempty"`
@@ -278,6 +292,7 @@ type UpdateMasterProfileRequest struct {
 	Description          *string  `json:"description,omitempty"`
 	Address              *string  `json:"address,omitempty"`
 	Coordinates          *Point   `json:"coordinates,omitempty"`
+	CoverImageAssetID    *string  `json:"coverImageAssetId,omitempty"`
 	Status               *string  `json:"status,omitempty"`
 	OnlineBookingEnabled *bool    `json:"onlineBookingEnabled,omitempty"`
 	LiveQueueEnabled     *bool    `json:"liveQueueEnabled,omitempty"`
@@ -288,6 +303,13 @@ type UpdateMasterProfileRequest struct {
 	Services             []string `json:"services,omitempty"`
 	AutoMarks            []string `json:"autoMarks,omitempty"`
 	Payments             []string `json:"payments,omitempty" validate:"omitempty,dive,oneof=cash card qr sbp apple_pay google_pay"`
+	HasParking           *bool    `json:"hasParking,omitempty"`
+	HasWifi              *bool    `json:"hasWifi,omitempty"`
+	HasWaitingArea       *bool    `json:"hasWaitingArea,omitempty"`
+	OffersCoffee         *bool    `json:"offersCoffee,omitempty"`
+	HasEvacuation        *bool    `json:"hasEvacuation,omitempty"`
+	HasPartsInStock      *bool    `json:"hasPartsInStock,omitempty"`
+	LiftCount            *int     `json:"liftCount,omitempty" validate:"omitempty,gte=0,lte=500"`
 }
 
 // AutoWash DTOs

@@ -58,6 +58,147 @@ const FIGMA_CATEGORIES: ProviderCategory[] = [
     },
 ];
 
+type FilterStripProps = {
+    totalCount: number;
+    onlyAvailable: boolean;
+    selectedCategory: ActivityType | "all";
+    radius: number;
+    providersByType: Record<ActivityType, Provider[]>;
+    onSelectCategory: (type: ActivityType | "all") => void;
+    onToggleAvailability: () => void;
+    onOpenRadiusPicker: () => void;
+};
+
+function FilterStrip({
+    totalCount,
+    onlyAvailable,
+    selectedCategory,
+    radius,
+    providersByType,
+    onSelectCategory,
+    onToggleAvailability,
+    onOpenRadiusPicker,
+}: FilterStripProps) {
+    return (
+        <div
+            aria-label="Фильтры поиска"
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                overflowX: "auto",
+                padding: "0 16px 12px",
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+                WebkitOverflowScrolling: "touch",
+            }}
+        >
+            <button
+                type="button"
+                onClick={() => onSelectCategory("all")}
+                style={{
+                    height: 32,
+                    padding: "0 12px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    border: "none",
+                    backgroundColor: selectedCategory === "all" ? "#1E293B" : "#FFFFFF",
+                    color: selectedCategory === "all" ? "#FFFFFF" : "#475569",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                }}
+            >
+                Все {totalCount}
+            </button>
+
+            <button
+                type="button"
+                onClick={onToggleAvailability}
+                style={{
+                    height: 32,
+                    padding: "0 12px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    border: onlyAvailable ? "1.5px solid #16A34A" : "1px solid #E2E8F0",
+                    backgroundColor: onlyAvailable ? "#DCFCE7" : "#FFFFFF",
+                    color: onlyAvailable ? "#15803D" : "#475569",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                }}
+            >
+                Открыто сейчас
+            </button>
+
+            <button
+                type="button"
+                onClick={onOpenRadiusPicker}
+                style={{
+                    height: 32,
+                    padding: "0 10px 0 12px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    border: "1px solid #E2E8F0",
+                    backgroundColor: "#FFFFFF",
+                    color: "#475569",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                }}
+            >
+                Радиус {radius} км
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="6 9 12 15 18 9" />
+                </svg>
+            </button>
+
+            {FIGMA_CATEGORIES.map((category) => {
+                const count = providersByType[category.type].length;
+                const isSelected = selectedCategory === category.type;
+                return (
+                    <button
+                        key={category.type}
+                        type="button"
+                        onClick={() => onSelectCategory(category.type)}
+                        style={{
+                            height: 32,
+                            padding: "0 12px",
+                            borderRadius: 8,
+                            fontSize: 12,
+                            fontWeight: isSelected ? 600 : 500,
+                            border: isSelected ? "none" : "1px solid #E2E8F0",
+                            backgroundColor: isSelected ? "#1E293B" : "#FFFFFF",
+                            color: isSelected ? "#FFFFFF" : "#475569",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            whiteSpace: "nowrap",
+                            flexShrink: 0,
+                            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                        }}
+                    >
+                        {category.chip} {count}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
 export function MainpPageScreen() {
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
@@ -71,10 +212,9 @@ export function MainpPageScreen() {
     const [isRadiusPickerOpen, setIsRadiusPickerOpen] = useState(false);
     const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
 
-    // Online booking modal & Map selected provider card
+    // Online booking modal
     const [bookingModalOpen, setBookingModalOpen] = useState(false);
     const [selectedBookingProvider, setSelectedBookingProvider] = useState<Provider | null>(null);
-    const [selectedMapProvider, setSelectedMapProvider] = useState<Provider | null>(null);
 
     // Radius from URL or 5 km default (as in Figma mock: "Радиус 5 км")
     const radiusParam = params.radius as string | undefined;
@@ -262,7 +402,7 @@ export function MainpPageScreen() {
         } catch (_) {}
     };
 
-    const isMapCollapsed = scrollY > 240;
+    const isMapCollapsed = scrollY > 120;
 
     const categoriesToRender = useMemo(() => {
         if (selectedCategory === "all") return FIGMA_CATEGORIES;
@@ -410,7 +550,9 @@ export function MainpPageScreen() {
                     position: "sticky",
                     top: 60,
                     width: "100%",
-                    height: 520,
+                    // Keep the map nearly full-screen on mobile; the sheet still
+                    // peeks over its bottom edge and can be pulled up normally.
+                    height: "calc(100dvh - 60px)",
                     backgroundColor: "#E2E8F0",
                     zIndex: 10,
                     overflow: "hidden",
@@ -421,8 +563,7 @@ export function MainpPageScreen() {
                     mastersRef={mastersRef}
                     mapInstanceRef={yandexMapRef}
                     isLoading={isLoading}
-                    height="520px"
-                    onSelectProvider={(p) => setSelectedMapProvider(p)}
+                    height="calc(100dvh - 60px)"
                 />
 
                 {/* Floating Geolocation Square Button (centered vertically on right, compact icon) */}
@@ -464,149 +605,34 @@ export function MainpPageScreen() {
                     </svg>
                 </button>
 
-                {/* Floating Profile Preview Card over Map upon Marker Click */}
-                {selectedMapProvider && (
-                    <div
-                        style={{
-                            position: "absolute",
-                            bottom: 82,
-                            left: 12,
-                            right: 12,
-                            backgroundColor: "#FFFFFF",
-                            borderRadius: 16,
-                            padding: "14px 14px 12px",
-                            boxShadow: "0 12px 32px rgba(0, 0, 0, 0.22)",
-                            border: "1px solid #E2E8F0",
-                            zIndex: 35,
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 10,
-                        }}
-                    >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                                {selectedMapProvider.avatarUrl || selectedMapProvider.avatar ? (
-                                    <img
-                                        src={selectedMapProvider.avatarUrl || selectedMapProvider.avatar}
-                                        alt=""
-                                        style={{ width: 46, height: 46, borderRadius: 12, objectFit: "cover", flexShrink: 0, backgroundColor: "#E2E8F0" }}
-                                    />
-                                ) : (
-                                    <div aria-hidden="true" style={{ width: 46, height: 46, borderRadius: 12, display: "grid", placeItems: "center", flexShrink: 0, backgroundColor: "#E2E8F0", color: "#475569", fontWeight: 700 }}>
-                                        {(selectedMapProvider.fullName || selectedMapProvider.businessName || selectedMapProvider.name || "").trim().charAt(0).toUpperCase()}
-                                    </div>
-                                )}
-                                <div>
-                                    <div style={{ fontSize: 15, fontWeight: 700, color: "#0F172A", lineHeight: 1.25 }}>
-                                        {selectedMapProvider.businessName || selectedMapProvider.fullName || selectedMapProvider.name}
-                                    </div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                                        <span
-                                            style={{
-                                                fontSize: 11,
-                                                fontWeight: 600,
-                                                color: "#2563EB",
-                                                backgroundColor: "#EFF6FF",
-                                                padding: "2px 6px",
-                                                borderRadius: 4,
-                                            }}
-                                        >
-                                            {selectedMapProvider.activityType === ActivityType.auto_service
-                                                ? "Автосервис"
-                                                : selectedMapProvider.activityType === ActivityType.auto_shop
-                                                ? "Автомагазин"
-                                                : selectedMapProvider.activityType === ActivityType.auto_wash
-                                                ? "Автомойка"
-                                                : "Частный мастер"}
-                                        </span>
-                                        {(selectedMapProvider.reviewsCount ?? 0) > 0 && (
-                                            <span style={{ fontSize: 12, fontWeight: 700, color: "#1E293B" }}>
-                                                ★ {(selectedMapProvider.rating ?? 0).toFixed(1)} ({selectedMapProvider.reviewsCount})
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                {/* The filter row lifts onto the full-screen map and returns to the sheet on scroll. */}
+                <div
+                    style={{
+                        position: "absolute",
+                        left: 0,
+                        right: 0,
+                        bottom: 72,
+                        zIndex: 18,
+                        paddingTop: 24,
+                        background: "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,.92) 55%)",
+                        opacity: isMapCollapsed ? 0 : 1,
+                        transform: isMapCollapsed ? "translateY(14px)" : "translateY(0)",
+                        pointerEvents: isMapCollapsed ? "none" : "auto",
+                        transition: "opacity 220ms ease, transform 280ms ease",
+                    }}
+                >
+                    <FilterStrip
+                        totalCount={totalCount}
+                        onlyAvailable={onlyAvailable}
+                        selectedCategory={selectedCategory}
+                        radius={radius}
+                        providersByType={providersByType}
+                        onSelectCategory={handleCategoryFilterClick}
+                        onToggleAvailability={() => setOnlyAvailable((value) => !value)}
+                        onOpenRadiusPicker={() => setIsRadiusPickerOpen(true)}
+                    />
+                </div>
 
-                            <button
-                                type="button"
-                                onClick={() => setSelectedMapProvider(null)}
-                                style={{
-                                    background: "none",
-                                    border: "none",
-                                    color: "#94A3B8",
-                                    fontSize: 18,
-                                    cursor: "pointer",
-                                    padding: "2px 4px",
-                                    lineHeight: 1,
-                                }}
-                                title="Закрыть"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        {/* Address & Key stats nuance */}
-                        {selectedMapProvider.address && <div style={{ fontSize: 12, color: "#64748B", display: "flex", alignItems: "center", gap: 4 }}>
-                            <span>📍</span>
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {selectedMapProvider.address}
-                            </span>
-                        </div>}
-
-                        {/* Action buttons row */}
-                        <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const phone = selectedMapProvider.workingPhone || selectedMapProvider.phone;
-                                    if (phone) window.location.href = `tel:${phone.replace(/[^\d+]/g, "")}`;
-                                }}
-                                style={{
-                                    flex: 1,
-                                    height: 38,
-                                    backgroundColor: "#F1F5F9",
-                                    color: "#1E293B",
-                                    border: "1px solid #E2E8F0",
-                                    borderRadius: 10,
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    cursor: "pointer",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    gap: 6,
-                                }}
-                            >
-                                <span>📞</span> Позвонить
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const type = selectedMapProvider.activityType || ActivityType.master;
-                                    navigate(`/provider?id=${selectedMapProvider.id}&type=${type}`);
-                                }}
-                                style={{
-                                    flex: 1.3,
-                                    height: 38,
-                                    backgroundColor: "#2563EB",
-                                    color: "#FFFFFF",
-                                    border: "none",
-                                    borderRadius: 10,
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    cursor: "pointer",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                }}
-                            >
-                                Подробнее →
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* 4. Results Panel ("Шторка", slides up over the map, covering it smoothly as you scroll down) */}
@@ -758,125 +784,26 @@ export function MainpPageScreen() {
                     </div>
                 </div>
 
-                {/* Filter Strip (Horizontal row: Все 12, Открыто сейчас, Радиус 5 км, Частные 4, ...) */}
                 <div
                     style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        overflowX: "auto",
-                        padding: "0 16px 12px",
-                        scrollbarWidth: "none",
-                        msOverflowStyle: "none",
-                        WebkitOverflowScrolling: "touch",
+                        maxHeight: isMapCollapsed ? 52 : 0,
+                        overflow: "hidden",
+                        opacity: isMapCollapsed ? 1 : 0,
+                        transform: isMapCollapsed ? "translateY(0)" : "translateY(-10px)",
+                        pointerEvents: isMapCollapsed ? "auto" : "none",
+                        transition: "max-height 280ms ease, opacity 220ms ease, transform 280ms ease",
                     }}
                 >
-                    {/* "Все" Filter pill */}
-                    <button
-                        type="button"
-                        onClick={() => handleCategoryFilterClick("all")}
-                        style={{
-                            height: 32,
-                            padding: "0 12px",
-                            borderRadius: 8,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            border: "none",
-                            backgroundColor: selectedCategory === "all" ? "#1E293B" : "#FFFFFF",
-                            color: selectedCategory === "all" ? "#FFFFFF" : "#475569",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                            whiteSpace: "nowrap",
-                            flexShrink: 0,
-                            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                        }}
-                    >
-                        Все {totalCount}
-                    </button>
-
-                    {/* "Открыто сейчас" Filter pill */}
-                    <button
-                        type="button"
-                        onClick={() => setOnlyAvailable(!onlyAvailable)}
-                        style={{
-                            height: 32,
-                            padding: "0 12px",
-                            borderRadius: 8,
-                            fontSize: 12,
-                            fontWeight: 500,
-                            border: onlyAvailable ? "1.5px solid #16A34A" : "1px solid #E2E8F0",
-                            backgroundColor: onlyAvailable ? "#DCFCE7" : "#FFFFFF",
-                            color: onlyAvailable ? "#15803D" : "#475569",
-                            cursor: "pointer",
-                            whiteSpace: "nowrap",
-                            flexShrink: 0,
-                            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                        }}
-                    >
-                        Открыто сейчас
-                    </button>
-
-                    {/* "Радиус 5 км ∨" Filter pill */}
-                    <button
-                        type="button"
-                        onClick={() => setIsRadiusPickerOpen(true)}
-                        style={{
-                            height: 32,
-                            padding: "0 10px 0 12px",
-                            borderRadius: 8,
-                            fontSize: 12,
-                            fontWeight: 500,
-                            border: "1px solid #E2E8F0",
-                            backgroundColor: "#FFFFFF",
-                            color: "#475569",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                            whiteSpace: "nowrap",
-                            flexShrink: 0,
-                            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                        }}
-                    >
-                        Радиус {radius} км
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <polyline points="6 9 12 15 18 9" />
-                        </svg>
-                    </button>
-
-                    {/* Category pills with counts */}
-                    {FIGMA_CATEGORIES.map((cat) => {
-                        const count = providersByType[cat.type].length;
-                        const isSelected = selectedCategory === cat.type;
-                        return (
-                            <button
-                                key={cat.type}
-                                type="button"
-                                onClick={() => handleCategoryFilterClick(cat.type)}
-                                style={{
-                                    height: 32,
-                                    padding: "0 12px",
-                                    borderRadius: 8,
-                                    fontSize: 12,
-                                    fontWeight: isSelected ? 600 : 500,
-                                    border: isSelected ? "none" : "1px solid #E2E8F0",
-                                    backgroundColor: isSelected ? "#1E293B" : "#FFFFFF",
-                                    color: isSelected ? "#FFFFFF" : "#475569",
-                                    cursor: "pointer",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 4,
-                                    whiteSpace: "nowrap",
-                                    flexShrink: 0,
-                                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                                }}
-                            >
-                                {cat.chip} {count}
-                            </button>
-                        );
-                    })}
+                    <FilterStrip
+                        totalCount={totalCount}
+                        onlyAvailable={onlyAvailable}
+                        selectedCategory={selectedCategory}
+                        radius={radius}
+                        providersByType={providersByType}
+                        onSelectCategory={handleCategoryFilterClick}
+                        onToggleAvailability={() => setOnlyAvailable((value) => !value)}
+                        onOpenRadiusPicker={() => setIsRadiusPickerOpen(true)}
+                    />
                 </div>
             </div>
 

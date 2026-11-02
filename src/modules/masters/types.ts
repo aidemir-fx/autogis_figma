@@ -40,6 +40,11 @@ export type Master = {
     coverImage?: string;
     coverImageUrl?: string;
     coverImageAssetId?: string;
+    hasWifi?: boolean;
+    hasWaitingArea?: boolean;
+    offersCoffee?: boolean;
+    hasEvacuation?: boolean;
+    hasPartsInStock?: boolean;
     onlineBookingEnabled?: boolean;
     liveQueueEnabled?: boolean;
     distance?: number; // Distance in meters from user location

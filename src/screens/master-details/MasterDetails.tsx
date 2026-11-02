@@ -7,6 +7,9 @@ import { useCoords } from "@common/hooks";
 import { BookingModal } from "../main-page/components/BookingModal";
 import { toast } from "react-toastify";
 import { Map, Placemark, YMaps } from "@pbe/react-yandex-maps";
+import { getProviderReviews, type Review } from "@modules/reviews/api";
+import { getPublicWorkPhotos, type MediaAsset } from "@modules/media/api";
+import { StoryHighlights } from "@modules/stories/components/StoryHighlights";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import CreditCardRoundedIcon from "@mui/icons-material/CreditCardRounded";
 import QrCode2RoundedIcon from "@mui/icons-material/QrCode2Rounded";
@@ -40,6 +43,27 @@ interface ReviewItem {
     avatar: string;
     rating: number;
     text: string;
+}
+
+function getWorkPhotoUrl(asset: MediaAsset): string | undefined {
+    return (
+        asset.urls?.large?.webp ||
+        asset.urls?.large?.jpeg ||
+        asset.urls?.medium?.webp ||
+        asset.urls?.medium?.jpeg ||
+        asset.urls?.original
+    );
+}
+
+function mapReview(review: Review): ReviewItem {
+    return {
+        id: review.id,
+        author: review.from?.name || review.from?.phone || "Пользователь",
+        date: new Date(review.createdAt).toLocaleDateString("ru-RU"),
+        avatar: review.from?.avatarUrl || "",
+        rating: review.rating,
+        text: review.comment,
+    };
 }
 
 // Instagram-style Stories Highlights by activity type
@@ -595,7 +619,7 @@ export const MasterDetailsScreen: React.FC = () => {
 
     const [isScheduleExpanded, setIsScheduleExpanded] = useState(false);
     const [isServicesExpanded, setIsServicesExpanded] = useState(false);
-    const [reviewsList, setReviewsList] = useState<ReviewItem[]>([]);
+    const [localReviews, setLocalReviews] = useState<ReviewItem[]>([]);
     const [isAddReviewOpen, setIsAddReviewOpen] = useState(false);
     const [newReviewAuthor, setNewReviewAuthor] = useState("");
     const [newReviewText, setNewReviewText] = useState("");
@@ -689,6 +713,28 @@ export const MasterDetailsScreen: React.FC = () => {
         retry: false,
     });
 
+    const workPhotosQuery = useQuery({
+        queryKey: ["masterWorkPhotos", id],
+        queryFn: () => getPublicWorkPhotos(id!),
+        enabled: Boolean(id && isMaster),
+        staleTime: 30_000,
+    });
+
+    const reviewsQuery = useQuery({
+        queryKey: ["providerReviews", fetchedProvider?.userId],
+        queryFn: () => getProviderReviews(fetchedProvider!.userId),
+        enabled: Boolean(fetchedProvider?.userId && isMaster),
+        staleTime: 30_000,
+    });
+
+    const apiReviews = useMemo(
+        () => (reviewsQuery.data ?? []).map(mapReview),
+        [reviewsQuery.data],
+    );
+    const reviewsList = useMemo(
+        () => [...localReviews, ...apiReviews].slice(0, 3),
+        [apiReviews, localReviews],
+    );
     // Display only provider data returned by the API, never demo profile details.
     const providerData = useMemo(() => {
         const name = fetchedProvider?.businessName || fetchedProvider?.fullName || fetchedProvider?.name || "Профиль исполнителя";
@@ -699,7 +745,7 @@ export const MasterDetailsScreen: React.FC = () => {
         const reviewsCount = fetchedProvider?.reviewsCount ?? 0;
         const workFrom = fetchedProvider?.workFrom || "";
         const workTo = fetchedProvider?.workTo || "";
-        const avatar = fetchedProvider?.coverImageUrl || fetchedProvider?.coverImage || fetchedProvider?.avatarUrl || fetchedProvider?.avatar || "";
+        const avatar = fetchedProvider?.avatarUrl || fetchedProvider?.avatar || fetchedProvider?.user?.avatar;
         const description = fetchedProvider?.description || "";
         let hasCoordinates = false;
         let lat = 0;
@@ -724,6 +770,15 @@ export const MasterDetailsScreen: React.FC = () => {
 
         const payments = fetchedProvider?.payments ?? [];
         const services = fetchedProvider?.services ?? [];
+        const features = [
+            fetchedProvider?.hasParking && "Парковка",
+            payments.includes("card") && "Оплата картой",
+            fetchedProvider?.hasWifi && "Wi-Fi",
+            fetchedProvider?.hasWaitingArea && "Зона ожидания",
+            fetchedProvider?.offersCoffee && "Кофе для клиентов",
+            fetchedProvider?.hasEvacuation && "Эвакуатор",
+            fetchedProvider?.hasPartsInStock && "Запчасти в наличии",
+        ].filter((feature): feature is string => Boolean(feature));
 
         return {
             name,
@@ -740,9 +795,16 @@ export const MasterDetailsScreen: React.FC = () => {
             hasCoordinates,
             payments,
             services,
+            features,
+            liftCount: fetchedProvider?.liftCount ?? 0,
             activityType: fetchedProvider?.activityType || activityType,
         };
-    }, [fetchedProvider, isService, isShop, isWash, activityType]);
+    }, [fetchedProvider, activityType]);
+
+    const totalReviewCount = Math.max(
+        providerData.reviewsCount,
+        reviewsQuery.data?.length ?? 0,
+    );
 
     const bookingProvider = useMemo(() => {
         return {
@@ -764,8 +826,21 @@ export const MasterDetailsScreen: React.FC = () => {
     }, [id, fetchedProvider, providerData, activityType]);
 
     // Hero gallery photos
-    const heroPhotos = [fetchedProvider?.coverImageUrl || fetchedProvider?.coverImage]
-        .filter((url): url is string => Boolean(url));
+    const workPhotos = workPhotosQuery.data ?? [];
+    const orderedWorkPhotos = useMemo(() => {
+        const coverId = fetchedProvider?.coverImageAssetId;
+        if (!coverId) return workPhotos;
+        const cover = workPhotos.find((photo) => photo.assetId === coverId);
+        return cover
+            ? [cover, ...workPhotos.filter((photo) => photo.assetId !== coverId)]
+            : workPhotos;
+    }, [fetchedProvider?.coverImageAssetId, workPhotos]);
+    const heroPhotos = [
+        ...orderedWorkPhotos.map(getWorkPhotoUrl).filter((url): url is string => Boolean(url)),
+        ...(orderedWorkPhotos.length === 0
+            ? [fetchedProvider?.coverImageUrl || fetchedProvider?.coverImage]
+            : []),
+    ].filter((url): url is string => Boolean(url));
 
     const allServices: string[] = providerData.services;
 
@@ -826,7 +901,7 @@ export const MasterDetailsScreen: React.FC = () => {
             text: newReviewText.trim(),
         };
 
-        setReviewsList([newReview, ...reviewsList]);
+        setLocalReviews((current) => [newReview, ...current]);
         setNewReviewAuthor("");
         setNewReviewText("");
         setIsAddReviewOpen(false);
@@ -908,55 +983,59 @@ export const MasterDetailsScreen: React.FC = () => {
                 </h1>
             </header>
 
-            {heroPhotos.length > 0 && <div
+            {true && <div
                 style={{
                     position: "relative",
                     width: "100%",
-                    height: 240,
+                    height: heroPhotos.length > 0 ? 240 : 120,
                     backgroundColor: "#0F172A",
                     overflow: "hidden",
                 }}
             >
-                <div
-                    style={{
-                        display: "flex",
-                        width: "100%",
-                        height: "100%",
-                        overflowX: "auto",
-                        scrollSnapType: "x mandatory",
-                        scrollbarWidth: "none",
-                    }}
-                    onScroll={(e) => {
-                        const el = e.currentTarget;
-                        const idx = Math.round(el.scrollLeft / el.clientWidth);
-                        setActivePhotoIndex(idx);
-                    }}
-                >
-                    {heroPhotos.map((url, i) => (
-                        <div
-                            key={i}
-                            onClick={() => setIsGalleryOpen(true)}
-                            style={{
-                                width: "100%",
-                                minWidth: "100%",
-                                height: "100%",
-                                scrollSnapAlign: "start",
-                                cursor: "pointer",
-                                position: "relative",
-                            }}
-                        >
-                            <img
-                                src={url}
-                                alt={`Фото ${i + 1}`}
+                {heroPhotos.length > 0 ? (
+                    <div
+                        style={{
+                            display: "flex",
+                            width: "100%",
+                            height: "100%",
+                            overflowX: "auto",
+                            scrollSnapType: "x mandatory",
+                            scrollbarWidth: "none",
+                        }}
+                        onScroll={(e) => {
+                            const el = e.currentTarget;
+                            const idx = Math.round(el.scrollLeft / el.clientWidth);
+                            setActivePhotoIndex(idx);
+                        }}
+                    >
+                        {heroPhotos.map((url, i) => (
+                            <div
+                                key={i}
+                                onClick={() => setIsGalleryOpen(true)}
                                 style={{
                                     width: "100%",
+                                    minWidth: "100%",
                                     height: "100%",
-                                    objectFit: "cover",
+                                    scrollSnapAlign: "start",
+                                    cursor: "pointer",
+                                    position: "relative",
                                 }}
-                            />
-                        </div>
-                    ))}
-                </div>
+                            >
+                                <img
+                                    src={url}
+                                    alt={`Фото ${i + 1}`}
+                                    style={{
+                                        width: "100%",
+                                        height: "100%",
+                                        objectFit: "cover",
+                                    }}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div style={{ width: "100%", height: "100%", backgroundColor: "#1E293B" }} />
+                )}
 
                 {/* Overlaid Avatar/Logo badge in bottom-left with story ring */}
                 <div
@@ -995,15 +1074,34 @@ export const MasterDetailsScreen: React.FC = () => {
                             backgroundColor: "#FFFFFF",
                         }}
                     >
-                        <img
-                            src={providerData.avatar}
-                            alt={providerData.name}
-                            style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                            }}
-                        />
+                        {providerData.avatar ? (
+                            <img
+                                src={providerData.avatar}
+                                alt={providerData.name}
+                                style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                }}
+                            />
+                        ) : (
+                            <div
+                                aria-label={providerData.name}
+                                style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    color: "#2563EB",
+                                    fontSize: 24,
+                                    fontWeight: 700,
+                                    backgroundColor: "#DBEAFE",
+                                }}
+                            >
+                                {providerData.name.trim().charAt(0).toUpperCase()}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -1256,8 +1354,12 @@ export const MasterDetailsScreen: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Provider stories are shown only when supplied by the API. */}
-                {highlights.length > 0 && <div>
+                {isMaster && fetchedProvider?.userId && (
+                    <StoryHighlights authorId={fetchedProvider.userId} />
+                )}
+
+                {/* Legacy custom story renderer is kept for the fullscreen state below. */}
+                {false && highlights.length > 0 && <div>
                     <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#0F172A" }}>
                         Актуальные акции
                     </h3>
@@ -1430,6 +1532,34 @@ export const MasterDetailsScreen: React.FC = () => {
                             </button>
                         )}
                     </div>
+                </div>}
+
+                {providerData.features.length > 0 && <div>
+                    <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#0F172A" }}>
+                        Особенности
+                    </h3>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                        {providerData.features.map((feature) => (
+                            <span
+                                key={feature}
+                                style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    color: "#334155",
+                                    fontSize: 13,
+                                }}
+                            >
+                                <span style={{ color: "#1E293B", fontWeight: 700 }}>✓</span>
+                                {feature}
+                            </span>
+                        ))}
+                    </div>
+                    {providerData.liftCount > 0 && (
+                        <div style={{ marginTop: 10, color: "#334155", fontSize: 13 }}>
+                            Подъёмники: {providerData.liftCount}
+                        </div>
+                    )}
                 </div>}
 
                 {/* 8. ФОТО РАБОТ / СЕРВИСА / МАГАЗИНА */}
@@ -1659,7 +1789,7 @@ export const MasterDetailsScreen: React.FC = () => {
                 </div>}
 
                 {/* 11. ОТЗЫВЫ */}
-                {(providerData.reviewsCount > 0 || reviewsList.length > 0) && (
+                {(totalReviewCount > 0 || reviewsList.length > 0) && (
                 <div>
                     <div
                         style={{
@@ -1685,11 +1815,11 @@ export const MasterDetailsScreen: React.FC = () => {
                                 padding: 0,
                             }}
                         >
-                            Все {providerData.reviewsCount}
+                            Все {totalReviewCount}
                         </button>
                     </div>
 
-                    {providerData.reviewsCount > 0 && (
+                    {totalReviewCount > 0 && (
                         <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 14 }}>
                             <span style={{ fontSize: 24, fontWeight: 700, color: "#0F172A" }}>
                                 {providerData.rating.toFixed(1)}
@@ -1698,7 +1828,7 @@ export const MasterDetailsScreen: React.FC = () => {
                                 {"★".repeat(5)}
                             </div>
                             <span style={{ fontSize: 13, color: "#64748B" }}>
-                                {providerData.reviewsCount} отзыв
+                                {totalReviewCount} отзыв
                             </span>
                         </div>
                     )}
@@ -1717,16 +1847,35 @@ export const MasterDetailsScreen: React.FC = () => {
                             >
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                        <img
-                                            src={rev.avatar}
-                                            alt={rev.author}
-                                            style={{
-                                                width: 32,
-                                                height: 32,
-                                                borderRadius: "50%",
-                                                objectFit: "cover",
-                                            }}
-                                        />
+                                        {rev.avatar ? (
+                                            <img
+                                                src={rev.avatar}
+                                                alt={rev.author}
+                                                style={{
+                                                    width: 32,
+                                                    height: 32,
+                                                    borderRadius: "50%",
+                                                    objectFit: "cover",
+                                                }}
+                                            />
+                                        ) : (
+                                            <div
+                                                aria-hidden="true"
+                                                style={{
+                                                    width: 32,
+                                                    height: 32,
+                                                    borderRadius: "50%",
+                                                    display: "grid",
+                                                    placeItems: "center",
+                                                    background: "#DBEAFE",
+                                                    color: "#1D4ED8",
+                                                    fontSize: 12,
+                                                    fontWeight: 700,
+                                                }}
+                                            >
+                                                {rev.author.slice(0, 1).toUpperCase()}
+                                            </div>
+                                        )}
                                         <div>
                                             <div style={{ fontSize: 13, fontWeight: 600, color: "#1E293B" }}>
                                                 {rev.author}

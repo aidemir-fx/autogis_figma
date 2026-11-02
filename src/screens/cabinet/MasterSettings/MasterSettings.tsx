@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ButtonGroup, Checkbox, FormControl, InputLabel, MenuItem, Paper, Select, Switch, Typography } from "@mui/material";
+import { ButtonGroup, Checkbox, FormControl, FormControlLabel, InputLabel, MenuItem, Paper, Select, Switch, Typography, Box, IconButton } from "@mui/material";
 import InputMask from "react-input-mask";
 import { fetchMyProfile, updateMyProfile } from "@modules/masters/domain/api";
 import { Controller, useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LocationPicker } from "@modules/map";
 import { DesktopTimePicker } from "@mui/x-date-pickers/DesktopTimePicker";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import dayjs, { Dayjs } from "dayjs";
 import {
     fetchAllProfessions,
@@ -15,6 +16,9 @@ import {
 import { StatusToggle } from "@modules/masters/features/StatusToggle";
 import { toast } from "react-toastify";
 import { Button, TagSelector, SettingsSection, TextField } from "@common/components";
+import { AvatarUpload } from "@common/components";
+import { deleteAsset, getPublicWorkPhotos, type MediaAsset } from "@modules/media/api";
+import { useWorkPhotoUpload } from "@modules/media/hooks/useWorkPhotoUpload";
 import { MapButton } from "../Settings/styles";
 import { Coordinates, MasterStatus } from "@modules/masters";
 import { DashboardLayout } from "@modules/layout";
@@ -28,7 +32,7 @@ import {
     TimePickersContainer,
     WorkingDaysContainer,
 } from "../Settings/shared-styles";
-import { ClockIcon, GearIcon } from "@common/icons";
+import { CameraIcon, ClockIcon, GearIcon } from "@common/icons";
 import { PAYMENT_OPTIONS } from "../Settings/payment-options";
 
 export type MasterFormValues = {
@@ -47,6 +51,14 @@ export type MasterFormValues = {
     onlineBookingEnabled: boolean;
     liveQueueEnabled: boolean;
     payments: string[];
+    coverImageAssetId: string;
+    hasParking: boolean;
+    hasWifi: boolean;
+    hasWaitingArea: boolean;
+    offersCoffee: boolean;
+    hasEvacuation: boolean;
+    hasPartsInStock: boolean;
+    liftCount: number;
 };
 
 const MASTER_PROFILE_QUERY_KEY = ["masterProfile", "me"] as const;
@@ -103,7 +115,177 @@ function mapProfileToFormValues(profileData: ReturnType<typeof fetchMyProfile> e
         onlineBookingEnabled: profileData.onlineBookingEnabled ?? false,
         liveQueueEnabled: profileData.liveQueueEnabled ?? false,
         payments: profileData.payments ?? [],
+        coverImageAssetId: profileData.coverImageAssetId ?? "",
+        hasParking: profileData.hasParking ?? false,
+        hasWifi: profileData.hasWifi ?? false,
+        hasWaitingArea: profileData.hasWaitingArea ?? false,
+        offersCoffee: profileData.offersCoffee ?? false,
+        hasEvacuation: profileData.hasEvacuation ?? false,
+        hasPartsInStock: profileData.hasPartsInStock ?? false,
+        liftCount: profileData.liftCount ?? 0,
     };
+}
+
+function getWorkPhotoUrl(asset: MediaAsset): string | undefined {
+    return (
+        asset.urls?.medium?.webp ||
+        asset.urls?.medium?.jpeg ||
+        asset.urls?.large?.webp ||
+        asset.urls?.large?.jpeg ||
+        asset.urls?.original
+    );
+}
+
+function MasterWorkPhotosManager({
+    masterId,
+    accountId,
+    coverImageAssetId,
+    onCoverChange,
+}: {
+    masterId: string;
+    accountId: string;
+    coverImageAssetId: string;
+    onCoverChange: (assetId: string) => void;
+}) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const queryClient = useQueryClient();
+    const photosQuery = useQuery({
+        queryKey: ["masterWorkPhotos", masterId],
+        queryFn: () => getPublicWorkPhotos(masterId),
+        enabled: Boolean(masterId),
+    });
+    const upload = useWorkPhotoUpload(masterId);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    const refreshPhotos = () => {
+        void queryClient.invalidateQueries({ queryKey: ["masterWorkPhotos", masterId] });
+    };
+
+    const handleFiles = async (files: FileList | null) => {
+        if (!files || upload.isUploading) return;
+        let hasCover = Boolean(coverImageAssetId);
+        for (const file of Array.from(files)) {
+            const asset = await upload.upload(file);
+            if (asset) {
+                if (!hasCover) {
+                    onCoverChange(asset.assetId);
+                    hasCover = true;
+                }
+                refreshPhotos();
+            }
+        }
+    };
+
+    const handleDelete = async (assetId: string) => {
+        setDeletingId(assetId);
+        try {
+            await deleteAsset(assetId);
+            if (coverImageAssetId === assetId) {
+                const nextPhoto = photosQuery.data?.find((photo) => photo.assetId !== assetId);
+                onCoverChange(nextPhoto?.assetId ?? "");
+            }
+            refreshPhotos();
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    const photos = photosQuery.data ?? [];
+
+    return (
+        <Box>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+                <AvatarUpload entityId={accountId} fallbackText="М" />
+                <Typography variant="body2" color="text.secondary">
+                    Аватар профиля используется в карточках поиска и на странице мастера.
+                </Typography>
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 1 }}>
+                <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                    Фото работ ({photos.length})
+                </Typography>
+                <Button
+                    type="button"
+                    variant="outlined"
+                    onClick={() => inputRef.current?.click()}
+                    disabled={upload.isUploading}
+                    icon={<CameraIcon />}
+                >
+                    Добавить фото
+                </Button>
+            </Box>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                Добавьте фотографии выполненных работ. Первое фото автоматически станет обложкой, её можно изменить.
+            </Typography>
+
+            <input
+                ref={inputRef}
+                hidden
+                multiple
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => {
+                    void handleFiles(event.target.files);
+                    event.target.value = "";
+                }}
+            />
+
+            {photosQuery.isLoading ? (
+                <Typography variant="body2" color="text.secondary">Загружаем фотографии...</Typography>
+            ) : photos.length === 0 ? (
+                <Box sx={{ border: "1px dashed #94a3b8", borderRadius: 2, p: 2, textAlign: "center", color: "#64748b" }}>
+                    <Typography variant="body2">Пока нет фотографий работ</Typography>
+                </Box>
+            ) : (
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 1.5 }}>
+                    {photos.map((photo) => {
+                        const url = getWorkPhotoUrl(photo);
+                        const isCover = photo.assetId === coverImageAssetId;
+                        return (
+                            <Box key={photo.assetId} sx={{ minWidth: 0 }}>
+                                <Box sx={{ position: "relative", aspectRatio: "4 / 3", borderRadius: 2, overflow: "hidden", background: "#e2e8f0", border: isCover ? "2px solid #2563eb" : "1px solid #e2e8f0" }}>
+                                    {url ? <Box component="img" src={url} alt="Фото работы" sx={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+                                    {isCover && (
+                                        <Typography sx={{ position: "absolute", left: 6, top: 6, px: 0.75, py: 0.25, borderRadius: 1, bgcolor: "#2563eb", color: "white", fontSize: 11, fontWeight: 700 }}>
+                                            Обложка
+                                        </Typography>
+                                    )}
+                                    <IconButton
+                                        size="small"
+                                        aria-label="Удалить фото"
+                                        onClick={() => void handleDelete(photo.assetId)}
+                                        disabled={deletingId === photo.assetId}
+                                        sx={{ position: "absolute", right: 4, top: 4, color: "white", bgcolor: "rgba(15,23,42,.7)", "&:hover": { bgcolor: "rgba(15,23,42,.9)" } }}
+                                    >
+                                        <DeleteOutlineRoundedIcon fontSize="small" />
+                                    </IconButton>
+                                </Box>
+                                {!isCover && (
+                                    <Button
+                                        type="button"
+                                        size="small"
+                                        onClick={() => onCoverChange(photo.assetId)}
+                                        style={{ marginTop: 4, padding: 0, textTransform: "none" }}
+                                    >
+                                        Сделать обложкой
+                                    </Button>
+                                )}
+                            </Box>
+                        );
+                    })}
+                </Box>
+            )}
+
+            {upload.isUploading && (
+                <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
+                    {upload.phase === "uploading" ? `Загрузка ${upload.uploadProgress}%` : "Обрабатываем фото..."}
+                </Typography>
+            )}
+            {upload.error && <Typography color="error" variant="body2" sx={{ mt: 1 }}>{upload.error}</Typography>}
+        </Box>
+    );
 }
 
 export function MasterSettings() {
@@ -128,6 +310,14 @@ export function MasterSettings() {
             onlineBookingEnabled: false,
             liveQueueEnabled: false,
             payments: [],
+            coverImageAssetId: "",
+            hasParking: false,
+            hasWifi: false,
+            hasWaitingArea: false,
+            offersCoffee: false,
+            hasEvacuation: false,
+            hasPartsInStock: false,
+            liftCount: 0,
         },
     });
 
@@ -171,6 +361,11 @@ export function MasterSettings() {
         },
     });
 
+    const handleCoverChange = (assetId: string) => {
+        form.setValue("coverImageAssetId", assetId, { shouldDirty: true });
+        mutation.mutate({ coverImageAssetId: assetId });
+    };
+
     const handleLocationSelect = (
         coordinates: Coordinates,
         address: string
@@ -199,6 +394,14 @@ export function MasterSettings() {
             payments: values.payments,
             phone: values.phone,
             workingPhone: values.workingPhone,
+            coverImageAssetId: values.coverImageAssetId,
+            hasParking: values.hasParking,
+            hasWifi: values.hasWifi,
+            hasWaitingArea: values.hasWaitingArea,
+            offersCoffee: values.offersCoffee,
+            hasEvacuation: values.hasEvacuation,
+            hasPartsInStock: values.hasPartsInStock,
+            liftCount: values.liftCount,
         });
     };
 
@@ -373,7 +576,65 @@ export function MasterSettings() {
                     />
                 </SettingsSection>
 
-                {/* 4. График работы */}
+                {/* 4. Фото профиля и работ */}
+                <SettingsSection icon={<CameraIcon color="#1d4ed8" />} title="Фото профиля и работ">
+                    <MasterWorkPhotosManager
+                        masterId={profileQuery.data.id}
+                        accountId={profileQuery.data.userId}
+                        coverImageAssetId={form.watch("coverImageAssetId")}
+                        onCoverChange={handleCoverChange}
+                    />
+                </SettingsSection>
+
+                {/* 5. Особенности и оборудование */}
+                <SettingsSection icon={<GearIcon color="#1d4ed8" />} title="Особенности">
+                    <FieldGrid>
+                        {([
+                            ["hasParking", "Парковка"],
+                            ["hasWifi", "Wi-Fi"],
+                            ["hasWaitingArea", "Зона ожидания"],
+                            ["offersCoffee", "Кофе для клиентов"],
+                            ["hasEvacuation", "Эвакуатор"],
+                            ["hasPartsInStock", "Запчасти в наличии"],
+                        ] as const).map(([name, label]) => (
+                            <Controller
+                                key={name}
+                                name={name}
+                                control={form.control}
+                                render={({ field }) => (
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={Boolean(field.value)}
+                                                onChange={(_, checked) => field.onChange(checked)}
+                                            />
+                                        }
+                                        label={label}
+                                    />
+                                )}
+                            />
+                        ))}
+                    </FieldGrid>
+                </SettingsSection>
+
+                <SettingsSection icon={<GearIcon color="#1d4ed8" />} title="Оборудование">
+                    <Controller
+                        name="liftCount"
+                        control={form.control}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                type="number"
+                                label="Количество подъёмников"
+                                fullWidth
+                                inputProps={{ min: 0, max: 500 }}
+                                onChange={(event) => field.onChange(Number(event.target.value) || 0)}
+                            />
+                        )}
+                    />
+                </SettingsSection>
+
+                {/* 6. График работы */}
                 <SettingsSection icon={<ClockIcon color="#1d4ed8" />} title="График работы">
                     <TimePickersContainer>
                         <Controller

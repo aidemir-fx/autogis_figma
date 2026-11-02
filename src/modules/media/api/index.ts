@@ -195,6 +195,14 @@ export async function getEntityMedia(
     };
 }
 
+/** Returns ready work photos for a public master profile. */
+export async function getPublicWorkPhotos(masterId: string): Promise<MediaAsset[]> {
+    const response = await http.get<{ assets?: MediaAsset[] }>(
+        `/masters/${masterId}/work-photos`,
+    );
+    return (response.data.assets ?? []).map((asset) => normalizeAsset(asset));
+}
+
 /** Soft-deletes an asset. */
 export async function deleteAsset(assetId: string): Promise<void> {
     await http.delete(`/v1/media/assets/${assetId}`);

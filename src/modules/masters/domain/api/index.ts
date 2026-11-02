@@ -147,6 +147,14 @@ export async function updateMyProfile(payload: {
     liveQueueEnabled?: boolean;
     phone?: string;
     workingPhone?: string;
+    coverImageAssetId?: string;
+    hasParking?: boolean;
+    hasWifi?: boolean;
+    hasWaitingArea?: boolean;
+    offersCoffee?: boolean;
+    hasEvacuation?: boolean;
+    hasPartsInStock?: boolean;
+    liftCount?: number;
 }) {
     const requestPayload = {
         ...payload,

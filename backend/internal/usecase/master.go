@@ -886,6 +886,7 @@ func (uc *MasterUseCase) buildMasterProfileResponse(
 		Description:          master.Description,
 		Address:              master.Address,
 		Coordinates:          master.Coordinates,
+		CoverImageAssetID:    master.CoverImageAssetID,
 		Status:               master.Status,
 		CurrentStatus:        resolveProviderCurrentStatus(master.Status, workingDays, master.WorkFrom, master.WorkTo, time.Now()),
 		OnlineBookingEnabled: master.OnlineBookingEnabled,
@@ -900,6 +901,13 @@ func (uc *MasterUseCase) buildMasterProfileResponse(
 		Services:             master.Services,
 		AutoMarks:            master.AutoMarks,
 		Payments:             []string(master.Payments),
+		HasParking:           master.HasParking,
+		HasWifi:              master.HasWifi,
+		HasWaitingArea:       master.HasWaitingArea,
+		OffersCoffee:         master.OffersCoffee,
+		HasEvacuation:        master.HasEvacuation,
+		HasPartsInStock:      master.HasPartsInStock,
+		LiftCount:            master.LiftCount,
 		ActivityTypes:        activityTypes,
 		ActivityGroup:        groupRef,
 		ActivitySubtype:      subtypeRef,
@@ -1017,6 +1025,13 @@ func (uc *MasterUseCase) UpdateMasterProfile(
 	if req.Coordinates != nil {
 		master.Coordinates = req.Coordinates
 	}
+	if req.CoverImageAssetID != nil {
+		if *req.CoverImageAssetID == "" {
+			master.CoverImageAssetID = nil
+		} else {
+			master.CoverImageAssetID = req.CoverImageAssetID
+		}
+	}
 	if req.Status != nil {
 		status, err := normalizeProviderStatusMode(*req.Status)
 		if err != nil {
@@ -1051,6 +1066,27 @@ func (uc *MasterUseCase) UpdateMasterProfile(
 	}
 	if req.WorkingDays != nil {
 		master.WorkingDays = boolDaysToString(req.WorkingDays)
+	}
+	if req.HasParking != nil {
+		master.HasParking = *req.HasParking
+	}
+	if req.HasWifi != nil {
+		master.HasWifi = *req.HasWifi
+	}
+	if req.HasWaitingArea != nil {
+		master.HasWaitingArea = *req.HasWaitingArea
+	}
+	if req.OffersCoffee != nil {
+		master.OffersCoffee = *req.OffersCoffee
+	}
+	if req.HasEvacuation != nil {
+		master.HasEvacuation = *req.HasEvacuation
+	}
+	if req.HasPartsInStock != nil {
+		master.HasPartsInStock = *req.HasPartsInStock
+	}
+	if req.LiftCount != nil {
+		master.LiftCount = *req.LiftCount
 	}
 
 	if err := uc.masterRepo.Update(ctx, master); err != nil {

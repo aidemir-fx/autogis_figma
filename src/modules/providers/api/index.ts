@@ -72,6 +72,8 @@ function resolveActivityType(p: any): ActivityType {
 }
 
 function mapProvider(provider: BackendProvider): Provider {
+	const avatarUrl = provider.avatarUrl ?? provider.avatar;
+
     return {
         ...provider,
         activityType: resolveActivityType(provider),
@@ -81,6 +83,8 @@ function mapProvider(provider: BackendProvider): Provider {
         professions: provider.professions ?? [],
         autoMarks: provider.autoMarks ?? [],
         services: provider.services ?? [],
+        avatar: provider.avatar ?? avatarUrl,
+        avatarUrl,
         description: provider.description ?? "",
         address: provider.address ?? "",
         payments: provider.payments && provider.payments.length > 0 ? provider.payments : ["cash", "card", "sbp"],

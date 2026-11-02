@@ -12,6 +12,7 @@ import (
 	"github.com/gmt061/autogis-backend/internal/domain"
 	apperrors "github.com/gmt061/autogis-backend/internal/pkg/errors"
 	"github.com/gmt061/autogis-backend/internal/pkg/geo"
+	"github.com/gmt061/autogis-backend/internal/pkg/s3client"
 	"github.com/gmt061/autogis-backend/internal/repository"
 )
 
@@ -24,6 +25,8 @@ type SearchUseCase struct {
 	userActivityTypeRepo repository.UserActivityTypeRepository
 	userRepo             repository.UserRepository
 	activityTypeRepo     repository.ActivityTypeRepository
+	mediaRepo            repository.MediaRepository
+	s3                   *s3client.S3Client
 }
 
 const (
@@ -48,6 +51,8 @@ func NewSearchUseCase(
 	userActivityTypeRepo repository.UserActivityTypeRepository,
 	userRepo repository.UserRepository,
 	activityTypeRepo repository.ActivityTypeRepository,
+	mediaRepo repository.MediaRepository,
+	s3 *s3client.S3Client,
 ) *SearchUseCase {
 	return &SearchUseCase{
 		masterRepo:           masterRepo,
@@ -57,6 +62,8 @@ func NewSearchUseCase(
 		userActivityTypeRepo: userActivityTypeRepo,
 		userRepo:             userRepo,
 		activityTypeRepo:     activityTypeRepo,
+		mediaRepo:            mediaRepo,
+		s3:                   s3,
 	}
 }
 
@@ -180,7 +187,7 @@ func (uc *SearchUseCase) FindCombinedProviders(
 				continue
 			}
 			distanceMeters, isNearby := uc.calculateDistanceMeters(providerCoordinates(master.Coordinates, master.User.Coordinates), filter.Lat, filter.Lng, filter.RadiusKm)
-			result := uc.masterToSearchResultWithUATs(master, distanceMeters, uatsByUser[master.UserID])
+			result := uc.masterToSearchResultWithUATs(ctx, master, distanceMeters, uatsByUser[master.UserID])
 			addProvider(result, isNearby)
 		}
 
@@ -501,10 +508,11 @@ func providerCoordinates(profileCoords, userCoords *domain.Point) *domain.Point 
 // N+1 queries by accepting pre-loaded activity types.
 func (uc *SearchUseCase) masterToSearchResult(ctx context.Context, master *domain.Master, distance float64) *domain.ProviderSearchResult {
 	uats, _ := uc.userActivityTypeRepo.GetByUserID(ctx, master.UserID)
-	return uc.masterToSearchResultWithUATs(master, distance, uats)
+	return uc.masterToSearchResultWithUATs(ctx, master, distance, uats)
 }
 
 func (uc *SearchUseCase) masterToSearchResultWithUATs(
+	ctx context.Context,
 	master *domain.Master,
 	distance float64,
 	uats []*domain.UserActivityType,
@@ -527,8 +535,9 @@ func (uc *SearchUseCase) masterToSearchResultWithUATs(
 		Address:              master.Address,
 		Role:                 master.User.Role,
 		Coordinates:          coordinates,
+		AvatarURL:            uc.accountAvatarURL(ctx, master.UserID),
 		CoverImageURL:        nil,
-		CoverImageAssetID:    nil,
+		CoverImageAssetID:    master.CoverImageAssetID,
 		Distance:             distance,
 		Status:               master.Status,
 		CurrentStatus:        resolveProviderCurrentStatus(master.Status, workingDays, master.WorkFrom, master.WorkTo, time.Now()),
@@ -542,6 +551,13 @@ func (uc *SearchUseCase) masterToSearchResultWithUATs(
 		Services:             master.Services,
 		AutoMarks:            master.AutoMarks,
 		Payments:             []string(master.Payments),
+		HasParking:           &master.HasParking,
+		LiftCount:            &master.LiftCount,
+		HasWifi:              &master.HasWifi,
+		HasWaitingArea:       &master.HasWaitingArea,
+		OffersCoffee:         &master.OffersCoffee,
+		HasEvacuation:        &master.HasEvacuation,
+		HasPartsInStock:      &master.HasPartsInStock,
 	}
 
 	if len(uats) > 0 {
@@ -554,6 +570,20 @@ func (uc *SearchUseCase) masterToSearchResultWithUATs(
 	}
 
 	return result
+}
+
+func (uc *SearchUseCase) accountAvatarURL(ctx context.Context, accountID string) *string {
+	if uc.mediaRepo == nil || uc.s3 == nil || accountID == "" {
+		return nil
+	}
+
+	asset, err := uc.mediaRepo.GetActiveAvatarByEntity(ctx, string(domain.MediaEntityAccount), accountID)
+	if err != nil || asset == nil || asset.Status != domain.MediaStatusReady || asset.ObjectKey == nil || *asset.ObjectKey == "" {
+		return nil
+	}
+
+	url := uc.s3.CDNURLForKey(*asset.ObjectKey)
+	return &url
 }
 
 func (uc *SearchUseCase) autoWashToSearchResult(aw *domain.AutoWash, distance float64) *domain.ProviderSearchResult {

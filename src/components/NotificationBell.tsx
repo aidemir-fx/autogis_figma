@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Badge, IconButton, Menu, MenuItem, Typography, Box, Divider, Button } from '@mui/material';
 import { toast } from 'react-toastify';
 import { http } from '@common/lib/http';
+import { useAuth } from '@common/hooks/useAuth';
 
 interface Notification {
     id: number;
@@ -11,6 +12,7 @@ interface Notification {
 }
 
 export const NotificationBell: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
+    const { isAuthenticated } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const open = Boolean(anchorEl);
@@ -36,6 +38,10 @@ export const NotificationBell: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = fa
     });
 
     const fetchNotifications = async () => {
+        if (!isAuthenticated) {
+            setNotifications([]);
+            return;
+        }
         try {
             const role = isAdmin ? 'admin_all' : 'all';
             const { data } = await http.get<Notification[]>('/notifications', {
@@ -57,10 +63,14 @@ export const NotificationBell: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = fa
     };
 
     useEffect(() => {
+        if (!isAuthenticated) {
+            setNotifications([]);
+            return;
+        }
         fetchNotifications();
         const intervalId = setInterval(fetchNotifications, 20000);
         return () => clearInterval(intervalId);
-    }, [isAdmin]);
+    }, [isAdmin, isAuthenticated]);
 
     // Unread count: notifications not yet in readIds
     const unreadCount = notifications.filter((n) => !readIds.includes(n.id)).length;

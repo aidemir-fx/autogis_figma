@@ -48,6 +48,7 @@ var allowedMIMEs = map[string]bool{
 // MediaUseCase orchestrates S3 media upload, confirmation and retrieval.
 type MediaUseCase struct {
 	mediaRepo   repository.MediaRepository
+	masterRepo  repository.MasterRepository
 	orderRepo   repository.OrderRepository
 	s3          *s3client.S3Client
 	mediaWorker *worker.MediaWorker
@@ -65,6 +66,7 @@ func (uc *MediaUseCase) GetPublicFile(ctx context.Context, key string) (io.ReadC
 // NewMediaUseCase creates a MediaUseCase.
 func NewMediaUseCase(
 	mediaRepo repository.MediaRepository,
+	masterRepo repository.MasterRepository,
 	orderRepo repository.OrderRepository,
 	s3 *s3client.S3Client,
 	mediaWorker *worker.MediaWorker,
@@ -76,6 +78,7 @@ func NewMediaUseCase(
 	}
 	return &MediaUseCase{
 		mediaRepo:   mediaRepo,
+		masterRepo:  masterRepo,
 		orderRepo:   orderRepo,
 		s3:          s3,
 		mediaWorker: mediaWorker,
@@ -102,6 +105,15 @@ func (uc *MediaUseCase) CreateUploadIntent(
 	// иначе пользователь мог бы заменить аватар чужого аккаунта.
 	if req.EntityType == domain.MediaEntityAccount && req.EntityID != userID {
 		return nil, apperrors.New("FORBIDDEN", "Нельзя загружать медиа в чужой аккаунт", http.StatusForbidden)
+	}
+	if req.EntityType == domain.MediaEntityWork {
+		if req.Category != domain.MediaCategoryPhoto || uc.masterRepo == nil {
+			return nil, apperrors.New("FORBIDDEN", "Фото работ можно загружать только в профиль мастера", http.StatusForbidden)
+		}
+		master, err := uc.masterRepo.GetByID(ctx, req.EntityID)
+		if err != nil || master == nil || master.UserID != userID {
+			return nil, apperrors.New("FORBIDDEN", "Нельзя загружать фото в чужой профиль", http.StatusForbidden)
+		}
 	}
 
 	// Validate MIME
@@ -479,6 +491,26 @@ func (uc *MediaUseCase) GetAssetsByEntity(
 	resp := make([]*domain.MediaAssetResponse, 0, len(assets))
 	for _, a := range assets {
 		resp = append(resp, uc.toAssetResponse(a))
+	}
+	return &domain.MediaAssetsResponse{Assets: resp}, nil
+}
+
+// GetPublicWorkPhotos returns only ready photo assets for a master's public gallery.
+func (uc *MediaUseCase) GetPublicWorkPhotos(
+	ctx context.Context,
+	masterID string,
+) (*domain.MediaAssetsResponse, error) {
+	assets, err := uc.mediaRepo.GetAssetsByEntity(ctx, string(domain.MediaEntityWork), masterID)
+	if err != nil {
+		return nil, apperrors.ErrInternalServer
+	}
+
+	resp := make([]*domain.MediaAssetResponse, 0, len(assets))
+	for _, asset := range assets {
+		if asset.Category != domain.MediaCategoryPhoto || asset.Status != domain.MediaStatusReady {
+			continue
+		}
+		resp = append(resp, uc.toAssetResponse(asset))
 	}
 	return &domain.MediaAssetsResponse{Assets: resp}, nil
 }

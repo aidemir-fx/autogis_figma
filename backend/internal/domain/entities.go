@@ -109,6 +109,7 @@ type Master struct {
 	Description          *string        `gorm:"type:text" json:"description,omitempty"`
 	Address              *string        `gorm:"type:text" json:"address,omitempty"`
 	Coordinates          *Point         `gorm:"type:jsonb" json:"coordinates,omitempty"`
+	CoverImageAssetID    *string        `gorm:"type:uuid" json:"coverImageAssetId,omitempty"`
 	Status               string         `gorm:"type:varchar(20);default:'schedule'" json:"status"`
 	CurrentStatus        string         `gorm:"type:varchar(20);default:'unavailable'" json:"currentStatus"`
 	OnlineBookingEnabled bool           `gorm:"default:false;not null" json:"onlineBookingEnabled"`
@@ -122,6 +123,13 @@ type Master struct {
 	Services             pq.StringArray `gorm:"type:text[]" json:"services,omitempty"`
 	AutoMarks            pq.StringArray `gorm:"type:text[]" json:"autoMarks,omitempty"`
 	Payments             pq.StringArray `gorm:"type:text[]" json:"payments,omitempty"`
+	HasParking           bool           `gorm:"default:false;not null" json:"hasParking"`
+	HasWifi              bool           `gorm:"default:false;not null" json:"hasWifi"`
+	HasWaitingArea       bool           `gorm:"default:false;not null" json:"hasWaitingArea"`
+	OffersCoffee         bool           `gorm:"default:false;not null" json:"offersCoffee"`
+	HasEvacuation        bool           `gorm:"default:false;not null" json:"hasEvacuation"`
+	HasPartsInStock      bool           `gorm:"default:false;not null" json:"hasPartsInStock"`
+	LiftCount            int            `gorm:"default:0;not null" json:"liftCount"`
 	ActivitySubtypeID    *string        `gorm:"type:uuid;index" json:"activitySubtypeId,omitempty"`
 	CreatedAt            time.Time      `gorm:"autoCreateTime:milli" json:"createdAt"`
 	UpdatedAt            time.Time      `gorm:"autoUpdateTime:milli" json:"updatedAt"`

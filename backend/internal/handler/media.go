@@ -189,6 +189,16 @@ func (h *MediaHandler) GetAssetsByEntity(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetPublicWorkPhotos exposes ready work photos for a public master profile.
+func (h *MediaHandler) GetPublicWorkPhotos(c *gin.Context) {
+	resp, err := h.uc.GetPublicWorkPhotos(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 // DeleteAsset godoc
 // DELETE /api/v1/media/assets/:assetId
 // Soft-deletes an asset. Hard delete happens asynchronously after 7 days.

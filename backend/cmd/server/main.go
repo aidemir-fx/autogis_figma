@@ -132,7 +132,7 @@ func main() {
 	userUseCase := usecase.NewUserUseCase(userRepo, userActivityTypeRepo, professionalApplicationRepo)
 	orderUseCase := usecase.NewOrderUseCase(orderRepo, userRepo, activityTypeRepo, userActivityTypeRepo, chatMessageRepo, professionalApplicationRepo, userActivityProfileRepo)
 	chatUseCase := usecase.NewChatUseCase(orderRepo, userRepo, chatMessageRepo)
-	searchUseCase := usecase.NewSearchUseCase(masterRepo, autoWashRepo, autoShopRepo, autoServiceRepo, userActivityTypeRepo, userRepo, activityTypeRepo)
+	searchUseCase := usecase.NewSearchUseCase(masterRepo, autoWashRepo, autoShopRepo, autoServiceRepo, userActivityTypeRepo, userRepo, activityTypeRepo, mediaRepo, s3Client)
 	activityTypeUseCase := usecase.NewActivityTypeUseCase(activityTypeRepo)
 	reviewUseCase := usecase.NewReviewUseCase(reviewRepo, userRepo, orderRepo, masterRepo, autoWashRepo, autoShopRepo, autoServiceRepo)
 	masterUseCase := usecase.NewMasterUseCase(
@@ -147,7 +147,7 @@ func main() {
 		activitySubtypeRepo,
 	)
 	businessApplicationUseCase := usecase.NewBusinessApplicationUseCase(professionalApplicationUseCase, masterUseCase)
-	mediaUseCase := usecase.NewMediaUseCase(mediaRepo, orderRepo, s3Client, mediaWorker, storyLogger)
+	mediaUseCase := usecase.NewMediaUseCase(mediaRepo, masterRepo, orderRepo, s3Client, mediaWorker, storyLogger)
 	activityUseCase := usecase.NewActivityUseCase(activityGroupRepo, activitySubtypeRepo)
 	catalogUseCase := usecase.NewCatalogUseCase(catalogRepo)
 	storyUseCase := usecase.NewStoryUseCase(storyRepo, subscriptionRepo, mediaRepo, mediaUseCase, storyLogger)
@@ -980,6 +980,9 @@ func setupRoutes(
 		searchGroup.GET("/provider/:activityType/:id", searchHandler.GetProviderByTypeAndID)
 		searchGroup.GET("/activity-types", searchHandler.GetActivityTypes)
 	}
+	router.GET("/api/masters/:id/work-photos", mediaHandler.GetPublicWorkPhotos)
+	// Activity types are reference data needed by public search and booking flows.
+	router.GET("/api/activity-types", searchHandler.GetActivityTypes)
 
 	masterPublicGroup := router.Group("/api/masters")
 	{
@@ -1023,7 +1026,6 @@ func setupRoutes(
 		apiGroup.GET("/support/chats", supportChatHandler.GetAllChats)
 		apiGroup.GET("/support/unread-count", supportChatHandler.GetUnreadCount)
 
-		apiGroup.GET("/activity-types", searchHandler.GetActivityTypes)
 		apiGroup.GET("/user-activity-types/my", userHandler.GetCurrentUserActivityTypes)
 
 		storyGroup := apiGroup.Group("/stories")
