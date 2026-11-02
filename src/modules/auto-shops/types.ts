@@ -25,6 +25,8 @@ export type AutoShop = {
     autoMarks: string[];
     services: string[];
     payments?: string[];
+    brands?: string[];
+    productCategories?: string[];
     additionalServices?: AdditionalService[];
     workingDays: boolean[];
     workFrom?: string;

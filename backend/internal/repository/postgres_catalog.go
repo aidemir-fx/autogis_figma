@@ -27,6 +27,15 @@ func (r *CatalogRepositoryImpl) ListServices(ctx context.Context) ([]*domain.Cat
 	return items, err
 }
 
+func (r *CatalogRepositoryImpl) ListProductCategories(ctx context.Context) ([]*domain.ProductCategory, error) {
+	var items []*domain.ProductCategory
+	err := r.db.WithContext(ctx).
+		Where("is_active = ?", true).
+		Order("sort_order ASC, name ASC").
+		Find(&items).Error
+	return items, err
+}
+
 func (r *CatalogRepositoryImpl) ListVehicleBrands(ctx context.Context) ([]*domain.VehicleBrand, error) {
 	var items []*domain.VehicleBrand
 	err := r.db.WithContext(ctx).

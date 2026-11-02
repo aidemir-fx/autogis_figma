@@ -207,6 +207,13 @@ export async function fetchAllServices(): Promise<string[]> {
     return data.map((item) => item.name);
 }
 
+export async function fetchAllProductCategories(): Promise<string[]> {
+    const { data } = await http.get<CatalogOption[]>(
+        "/catalog/product-categories",
+    );
+    return data.map((item) => item.name);
+}
+
 export async function fetchMasterById(
     id: string,
     userLat?: number,

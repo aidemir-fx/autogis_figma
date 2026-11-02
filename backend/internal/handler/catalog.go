@@ -33,6 +33,15 @@ func (h *CatalogHandler) ListServices(c *gin.Context) {
 	c.JSON(http.StatusOK, items)
 }
 
+func (h *CatalogHandler) ListProductCategories(c *gin.Context) {
+	items, err := h.useCase.ListProductCategories(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load product categories"})
+		return
+	}
+	c.JSON(http.StatusOK, items)
+}
+
 func (h *CatalogHandler) ListVehicleBrands(c *gin.Context) {
 	items, err := h.useCase.ListVehicleBrands(c.Request.Context())
 	if err != nil {

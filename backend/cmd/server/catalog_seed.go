@@ -331,6 +331,25 @@ var catalogServices = []string{
 	"Шумоизоляция пола",
 }
 
+var catalogProductCategories = []string{
+	"Масла и технические жидкости",
+	"Фильтры",
+	"Тормозная система",
+	"Подвеска и рулевое управление",
+	"Двигатель",
+	"Трансмиссия",
+	"Электрика",
+	"Шины и диски",
+	"Аккумуляторы",
+	"Кузовные детали",
+	"Автосвет",
+	"Автостекла",
+	"Расходные материалы",
+	"Автохимия",
+	"Аксессуары",
+	"Инструменты",
+}
+
 var catalogBrands = []catalogBrandSeed{
 	{Name: "Lada (ВАЗ)", InternationalName: "lada", SortOrder: 1, Models: []string{"Granta", "Vesta", "Niva", "Niva Travel", "Largus", "XRAY"}},
 	{Name: "Kia", InternationalName: "kia", SortOrder: 2, Models: []string{"Rio", "Sportage", "Seltos", "Cerato", "K5", "Soul", "Optima", "Sorento", "Stinger"}},
@@ -376,6 +395,13 @@ func seedCatalog(db *gorm.DB) error {
 
 		for i, name := range catalogServices {
 			item := domain.CatalogService{Name: name, IsActive: true, SortOrder: i + 1}
+			if err := tx.Where("name = ?", name).Assign(item).FirstOrCreate(&item).Error; err != nil {
+				return err
+			}
+		}
+
+		for i, name := range catalogProductCategories {
+			item := domain.ProductCategory{Name: name, IsActive: true, SortOrder: i + 1}
 			if err := tx.Where("name = ?", name).Assign(item).FirstOrCreate(&item).Error; err != nil {
 				return err
 			}

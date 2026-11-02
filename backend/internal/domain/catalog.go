@@ -22,6 +22,16 @@ type CatalogService struct {
 	UpdatedAt time.Time `gorm:"autoUpdateTime:milli" json:"updatedAt"`
 }
 
+// ProductCategory is an option available in auto shop inventory forms.
+type ProductCategory struct {
+	ID        string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
+	Name      string    `gorm:"uniqueIndex;not null;type:varchar(255)" json:"name"`
+	IsActive  bool      `gorm:"default:true;not null" json:"isActive"`
+	SortOrder int       `gorm:"default:100;not null" json:"sortOrder"`
+	CreatedAt time.Time `gorm:"autoCreateTime:milli" json:"createdAt"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime:milli" json:"updatedAt"`
+}
+
 // VehicleBrand is a vehicle make available in profile forms.
 type VehicleBrand struct {
 	ID                string         `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`

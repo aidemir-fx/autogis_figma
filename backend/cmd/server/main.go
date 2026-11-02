@@ -308,6 +308,7 @@ func runMigrations(db *gorm.DB, cfg *config.Config) error {
 		&domain.ActivityAuditLog{},
 		&domain.CatalogProfession{},
 		&domain.CatalogService{},
+		&domain.ProductCategory{},
 		&domain.VehicleBrand{},
 		&domain.VehicleModel{},
 		&domain.Story{},
@@ -938,6 +939,7 @@ func setupRoutes(
 	{
 		catalogGroup.GET("/professions", catalogHandler.ListProfessions)
 		catalogGroup.GET("/services", catalogHandler.ListServices)
+		catalogGroup.GET("/product-categories", catalogHandler.ListProductCategories)
 		catalogGroup.GET("/vehicle-brands", catalogHandler.ListVehicleBrands)
 	}
 

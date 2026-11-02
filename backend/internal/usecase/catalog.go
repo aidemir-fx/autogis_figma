@@ -23,6 +23,10 @@ func (uc *CatalogUseCase) ListServices(ctx context.Context) ([]*domain.CatalogSe
 	return uc.repo.ListServices(ctx)
 }
 
+func (uc *CatalogUseCase) ListProductCategories(ctx context.Context) ([]*domain.ProductCategory, error) {
+	return uc.repo.ListProductCategories(ctx)
+}
+
 func (uc *CatalogUseCase) ListVehicleBrands(ctx context.Context) ([]*domain.VehicleBrand, error) {
 	return uc.repo.ListVehicleBrands(ctx)
 }

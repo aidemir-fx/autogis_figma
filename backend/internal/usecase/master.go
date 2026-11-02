@@ -1312,6 +1312,8 @@ func (uc *MasterUseCase) GetAutoShopProfile(ctx context.Context, userID string) 
 			OnlineBookingEnabled: profile.OnlineBookingEnabled,
 			Services:             []string(profile.Services),
 			Payments:             []string(profile.Payments),
+			Brands:               []string(profile.Brands),
+			ProductCategories:    []string(profile.ProductCategories),
 			WorkFrom:             profile.WorkFrom,
 			WorkTo:               profile.WorkTo,
 			WorkingDays:          stringDaysToBool(profile.WorkingDays),
@@ -1364,6 +1366,12 @@ func (uc *MasterUseCase) UpdateAutoShopProfile(ctx context.Context, userID strin
 	}
 	if req.Payments != nil {
 		profile.Payments = pq.StringArray(req.Payments)
+	}
+	if req.Brands != nil {
+		profile.Brands = pq.StringArray(req.Brands)
+	}
+	if req.ProductCategories != nil {
+		profile.ProductCategories = pq.StringArray(req.ProductCategories)
 	}
 	if req.WorkFrom != nil {
 		profile.WorkFrom = req.WorkFrom

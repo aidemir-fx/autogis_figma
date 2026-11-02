@@ -383,6 +383,8 @@ type AutoShopResponse struct {
 	OnlineBookingEnabled bool     `json:"onlineBookingEnabled"`
 	Services             []string `json:"services,omitempty"`
 	Payments             []string `json:"payments,omitempty"`
+	Brands               []string `json:"brands,omitempty"`
+	ProductCategories    []string `json:"productCategories,omitempty"`
 	WorkFrom             *string  `json:"workFrom,omitempty"`
 	WorkTo               *string  `json:"workTo,omitempty"`
 	WorkingDays          []bool   `json:"workingDays,omitempty"`
@@ -407,6 +409,8 @@ type UpdateAutoShopRequest struct {
 	OnlineBookingEnabled *bool    `json:"onlineBookingEnabled,omitempty"`
 	Services             []string `json:"services,omitempty"`
 	Payments             []string `json:"payments,omitempty" validate:"omitempty,dive,oneof=cash card qr sbp apple_pay google_pay"`
+	Brands               []string `json:"brands,omitempty"`
+	ProductCategories    []string `json:"productCategories,omitempty"`
 	WorkFrom             *string  `json:"workFrom,omitempty"`
 	WorkTo               *string  `json:"workTo,omitempty"`
 	WorkingDays          []bool   `json:"workingDays,omitempty"`

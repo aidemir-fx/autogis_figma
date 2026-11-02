@@ -291,6 +291,8 @@ type AutoShop struct {
 	WorkingDays          pq.StringArray        `gorm:"type:text[]" json:"workingDays,omitempty"`
 	Services             pq.StringArray        `gorm:"type:text[]" json:"services,omitempty"`
 	Payments             pq.StringArray        `gorm:"type:text[]" json:"payments,omitempty"`
+	Brands               pq.StringArray        `gorm:"type:text[]" json:"brands,omitempty"`
+	ProductCategories    pq.StringArray        `gorm:"type:text[]" json:"productCategories,omitempty"`
 	CreatedAt            time.Time             `gorm:"autoCreateTime:milli" json:"createdAt"`
 	UpdatedAt            time.Time             `gorm:"autoUpdateTime:milli" json:"updatedAt"`
 	AdditionalASServices []AdditionalASService `json:"additionalASServices,omitempty"`

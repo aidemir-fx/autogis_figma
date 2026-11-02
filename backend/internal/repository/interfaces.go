@@ -160,6 +160,7 @@ type ActivitySubtypeRepository interface {
 type CatalogRepository interface {
 	ListProfessions(ctx context.Context) ([]*domain.CatalogProfession, error)
 	ListServices(ctx context.Context) ([]*domain.CatalogService, error)
+	ListProductCategories(ctx context.Context) ([]*domain.ProductCategory, error)
 	ListVehicleBrands(ctx context.Context) ([]*domain.VehicleBrand, error)
 }
 

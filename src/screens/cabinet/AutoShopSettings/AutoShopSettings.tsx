@@ -9,6 +9,7 @@ import { Coordinates } from "@modules/masters";
 import { DesktopTimePicker } from "@mui/x-date-pickers/DesktopTimePicker";
 import dayjs, { Dayjs } from "dayjs";
 import { mapCoordinatesToPoint } from "@modules/masters/domain/api";
+import { fetchAllAutoMarks, fetchAllProductCategories } from "@modules/masters/domain/api";
 import { toast } from "react-toastify";
 import { Button, Checkbox, CoverPhotoUpload, SettingsSection, TagSelector, TextField } from "@common/components";
 import { MapButton } from "../Settings/styles";
@@ -116,6 +117,16 @@ export function AutoShopSettings() {
     const { data: availableServices } = useQuery({
         queryKey: ["autoShopAdditionalServices"],
         queryFn: fetchAutoShopAdditionalServices,
+    });
+
+    const autoShopBrandsQuery = useQuery({
+        queryKey: ["auto-shop-brands"],
+        queryFn: fetchAllAutoMarks,
+    });
+
+    const productCategoriesQuery = useQuery({
+        queryKey: ["product-categories"],
+        queryFn: fetchAllProductCategories,
     });
 
     useEffect(() => {
@@ -489,7 +500,7 @@ export function AutoShopSettings() {
                     <TagSelector
                         name="brands"
                         control={form.control}
-                        options={[]}
+                        options={autoShopBrandsQuery.data?.map((brand) => brand.name) ?? []}
                         label="Добавить бренд"
                         placeholder="Введите бренд"
                         helperText="Укажите бренды товаров в наличии"
@@ -499,7 +510,7 @@ export function AutoShopSettings() {
                     <TagSelector
                         name="productCategories"
                         control={form.control}
-                        options={[]}
+                        options={productCategoriesQuery.data ?? []}
                         label="Добавить категорию"
                         placeholder="Введите категорию товаров"
                         helperText="Укажите категории товаров"
