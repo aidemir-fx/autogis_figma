@@ -1,6 +1,7 @@
 import styled, { css } from "styled-components";
+import { designTokens } from "@common/theme";
 
-export const PRIMARY_BLUE = "#3b82f6";
+export const PRIMARY_BLUE = designTokens.colors.blue500;
 export const BALLOON_CARD_WIDTH = 256;
 export const BALLOON_MAX_HEIGHT = 332;
 
@@ -12,12 +13,13 @@ export const MapContainer = styled.div<MapContainerProps>`
     position: relative;
     opacity: ${({ $isReady }) => ($isReady ? 1 : 0)};
     width: 100%;
+    height: 100%;
 
     .ymaps-2-1-79-balloon {
         width: ${BALLOON_CARD_WIDTH}px !important;
         max-width: calc(100vw - 40px) !important;
         border-radius: 12px !important;
-        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14) !important;
+        box-shadow: var(--ds-shadow-list) !important;
         margin: 0;
     }
 
@@ -61,9 +63,9 @@ export const MapContainer = styled.div<MapContainerProps>`
         z-index: 3 !important;
         min-width: 28px;
         min-height: 28px;
-        border-radius: 999px;
+        border-radius: var(--ds-radius-pill);
         background: rgba(255, 255, 255, 0.92);
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+        box-shadow: var(--ds-shadow-filter);
     }
 
     .ymaps-2-1-79-balloon__close-button {
@@ -106,9 +108,9 @@ export const ProviderCard = styled.article`
     max-width: calc(100vw - 40px);
     box-sizing: border-box;
     border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    background: #ffffff;
-    color: #111827;
+    border-radius: var(--ds-radius-12);
+    background: var(--ds-color-white);
+    color: var(--ds-color-gray-900);
     overflow: hidden;
     box-shadow: none;
 `;
@@ -117,7 +119,7 @@ export const BalloonCover = styled.div`
     position: relative;
     height: 92px;
     overflow: hidden;
-    background: #eff6ff;
+    background: rgba(var(--ds-color-blue-500-rgb) / 0.08);
 `;
 
 export const BalloonCoverImage = styled.img`
@@ -140,12 +142,12 @@ export const BalloonAvatar = styled.div`
     position: relative;
     width: 34px;
     height: 34px;
-    border-radius: 10px;
+    border-radius: var(--ds-radius-8);
     display: grid;
     place-items: center;
     overflow: hidden;
-    background: linear-gradient(135deg, #bfdbfe 0%, #3b82f6 100%);
-    color: #ffffff;
+    background: linear-gradient(135deg, rgba(var(--ds-color-blue-500-rgb) / 0.12) 0%, var(--ds-color-blue-500) 100%);
+    color: var(--ds-color-white);
     font-size: 14px;
     font-weight: 700;
 `;
@@ -162,8 +164,8 @@ export const BalloonStatusDot = styled.span<{ $status: "on" | "busy" | "off" }>`
     bottom: -1px;
     width: 10px;
     height: 10px;
-    border: 2px solid #ffffff;
-    border-radius: 999px;
+    border: 2px solid var(--ds-color-white);
+    border-radius: var(--ds-radius-pill);
     background: ${({ $status }) =>
         $status === "on"
             ? "#10b981"
@@ -195,7 +197,7 @@ export const BalloonMeta = styled.div`
     gap: 5px;
     margin-top: 4px;
     color: #6b7280;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-family: var(--default-font-family);
     font-size: 10.5px;
     line-height: 1;
 `;
@@ -318,7 +320,7 @@ export const BalloonAddress = styled.div`
     svg {
         width: 12px;
         height: 12px;
-        color: #3b82f6;
+        color: var(--ds-color-blue-500);
         margin-top: 1px;
     }
 
@@ -372,28 +374,28 @@ export const BalloonAction = styled.a<{
     border: 1px solid
         ${({ $variant }) => {
             if ($variant === "primary") {
-                return "#1d4ed8";
+                return "var(--ds-color-blue-500)";
             }
 
             if ($variant === "booking") {
-                return "#4e992d";
+                return "var(--ds-color-green-500)";
             }
 
-            return "#e5e7eb";
+            return "var(--ds-color-gray-300)";
         }};
     border-radius: 9px;
     background: ${({ $variant }) =>
         $variant === "primary"
-            ? "#3b82f6"
+            ? "var(--ds-color-blue-500)"
             : $variant === "booking"
-              ? "#64b441"
-              : "#ffffff"};
+              ? "var(--ds-color-green-500)"
+              : "var(--ds-color-white)"};
     color: ${({ $variant }) =>
         $variant === "primary" || $variant === "booking"
-            ? "#ffffff"
+            ? "var(--ds-color-white)"
             : $variant === "phoneIcon"
-              ? "#1d4ed8"
-              : "#111827"};
+              ? "var(--ds-color-blue-500)"
+              : "var(--ds-color-gray-900)"};
     font-size: 11.5px;
     font-weight: 700;
     text-decoration: none;

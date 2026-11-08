@@ -17,23 +17,25 @@ type StoryRingProps = {
     manage?: boolean;
 };
 
-const NEW_STORY_COLORS = ["#2563eb", "#7c3aed", "#ec4899"];
+const NEW_STORY_COLOR = "#4673d5";
+const VIEWED_STORY_COLOR = "#8492a5";
 
 /** Draw one continuous ring for one story and separated Instagram-like arcs for several. */
 export function getStoryRingBackground(stories: Story[]): string {
     if (stories.length === 0) return "transparent";
-    const colors = stories.map((story, index) => story.isViewed ? "#cbd5e1" : NEW_STORY_COLORS[index % NEW_STORY_COLORS.length]);
+    const colors = stories.map((story) => story.isViewed ? VIEWED_STORY_COLOR : NEW_STORY_COLOR);
     if (stories.length === 1) return colors[0];
 
     const segment = 360 / stories.length;
-    const gap = Math.min(6, segment * 0.18);
-    const stops = stories.flatMap((_, index) => {
+    const gap = Math.min(3, segment * 0.06);
+    const stops = [`transparent 0deg ${gap / 2}deg`];
+    stories.forEach((_, index) => {
         const start = index * segment;
         const end = (index + 1) * segment;
-        return [
-            `${colors[index]} ${start + gap / 2}deg ${end - gap / 2}deg`,
-            `transparent ${end - gap / 2}deg ${end}deg`,
-        ];
+        stops.push(`${colors[index]} ${start + gap / 2}deg ${end - gap / 2}deg`);
+        stops.push(index === stories.length - 1
+            ? `transparent ${end - gap / 2}deg 360deg`
+            : `transparent ${end - gap / 2}deg ${end + gap / 2}deg`);
     });
 
     return `conic-gradient(from -90deg, ${stops.join(", ")})`;

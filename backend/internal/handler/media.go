@@ -189,9 +189,11 @@ func (h *MediaHandler) GetAssetsByEntity(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// GetPublicWorkPhotos exposes ready work photos for a public master profile.
-func (h *MediaHandler) GetPublicWorkPhotos(c *gin.Context) {
-	resp, err := h.uc.GetPublicWorkPhotos(c.Request.Context(), c.Param("id"))
+// GetPublicEntityAssets lists ready public account/work media.
+func (h *MediaHandler) GetPublicEntityAssets(c *gin.Context) {
+	entityID := c.Param("entityId")
+	entityType := c.Param("entityType")
+	resp, err := h.uc.GetPublicAssetsByEntity(c.Request.Context(), entityType, entityID)
 	if err != nil {
 		h.handleError(c, err)
 		return

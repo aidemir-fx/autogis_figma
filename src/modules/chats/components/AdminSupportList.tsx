@@ -32,7 +32,7 @@ export const AdminSupportList = ({ onBack }: { onBack?: () => void }) => {
             }
         };
         fetchChats();
-        
+
         // Simple polling for updates
         const interval = setInterval(fetchChats, 10000);
         return () => clearInterval(interval);
@@ -84,24 +84,24 @@ export const AdminSupportList = ({ onBack }: { onBack?: () => void }) => {
                         <React.Fragment key={chat.userId}>
                             <ListItem disablePadding>
                                 <ListItemButton onClick={() => setSelectedUser(chat.userId)}>
-                                    <ListItemAvatar>
-                                        <Badge badgeContent={chat.unreadCount} color="error">
-                                            <Avatar><SupportAgentIcon /></Avatar>
-                                        </Badge>
-                                    </ListItemAvatar>
-                                    <ListItemText 
-                                        primary={chat.userName || chat.userPhone || "Пользователь"} 
-                                        secondary={chat.lastMessage} 
-                                        primaryTypographyProps={{ fontWeight: chat.unreadCount > 0 ? 'bold' : 'normal' }}
-                                        secondaryTypographyProps={{ 
-                                            noWrap: true, 
-                                            fontWeight: chat.unreadCount > 0 ? 'bold' : 'normal',
-                                            color: chat.unreadCount > 0 ? 'text.primary' : 'text.secondary'
-                                        }}
-                                    />
-                                    <Typography variant="caption" color="text.secondary">
-                                        {dayjs(chat.lastMessageAt).format("DD.MM HH:mm")}
-                                    </Typography>
+                                <ListItemAvatar>
+                                    <Badge badgeContent={chat.unreadCount} color="error">
+                                        <Avatar><SupportAgentIcon /></Avatar>
+                                    </Badge>
+                                </ListItemAvatar>
+                                <ListItemText
+                                    primary={chat.userName || chat.userPhone || "Пользователь"}
+                                    secondary={chat.lastMessage}
+                                    primaryTypographyProps={{ fontWeight: chat.unreadCount > 0 ? 'bold' : 'normal' }}
+                                    secondaryTypographyProps={{
+                                        noWrap: true,
+                                        fontWeight: chat.unreadCount > 0 ? 'bold' : 'normal',
+                                        color: chat.unreadCount > 0 ? 'text.primary' : 'text.secondary'
+                                    }}
+                                />
+                                <Typography variant="caption" color="text.secondary">
+                                    {dayjs(chat.lastMessageAt).format("DD.MM HH:mm")}
+                                </Typography>
                                 </ListItemButton>
                             </ListItem>
                             <Divider component="li" />

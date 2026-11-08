@@ -195,12 +195,16 @@ export async function getEntityMedia(
     };
 }
 
-/** Returns ready work photos for a public master profile. */
-export async function getPublicWorkPhotos(masterId: string): Promise<MediaAsset[]> {
-    const response = await http.get<{ assets?: MediaAsset[] }>(
-        `/masters/${masterId}/work-photos`,
-    );
-    return (response.data.assets ?? []).map((asset) => normalizeAsset(asset));
+export async function getPublicEntityMedia(
+    entityType: Extract<MediaEntityType, "account" | "work">,
+    entityId: string,
+): Promise<{ assets: MediaAsset[] }> {
+    const response = await http.get(`/v1/media/public/${entityType}/${entityId}`);
+    return {
+        assets: (response.data.assets ?? []).map((asset: MediaAsset) =>
+            normalizeAsset(asset),
+        ),
+    };
 }
 
 /** Soft-deletes an asset. */

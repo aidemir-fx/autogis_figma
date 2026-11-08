@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
 import {
+    GeolocationControl,
     Map,
     Placemark,
     YMaps,
-    Clusterer,
-    useYMaps,
+    ZoomControl,
 } from "@pbe/react-yandex-maps";
 import { DEFAULT_ZOOM } from "../../domain/constants";
 import {
@@ -38,18 +38,17 @@ import {
 import ReactDOMServer from "react-dom/server";
 import { ServerStyleSheet, StyleSheetManager } from "styled-components";
 import {
-    AutoServiceCategoryIcon,
+    AutoServiceMapPinIcon,
     AvailableMasterIcon,
-    AutoWashCategoryIcon,
+    AutoWashMapPinIcon,
     BusyMasterIcon,
     CalendarIcon,
     ClockIcon,
     EyeIcon,
     MapPinIcon,
     PhoneIcon,
-    PrivateMasterCategoryIcon,
-    ServiceCenterCategoryIcon,
-    AutoShopCategoryIcon,
+    PrivateMasterMapPinIcon,
+    ServiceCenterMapPinIcon,
     StarIcon,
     UnavailableMasterIcon,
 } from "@common/icons";
@@ -57,32 +56,105 @@ import { formatDistanceFromUser } from "@common/lib/formatDistance";
 import { MasterStatus } from "@modules/masters";
 import { ActivityType, Provider } from "@modules/providers";
 import { useCoords } from "@common/hooks";
-import { MapStub } from "../MapStub";
+import { MapStub, type MapFailureCode } from "../MapStub";
 import { ThemeProvider } from "@common/theme";
 
 type Props = {
     masters: Provider[];
     mastersRef: any;
     mapInstanceRef?: MutableRefObject<any | null>;
-    isLoading: boolean;
     height?: string;
-    onSelectProvider?: (provider: Provider) => void;
+    showZoomControl?: boolean;
+    showGeolocationControl?: boolean;
+    disableScrollZoom?: boolean;
 };
 
 type VisualStatus = "on" | "busy" | "off";
 const WEEK_DAYS_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const MAP_LOAD_TIMEOUT_MS = 20_000;
+
+type MapResourceDiagnostic = {
+    host: string;
+    status: number | null;
+    durationMs: number;
+};
+
+function isYandexMapTileUrl(value: string): boolean {
+    try {
+        return /(?:^|\.)maps\.yandex\.(?:ru|net)$/i.test(new URL(value).hostname);
+    } catch {
+        return false;
+    }
+}
+
+function getYandexMapResources(since = 0): MapResourceDiagnostic[] {
+    if (typeof performance === "undefined") return [];
+
+    return performance.getEntriesByType("resource")
+        .map((entry) => {
+            const resource = entry as PerformanceResourceTiming & { responseStatus?: number };
+            try {
+                const host = new URL(resource.name).hostname;
+                const isApi = host === "api-maps.yandex.ru";
+                const isMapTile = /(?:^|\.)maps\.yandex\.(?:ru|net)$/i.test(host);
+                if (resource.startTime < since || (!isApi && !isMapTile)) return null;
+                return {
+                    host,
+                    status: typeof resource.responseStatus === "number" ? resource.responseStatus : null,
+                    durationMs: Math.round(resource.duration),
+                };
+            } catch {
+                return null;
+            }
+        })
+        .filter((resource): resource is MapResourceDiagnostic => resource !== null)
+        .slice(-12);
+}
+
+function hasLoadedYandexMapTiles(
+    resources = getYandexMapResources(),
+    mapRoot: HTMLElement | null = null,
+): boolean {
+    const loadedTileImage = Array.from(mapRoot?.querySelectorAll("img") ?? []).some((image) =>
+        image.complete && image.naturalWidth > 0 && isYandexMapTileUrl(image.currentSrc || image.src),
+    );
+    return loadedTileImage || resources.some(({ host, status }) =>
+        host !== "api-maps.yandex.ru" && status !== null && status >= 200 && status < 400,
+    );
+}
+
+function classifyMapFailure(reason: unknown, stage: string, since = 0): MapFailureCode {
+    const message = reason instanceof Error
+        ? reason.message
+        : typeof reason === "string"
+            ? reason
+            : "";
+    const resources = getYandexMapResources(since);
+    if (
+        resources.some(({ status }) => status === 401 || status === 403) ||
+        /\b(401|403)\b|invalid.{0,12}(api.?key|key)|api.?key.{0,12}(invalid|denied)|referer/i.test(message)
+    ) {
+        return "api-access";
+    }
+    if (stage === "tiles-loading") return "tiles-timeout";
+    if (stage === "api-loading" || /network|script|load/i.test(message)) return "api-network";
+    if (stage === "map-initializing") return "map-timeout";
+    return "map-init";
+}
+
+function isYandexApiScript(target: EventTarget | null): target is HTMLScriptElement {
+    return target instanceof HTMLScriptElement && /api-maps\.yandex\.ru/i.test(target.src);
+}
 
 export function getIconForStatus(
-    activityTypeOrStatus?: ActivityType | MasterStatus | string,
+    activityTypeOrStatus?: ActivityType | MasterStatus,
     currentStatus: MasterStatus = MasterStatus.UNAVAILABLE
 ) {
-    const raw = String(activityTypeOrStatus || "");
-    let resolvedActivityType: ActivityType | undefined = undefined;
-    if (raw === "auto_service" || raw === "1") resolvedActivityType = ActivityType.auto_service;
-    else if (raw === "auto_shop" || raw === "4") resolvedActivityType = ActivityType.auto_shop;
-    else if (raw === "auto_wash" || raw === "3") resolvedActivityType = ActivityType.auto_wash;
-    else if (raw === "master" || raw === "2") resolvedActivityType = ActivityType.master;
-
+    const resolvedActivityType = Object.values(ActivityType).includes(
+        activityTypeOrStatus as ActivityType
+    )
+        ? (activityTypeOrStatus as ActivityType)
+        : undefined;
     const resolvedStatus =
         resolvedActivityType === undefined &&
         activityTypeOrStatus !== undefined
@@ -91,63 +163,59 @@ export function getIconForStatus(
 
     if (resolvedActivityType === ActivityType.auto_service) {
         return {
-            href: AutoServiceCategoryIcon,
-            size: [54, 54] as [number, number],
-            offset: [-27, -46] as [number, number],
+            href: AutoServiceMapPinIcon,
+            size: [48, 48] as [number, number],
+            offset: [-24, -48] as [number, number],
         };
     }
 
     if (resolvedActivityType === ActivityType.auto_shop) {
         return {
-            href: AutoShopCategoryIcon,
-            size: [54, 54] as [number, number],
-            offset: [-27, -46] as [number, number],
+            href: ServiceCenterMapPinIcon,
+            size: [48, 48] as [number, number],
+            offset: [-24, -48] as [number, number],
         };
     }
 
     if (resolvedActivityType === ActivityType.auto_wash) {
         return {
-            href: AutoWashCategoryIcon,
-            size: [54, 54] as [number, number],
-            offset: [-27, -46] as [number, number],
+            href: AutoWashMapPinIcon,
+            size: [48, 48] as [number, number],
+            offset: [-24, -48] as [number, number],
         };
     }
 
     if (resolvedActivityType === ActivityType.master) {
         return {
-            href: PrivateMasterCategoryIcon,
-            size: [54, 54] as [number, number],
-            offset: [-27, -46] as [number, number],
+            href: PrivateMasterMapPinIcon,
+            size: [48, 48] as [number, number],
+            offset: [-24, -48] as [number, number],
         };
     }
 
     if (resolvedStatus === MasterStatus.AVAILABLE) {
         return {
             href: AvailableMasterIcon,
-            size: [54, 54] as [number, number],
-            offset: [-27, -46] as [number, number],
+            size: [60, 60] as [number, number],
+            offset: [-18, -36] as [number, number],
         };
     }
     if (resolvedStatus === MasterStatus.SCHEDULE) {
         return {
             href: BusyMasterIcon,
-            size: [54, 54] as [number, number],
-            offset: [-27, -46] as [number, number],
+            size: [60, 60] as [number, number],
+            offset: [-14, -28] as [number, number],
         };
     }
     return {
         href: UnavailableMasterIcon,
-        size: [54, 54] as [number, number],
-        offset: [-27, -46] as [number, number],
+        size: [60, 60] as [number, number],
+        offset: [-14, -28] as [number, number],
     };
 }
 
 function getProviderType(provider: Provider): ActivityType {
-    const raw = String(provider.activityType || (provider as any).providerType || (provider as any).activityTypeId || "");
-    if (raw === "auto_service" || raw === "1") return ActivityType.auto_service;
-    if (raw === "auto_wash" || raw === "3") return ActivityType.auto_wash;
-    if (raw === "auto_shop" || raw === "4") return ActivityType.auto_shop;
-    return ActivityType.master;
+    return provider.activityType || ActivityType.master;
 }
 
 function isMasterProvider(provider: Provider): boolean {
@@ -157,13 +225,9 @@ function isMasterProvider(provider: Provider): boolean {
 function shouldShowBookingAction(provider: Provider): boolean {
     const type = getProviderType(provider);
 
-    return (
-        Boolean(provider.onlineBookingEnabled) &&
+    return Boolean(provider.onlineBookingEnabled) &&
         !provider.liveQueueEnabled &&
-		type !== ActivityType.auto_wash &&
-        (type === ActivityType.master ||
-            type === ActivityType.auto_service)
-    );
+        (type === ActivityType.master || type === ActivityType.auto_service);
 }
 
 function getDisplayName(provider: Provider): string {
@@ -186,10 +250,9 @@ function getInitials(name: string): string {
 }
 
 function getAvatarUrl(provider: Provider): string | undefined {
-    // Keep personal account avatars out of professional map cards.
-    return isMasterProvider(provider)
-        ? provider.avatarUrl || undefined
-        : getCoverUrl(provider);
+    // Keep personal account avatars out of professional map cards. Every
+    // provider type can now configure a separate public profile avatar.
+    return provider.avatarUrl || getCoverUrl(provider);
 }
 
 function getCoverUrl(provider: Provider): string | undefined {
@@ -417,112 +480,150 @@ function buildBalloonHtml(provider: Provider): string {
     }
 }
 
-interface ClusteredProvidersProps {
-    masters: Provider[];
-    mastersRef: any;
-    onSelectProvider?: (provider: Provider) => void;
-}
-
-function ClusteredProviders({ masters, mastersRef, onSelectProvider }: ClusteredProvidersProps) {
-    const ymaps = useYMaps(["templateLayoutFactory"]);
-
-    const clusterOptions = useMemo(() => {
-        const baseOptions = {
-            preset: "islands#invertedDarkBlueClusterIcons",
-            groupByCoordinates: false,
-            clusterDisableClickZoom: false,
-            clusterHideIconOnBalloonOpen: false,
-            geoObjectHideIconOnBalloonOpen: false,
-            gridSize: 72,
-            minClusterSize: 2,
-        };
-
-        if (!ymaps?.templateLayoutFactory) return baseOptions;
-
-        // Custom cluster label showing "+N" (e.g. "+5", "+3") when zooming out
-        const customContentLayout = ymaps.templateLayoutFactory.createClass(
-            '<div style="font-size: 14px; font-weight: 800; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">+{{ properties.geoObjects.length }}</div>'
-        );
-
-        return {
-            ...baseOptions,
-            clusterIconContentLayout: customContentLayout,
-        };
-    }, [ymaps]);
-
-    return (
-        <Clusterer options={clusterOptions}>
-            {masters.map((m) => {
-                const providerType = getProviderType(m);
-                const icon = getIconForStatus(
-                    providerType,
-                    m.currentStatus
-                );
-                return (
-                    <Placemark
-                        instanceRef={(el) => {
-                            if (mastersRef?.current) {
-                                mastersRef.current[m.id] = el;
-                            }
-                        }}
-                        height={500}
-                        key={m.id}
-                        geometry={[
-                            m.coordinates.x,
-                            m.coordinates.y,
-                        ]}
-                        options={{
-                            iconLayout: "default#image",
-                            iconImageHref: icon.href,
-                            iconImageSize: icon.size,
-                            iconImageOffset: icon.offset,
-                            balloonMaxWidth: BALLOON_CARD_WIDTH,
-                            balloonMaxHeight: BALLOON_MAX_HEIGHT,
-                            balloonPanelMaxMapArea: 0,
-                            balloonAutoPanMargin: [24, 24, 24, 24],
-                            hideIconOnBalloonOpen: false,
-                        }}
-                        modules={[
-                            "geoObject.addon.balloon",
-                            "geoObject.addon.hint",
-                        ]}
-                        properties={{
-                            iconCaption: m.address,
-                            balloonContent: buildBalloonHtml(m),
-                        }}
-                        onClick={() => {
-                            if (onSelectProvider) {
-                                onSelectProvider(m);
-                            }
-                        }}
-                    />
-                );
-            })}
-        </Clusterer>
-    );
-}
-
 export function ProvidersMap({
     masters,
     mastersRef,
     mapInstanceRef,
-    isLoading,
     height = "60vh",
-    onSelectProvider,
+    showZoomControl = true,
+    showGeolocationControl = true,
+    disableScrollZoom = false,
 }: Props) {
     const { userCoords } = useCoords();
     const mapRef = useRef<any>(null);
+    const mapRootRef = useRef<HTMLDivElement | null>(null);
+    const mapLoadStateRef = useRef<"loading" | "ready" | "error">("loading");
+    const mapStageRef = useRef("api-loading");
+    const mapLoadTimerRef = useRef<number | null>(null);
+    const mapStartTimeRef = useRef(0);
+    const tileImageErrorsRef = useRef(0);
+    const tileLayerCleanupRef = useRef<(() => void) | null>(null);
     const [isInited, setIsInited] = useState(false);
+    const [mapLoadState, setMapLoadState] = useState<"loading" | "ready" | "error">("loading");
+    const [mapFailureCode, setMapFailureCode] = useState<MapFailureCode | null>(null);
+    const [mapAttempt, setMapAttempt] = useState(0);
+    const [diagnosticsCopied, setDiagnosticsCopied] = useState(false);
+
+    const clearTileLayerListeners = () => {
+        tileLayerCleanupRef.current?.();
+        tileLayerCleanupRef.current = null;
+    };
+
+    const markMapFailed = (code: MapFailureCode) => {
+        if (mapLoadStateRef.current === "ready" || mapLoadStateRef.current === "error") return;
+        mapLoadStateRef.current = "error";
+        setMapFailureCode(code);
+        setMapLoadState("error");
+        clearTileLayerListeners();
+        if (mapLoadTimerRef.current !== null) {
+            window.clearTimeout(mapLoadTimerRef.current);
+            mapLoadTimerRef.current = null;
+        }
+    };
+
+    const markMapReady = () => {
+        if (mapLoadStateRef.current === "error") return;
+        mapLoadStateRef.current = "ready";
+        mapStageRef.current = "ready";
+        setMapLoadState("ready");
+        clearTileLayerListeners();
+        if (mapLoadTimerRef.current !== null) {
+            window.clearTimeout(mapLoadTimerRef.current);
+            mapLoadTimerRef.current = null;
+        }
+    };
+
+    useLayoutEffect(() => {
+        mapStartTimeRef.current = performance.now();
+        mapLoadStateRef.current = "loading";
+        mapStageRef.current = "api-loading";
+        tileImageErrorsRef.current = 0;
+        setMapLoadState("loading");
+        setMapFailureCode(null);
+        setDiagnosticsCopied(false);
+        setIsInited(false);
+
+        const handleScriptError = (event: Event) => {
+            if (isYandexApiScript(event.target)) {
+                markMapFailed(classifyMapFailure(event, mapStageRef.current, mapStartTimeRef.current));
+            }
+        };
+        const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+            const reason = event.reason as { target?: EventTarget | null; message?: string } | string;
+            const target = typeof reason === "object" && reason !== null ? reason.target ?? null : null;
+            const message = typeof reason === "string" ? reason : reason?.message || "";
+            if (isYandexApiScript(target) || /api-maps\.yandex\.ru/i.test(message)) {
+                markMapFailed(classifyMapFailure(reason, mapStageRef.current, mapStartTimeRef.current));
+            }
+        };
+
+        const handleResourceEntries = () => {
+            if (mapStageRef.current === "tiles-loading" && hasLoadedYandexMapTiles(
+                getYandexMapResources(mapStartTimeRef.current),
+                mapRootRef.current,
+            )) {
+                markMapReady();
+            }
+        };
+        const handleTileImageLoad = (event: Event) => {
+            const image = event.target;
+            if (
+                mapStageRef.current === "tiles-loading" &&
+                image instanceof HTMLImageElement &&
+                isYandexMapTileUrl(image.currentSrc || image.src)
+            ) {
+                markMapReady();
+            }
+        };
+        const handleTileImageError = (event: Event) => {
+            const image = event.target;
+            if (image instanceof HTMLImageElement && isYandexMapTileUrl(image.currentSrc || image.src)) {
+                tileImageErrorsRef.current += 1;
+            }
+        };
+
+        window.addEventListener("error", handleScriptError, true);
+        window.addEventListener("unhandledrejection", handleUnhandledRejection);
+        document.addEventListener("load", handleTileImageLoad, true);
+        document.addEventListener("error", handleTileImageError, true);
+
+        let resourceObserver: PerformanceObserver | null = null;
+        if (typeof PerformanceObserver !== "undefined") {
+            try {
+                resourceObserver = new PerformanceObserver(handleResourceEntries);
+                resourceObserver.observe({ type: "resource", buffered: true });
+            } catch {
+                resourceObserver = null;
+            }
+        }
+
+        mapLoadTimerRef.current = window.setTimeout(() => {
+            markMapFailed(classifyMapFailure(null, mapStageRef.current, mapStartTimeRef.current));
+        }, MAP_LOAD_TIMEOUT_MS);
+
+        return () => {
+            window.removeEventListener("error", handleScriptError, true);
+            window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+            document.removeEventListener("load", handleTileImageLoad, true);
+            document.removeEventListener("error", handleTileImageError, true);
+            resourceObserver?.disconnect();
+            clearTileLayerListeners();
+            if (mapLoadTimerRef.current !== null) {
+                window.clearTimeout(mapLoadTimerRef.current);
+                mapLoadTimerRef.current = null;
+            }
+        };
+    }, [mapAttempt]);
 
     useEffect(() => {
-        if (mapRef.current) {
+        if (mapRef.current && userCoords) {
             try {
                 mapRef.current.setCenter(userCoords, DEFAULT_ZOOM, {
                     duration: 300,
                 });
             } catch (_) {}
         }
-    }, [userCoords, mapRef.current]);
+    }, [userCoords, isInited]);
 
     const mapState = useMemo(
         () => ({
@@ -531,43 +632,201 @@ export function ProvidersMap({
                 number
             ],
             zoom: DEFAULT_ZOOM,
-            behaviors: ["drag", "scrollZoom", "dblClickZoom", "multiTouch"],
+            ...(disableScrollZoom
+                ? { behaviors: ["drag", "multiTouch", "dblClickZoom", "rightMouseButtonMagnifier"] }
+                : {}),
         }),
-        [userCoords]
+        [userCoords, disableScrollZoom]
     );
 
-    const setMapRef = useCallback((ref: ymaps.Map | null) => {
+    const setMapRef = (ref: ymaps.Map | null) => {
         mapRef.current = ref;
         if (mapInstanceRef) {
             mapInstanceRef.current = ref;
         }
-        if (ref) {
-            setIsInited(true);
+        if (!ref) {
+            clearTileLayerListeners();
+            return;
         }
-    }, [mapInstanceRef]);
 
-    const isReady = isInited && !isLoading;
+        clearTileLayerListeners();
+        setIsInited(true);
+        mapStageRef.current = "tiles-loading";
+
+        // Yandex renders its base tiles through nested layer collections. On
+        // Android Chrome, cross-origin PerformanceResourceTiming entries do
+        // not expose responseStatus, and the tiles are not necessarily <img>
+        // elements. Use the API's tileloadchange/getTileStatus signal instead.
+        const subscriptions: Array<{ events: any; handler: () => void }> = [];
+        const tileReadinessChecks: Array<() => void> = [];
+        const visited = new Set<any>();
+        const observeTileLayer = (layerOrCollection: any, depth = 0) => {
+            if (!layerOrCollection || depth > 5 || visited.has(layerOrCollection)) return;
+            visited.add(layerOrCollection);
+
+            if (typeof layerOrCollection.getTileStatus === "function") {
+                const events = layerOrCollection.events;
+                const handleTileLoadChange = () => {
+                    try {
+                        const status = layerOrCollection.getTileStatus();
+                        if (Number(status?.readyTileNumber) > 0) markMapReady();
+                    } catch {
+                        // Keep waiting; the existing timeout will report a map error.
+                    }
+                };
+
+                events?.add?.("tileloadchange", handleTileLoadChange);
+                subscriptions.push({ events, handler: handleTileLoadChange });
+                tileReadinessChecks.push(handleTileLoadChange);
+                return;
+            }
+
+            if (typeof layerOrCollection.each === "function") {
+                layerOrCollection.each((child: any) => observeTileLayer(child, depth + 1));
+            }
+        };
+
+        observeTileLayer(ref.layers);
+        tileLayerCleanupRef.current = () => {
+            subscriptions.forEach(({ events, handler }) => {
+                events?.remove?.("tileloadchange", handler);
+            });
+        };
+        tileReadinessChecks.forEach((check) => check());
+
+        if (hasLoadedYandexMapTiles(getYandexMapResources(mapStartTimeRef.current), mapRootRef.current)) {
+            markMapReady();
+        }
+    };
+
+    const handleMapError = (error: Error) => {
+        markMapFailed(classifyMapFailure(error, mapStageRef.current));
+    };
+
+    const retryMap = () => {
+        mapLoadStateRef.current = "loading";
+        mapStageRef.current = "api-loading";
+        mapRef.current = null;
+        if (mapInstanceRef) mapInstanceRef.current = null;
+        setMapLoadState("loading");
+        setMapFailureCode(null);
+        setIsInited(false);
+        setDiagnosticsCopied(false);
+        setMapAttempt((attempt) => attempt + 1);
+    };
+
+    const copyDiagnostics = async () => {
+        const report = {
+            service: "Yandex Maps JS API 2.1",
+            stage: mapStageRef.current,
+            failure: mapFailureCode,
+            pageOrigin: window.location.origin,
+            online: navigator.onLine,
+            android: /Android/i.test(navigator.userAgent),
+            chrome: /Chrome\//i.test(navigator.userAgent),
+            tileImageErrors: tileImageErrorsRef.current,
+            resources: getYandexMapResources(mapStartTimeRef.current),
+        };
+        const serialized = JSON.stringify(report, null, 2);
+
+        try {
+            if (navigator.clipboard?.writeText && window.isSecureContext) {
+                await navigator.clipboard.writeText(serialized);
+            } else {
+                const textarea = document.createElement("textarea");
+                textarea.value = serialized;
+                textarea.setAttribute("readonly", "");
+                textarea.style.position = "fixed";
+                textarea.style.opacity = "0";
+                document.body.appendChild(textarea);
+                textarea.select();
+                const copied = document.execCommand("copy");
+                textarea.remove();
+                if (!copied) throw new Error("clipboard-unavailable");
+            }
+            setDiagnosticsCopied(true);
+        } catch {
+            setDiagnosticsCopied(false);
+        }
+    };
+
+    // Keep the map visible after its instance is created, but leave the
+    // loading state in place until at least one Yandex tile resource arrives.
+    const isReady = isInited;
     const handleMapClick = () => {
         mapRef.current?.balloon?.close?.();
     };
 
     return (
-        <div style={{ position: "relative", width: "100%" }}>
-            <YMaps query={{ apikey: import.meta.env.VITE_YMAPS_API_KEY }}>
-                {!isReady && <MapStub />}
+        <div ref={mapRootRef} style={{ position: "relative", width: "100%", height }}>
+            <YMaps key={mapAttempt} query={{ apikey: import.meta.env.VITE_YMAPS_API_KEY }}>
+                {mapLoadState !== "ready" && (
+                    <MapStub
+                        errorCode={mapLoadState === "error" ? mapFailureCode : null}
+                        onRetry={retryMap}
+                        onCopyDiagnostics={copyDiagnostics}
+                        copied={diagnosticsCopied}
+                    />
+                )}
                 <MapContainer $isReady={isReady}>
                     <Map
                         state={mapState}
                         width="100%"
                         height={height}
                         instanceRef={setMapRef}
+                        onLoad={() => { mapStageRef.current = "map-initializing"; }}
+                        onError={handleMapError}
                         onClick={handleMapClick}
                     >
-                        <ClusteredProviders
-                            masters={masters}
-                            mastersRef={mastersRef}
-                            onSelectProvider={onSelectProvider}
-                        />
+                        {showZoomControl && (
+                            <ZoomControl
+                                options={{ position: { right: 16, top: 16 } }}
+                            />
+                        )}
+                        {showGeolocationControl && (
+                            <GeolocationControl
+                                options={{ position: { right: 16, bottom: 32 } }}
+                            />
+                        )}
+
+                        {masters.map((m) => {
+                            const icon = getIconForStatus(
+                                m.activityType,
+                                m.currentStatus
+                            );
+                            return (
+                                <Placemark
+                                    instanceRef={(el) => {
+                                        mastersRef.current[m.id] = el;
+                                    }}
+                                    height={500}
+                                    key={m.id}
+                                    geometry={[
+                                        m.coordinates.x,
+                                        m.coordinates.y,
+                                    ]}
+                                    options={{
+                                        iconLayout: "default#image",
+                                        iconImageHref: icon.href,
+                                        iconImageSize: icon.size,
+                                        iconImageOffset: icon.offset,
+                                        balloonMaxWidth: BALLOON_CARD_WIDTH,
+                                        balloonMaxHeight: BALLOON_MAX_HEIGHT,
+                                        balloonPanelMaxMapArea: 0,
+                                        balloonAutoPanMargin: [24, 24, 24, 24],
+                                        hideIconOnBalloonOpen: false,
+                                    }}
+                                    modules={[
+                                        "geoObject.addon.balloon",
+                                        "geoObject.addon.hint",
+                                    ]}
+                                    properties={{
+                                        iconCaption: m.address,
+                                        balloonContent: buildBalloonHtml(m),
+                                    }}
+                                />
+                            );
+                        })}
                     </Map>
                 </MapContainer>
             </YMaps>

@@ -1,10 +1,9 @@
-import "dotenv/config";
-import express from "express";
-import type { Request, Response } from "express";
+import express, { Request, Response } from "express";
 import { Pool } from "pg";
 import cors from "cors";
 import path from "path";
 import http from "http";
+import { createServer as createViteServer } from "vite";
 
 interface ProviderData {
     id: string;
@@ -12,7 +11,6 @@ interface ProviderData {
     fullName: string;
     businessName?: string;
     providerType: "master" | "auto_service" | "auto_wash" | "auto_shop";
-    activityType?: "master" | "auto_service" | "auto_wash" | "auto_shop";
     activityTypeId: string;
     status: "available" | "busy" | "unavailable";
     address: string;
@@ -41,6 +39,7 @@ interface ProviderData {
 }
 
 const SAMPLE_PROVIDERS: ProviderData[] = [];
+
 
 const ACTIVITY_TYPES = [
     { id: "1", name: "auto_service", displayName: "Автосервис" },
@@ -92,113 +91,74 @@ const sampleMessages: Record<string, any[]> = {};
 
 async function startServer() {
     const app = express();
-    const PORT = Number(process.env.PORT) || 3000;
+    const PORT = 3000;
 
-    const inMemoryNotifications: Array<{ id: number; message: string; target_role: string; created_at: string }> = [
-        {
-            id: 1,
-            message: "Добро пожаловать в AutoGIS! Найдите лучших проверенных мастеров и автосервисы на карте.",
-            target_role: "all",
-            created_at: new Date().toISOString(),
-        },
-        {
-            id: 2,
-            message: "Новая заявка: Диагностика ходовой части (LADA Vesta)",
-            target_role: "master",
-            created_at: new Date(Date.now() - 3600000).toISOString(),
-        },
-    ];
-    let nextNotifId = 3;
+    const pool = new Pool({
+        connectionString: process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:5432/autogis"
+    });
 
-    let pool: Pool | null = null;
-    const connectionString = process.env.DATABASE_URL || 
-        (process.env.DB_HOST && process.env.DB_NAME ? 
-            `postgres://${process.env.DB_USERNAME || process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || ''}@${process.env.DB_HOST}:${process.env.DB_PORT || '5432'}/${process.env.DB_NAME}` : null);
-
-    if (connectionString) {
-        try {
-            pool = new Pool({ connectionString });
-            pool.query(`
-                CREATE TABLE IF NOT EXISTS notifications (
-                    id SERIAL PRIMARY KEY,
-                    message TEXT NOT NULL,
-                    target_role VARCHAR(50) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            `).then(() => {
-                console.log("Notifications table ready");
-            }).catch((e: any) => {
-                console.warn("DB init error, using in-memory notifications:", e?.message);
-                pool = null;
-            });
-        } catch {
-            pool = null;
-        }
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS notifications (
+                id SERIAL PRIMARY KEY,
+                message TEXT NOT NULL,
+                target_role VARCHAR(50) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log("Notifications table ready");
+    } catch (e) {
+        console.error("DB init error:", e);
     }
 
     app.get("/api/notifications", async (req: Request, res: Response) => {
-        const role = (req.query.role as string) || "all";
-        if (pool) {
-            try {
-                const result = await pool.query(
-                    "SELECT * FROM notifications WHERE target_role = $1 OR target_role = 'all' ORDER BY created_at DESC LIMIT 50",
-                    [role]
-                );
-                return res.json(result.rows);
-            } catch (e) {
-                console.warn("Falling back to in-memory notifications");
-            }
+        try {
+            const role = req.query.role as string || 'all';
+            const result = await pool.query(
+                "SELECT * FROM notifications WHERE target_role = $1 OR target_role = 'all' ORDER BY created_at DESC LIMIT 50",
+                [role]
+            );
+            res.json(result.rows);
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: "DB Error" });
         }
-        const filtered = inMemoryNotifications.filter(
-            (n) => n.target_role === "all" || n.target_role === role || role === "all"
-        );
-        res.json(filtered);
     });
 
+
     app.delete("/api/notifications/:id", async (req: Request, res: Response) => {
-        const id = parseInt(req.params.id, 10);
-        if (pool) {
-            try {
-                await pool.query("DELETE FROM notifications WHERE id = $1", [req.params.id]);
-                return res.json({ success: true });
-            } catch {}
+        try {
+            await pool.query("DELETE FROM notifications WHERE id = $1", [req.params.id]);
+            res.json({ success: true });
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: "DB Error" });
         }
-        const idx = inMemoryNotifications.findIndex((n) => n.id === id);
-        if (idx !== -1) inMemoryNotifications.splice(idx, 1);
-        res.json({ success: true });
     });
 
     app.delete("/api/notifications", async (req: Request, res: Response) => {
-        if (pool) {
-            try {
-                await pool.query("DELETE FROM notifications");
-                return res.json({ success: true });
-            } catch {}
+        try {
+            await pool.query("DELETE FROM notifications");
+            res.json({ success: true });
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: "DB Error" });
         }
-        inMemoryNotifications.length = 0;
-        res.json({ success: true });
     });
 
     app.post("/api/notifications", async (req: Request, res: Response) => {
-        const { message, targetRole } = req.body;
-        if (!message || !targetRole) return res.status(400).json({ error: "Missing fields" });
-        if (pool) {
-            try {
-                const result = await pool.query(
-                    "INSERT INTO notifications (message, target_role) VALUES ($1, $2) RETURNING *",
-                    [message, targetRole]
-                );
-                return res.json(result.rows[0]);
-            } catch {}
+        try {
+            const { message, targetRole } = req.body;
+            if (!message || !targetRole) return res.status(400).json({error: "Missing fields"});
+            const result = await pool.query(
+                "INSERT INTO notifications (message, target_role) VALUES ($1, $2) RETURNING *",
+                [message, targetRole]
+            );
+            res.json(result.rows[0]);
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: "DB Error" });
         }
-        const newNotif = {
-            id: nextNotifId++,
-            message,
-            target_role: targetRole,
-            created_at: new Date().toISOString(),
-        };
-        inMemoryNotifications.unshift(newNotif);
-        res.json(newNotif);
     });
 
 
@@ -228,14 +188,11 @@ async function startServer() {
     // Combined Search
     app.get("/api/search/combined", (req: Request, res: Response) => {
         const { lat, lng, radius, activityTypes } = req.query;
-        let results = SAMPLE_PROVIDERS.map((p) => ({
-            ...p,
-            activityType: p.providerType,
-        }));
+        let results = [...SAMPLE_PROVIDERS];
 
         if (activityTypes) {
             const types = Array.isArray(activityTypes) ? activityTypes : [activityTypes];
-            results = results.filter((p) => types.includes(p.providerType) || types.includes(p.activityType));
+            results = results.filter((p) => types.includes(p.providerType));
         }
 
         res.json({
@@ -253,10 +210,7 @@ async function startServer() {
         if (!provider) {
             return res.status(404).json({ error: "Provider not found" });
         }
-        res.json({
-            ...provider,
-            activityType: provider.providerType,
-        });
+        res.json(provider);
     });
 
     // Masters list and detail
@@ -331,20 +285,6 @@ async function startServer() {
         res.json(master);
     });
 
-    // Auto Washes list and detail
-    app.get("/api/auto_washes", (req: Request, res: Response) => {
-        const list = SAMPLE_PROVIDERS.filter((p) => p.providerType === "auto_wash");
-        res.json(list);
-    });
-
-    app.get("/api/auto_washes/:id", (req: Request, res: Response) => {
-        const wash = SAMPLE_PROVIDERS.find((p) => p.id === req.params.id || (p.providerType === "auto_wash" && p.userId === req.params.id));
-        if (!wash) {
-            return res.status(404).json({ error: "Auto wash not found" });
-        }
-        res.json(wash);
-    });
-
     // Auto Wash profile
     app.get("/api/auto_washes/profile/me", (req: Request, res: Response) => {
         const wash = SAMPLE_PROVIDERS.find((p) => p.providerType === "auto_wash");
@@ -378,20 +318,6 @@ async function startServer() {
             { id: "2", name: "Антидождь на лобовое", price: 1200 },
             { id: "3", name: "Озонирование салона", price: 1000 },
         ]);
-    });
-
-    // Auto Shops list and detail
-    app.get("/api/auto_shops", (req: Request, res: Response) => {
-        const list = SAMPLE_PROVIDERS.filter((p) => p.providerType === "auto_shop");
-        res.json(list);
-    });
-
-    app.get("/api/auto_shops/:id", (req: Request, res: Response) => {
-        const shop = SAMPLE_PROVIDERS.find((p) => p.id === req.params.id || (p.providerType === "auto_shop" && p.userId === req.params.id));
-        if (!shop) {
-            return res.status(404).json({ error: "Auto shop not found" });
-        }
-        res.json(shop);
     });
 
     // Auto Shop profile
@@ -428,20 +354,6 @@ async function startServer() {
         ]);
     });
 
-    // Auto Services list and detail
-    app.get("/api/auto_services", (req: Request, res: Response) => {
-        const list = SAMPLE_PROVIDERS.filter((p) => p.providerType === "auto_service");
-        res.json(list);
-    });
-
-    app.get("/api/auto_services/:id", (req: Request, res: Response) => {
-        const service = SAMPLE_PROVIDERS.find((p) => p.id === req.params.id || (p.providerType === "auto_service" && p.userId === req.params.id));
-        if (!service) {
-            return res.status(404).json({ error: "Auto service not found" });
-        }
-        res.json(service);
-    });
-
     // Auto Service profile
     app.get("/api/auto_services/profile/me", (req: Request, res: Response) => {
         const service = SAMPLE_PROVIDERS.find((p) => p.providerType === "auto_service");
@@ -470,61 +382,22 @@ async function startServer() {
     });
 
     // Auth & Users
-    function isAdminPhone(phone?: string): boolean {
-        if (!phone) return false;
-        const digits = phone.replace(/[^\d]/g, "");
-        return (
-            digits === "71111111111" ||
-            digits === "81111111111" ||
-            digits === "11111111111" ||
-            digits.endsWith("1111111111") ||
-            phone.includes("111) 111-11-11") ||
-            phone.includes("111-11-11")
-        );
-    }
-
-    const ADMIN_USER_RECORD = {
-        id: "admin-master-user",
-        phone: "+7 (111) 111-11-11",
-        name: "Главный Администратор",
-        role: "admin",
-        accountType: "admin",
-        avatar: null,
-        isProfessional: true,
-        capabilities: {
-            professionalCabinet: true,
-            crmMini: true,
-            businessCrm: true,
-            professionalChat: true,
-            applications: true,
-            calendar: true,
-        },
-    };
-
     let currentUser: any = null;
 
     app.post("/api/auth/register", (req: Request, res: Response) => {
         const { phone, name, role } = req.body;
-        if (isAdminPhone(phone)) {
-            currentUser = {
-                ...ADMIN_USER_RECORD,
-                phone: phone || "+7 (111) 111-11-11",
-                name: name || ADMIN_USER_RECORD.name,
-            };
-        } else {
-            currentUser = {
-                id: `user-${Date.now()}`,
-                phone: phone || "",
-                name: name || "",
-                role: role || "customer",
-                avatar: null,
-                capabilities: {
-                    professionalCabinet: role !== "customer",
-                    calendar: role !== "customer",
-                    applications: role !== "customer",
-                },
-            };
-        }
+        currentUser = {
+            id: `user-${Date.now()}`,
+            phone: phone || "",
+            name: name || "",
+            role: role || "customer",
+            avatar: null,
+            capabilities: {
+                professionalCabinet: role !== "customer",
+                calendar: role !== "customer",
+                applications: role !== "customer",
+            },
+        };
         res.json({
             accessToken: "mock-access-token-" + Date.now(),
             refreshToken: "mock-refresh-token-" + Date.now(),
@@ -534,12 +407,7 @@ async function startServer() {
 
     app.post("/api/auth/login", (req: Request, res: Response) => {
         const { phone } = req.body;
-        if (isAdminPhone(phone)) {
-            currentUser = {
-                ...ADMIN_USER_RECORD,
-                phone: phone || "+7 (111) 111-11-11",
-            };
-        } else if (!currentUser) {
+        if (!currentUser) {
             currentUser = {
                 id: `user-${Date.now()}`,
                 phone: phone || "",
@@ -574,36 +442,12 @@ async function startServer() {
         if (!currentUser) {
             return res.status(401).json({ error: "Unauthorized" });
         }
-        if (isAdminPhone(currentUser.phone)) {
-            currentUser.role = "admin";
-            currentUser.accountType = "admin";
-            currentUser.capabilities = {
-                professionalCabinet: true,
-                crmMini: true,
-                businessCrm: true,
-                professionalChat: true,
-                applications: true,
-                calendar: true,
-            };
-        }
         res.json(currentUser);
     });
 
     app.get("/api/users/profile/me", (req: Request, res: Response) => {
         if (!currentUser) {
             return res.status(401).json({ error: "Unauthorized" });
-        }
-        if (isAdminPhone(currentUser.phone)) {
-            currentUser.role = "admin";
-            currentUser.accountType = "admin";
-            currentUser.capabilities = {
-                professionalCabinet: true,
-                crmMini: true,
-                businessCrm: true,
-                professionalChat: true,
-                applications: true,
-                calendar: true,
-            };
         }
         res.json(currentUser);
     });
@@ -753,34 +597,34 @@ async function startServer() {
         res.json(newMsg);
     });
 
-    
+
     app.put("/api/test-put", (req: Request, res: Response) => { res.json({ success: true, body: req.body }); });
     app.post("/api/edit-message/:orderId/:messageId", (req: Request, res: Response) => {
         console.log("PUT chat message hit! orderId=", req.params.orderId, "messageId=", req.params.messageId);
         try {
         const { orderId, messageId } = req.params;
         const { message } = req.body;
-        
+
         if (!sampleMessages[orderId]) {
             return res.status(404).json({ error: "Order not found" });
         }
-        
+
         const msg = sampleMessages[orderId].find((m: any) => m.id === messageId);
         if (!msg) {
             return res.status(404).json({ error: "Message not found" });
         }
-        
+
         msg.message = message;
         msg.isEdited = true;
-        
+
         res.json(msg);
         } catch (err: any) {
-            console.error("Error editing message:", err);
+            require('fs').writeFileSync('debug_error.log', String(err.stack || err));
             res.status(500).send(String(err));
         }
     });
 
-    
+
     // Support Chat
     const supportMessages: any[] = [];
     app.get("/api/support/chat", (req, res) => {
@@ -790,7 +634,7 @@ async function startServer() {
         }
         res.json(supportMessages.filter((m) => m.userId === userId));
     });
-    
+
     app.post("/api/support/chat", (req, res) => {
         const { message, userId } = req.body;
         const targetId = userId || currentUser?.id || "user-anon";
@@ -937,145 +781,16 @@ async function startServer() {
         ]);
     });
 
-    // ───────────────── STORIES & SUBSCRIPTIONS ─────────────────
-    const sampleStories: any[] = [];
-
-    app.get("/api/stories/home", (req: Request, res: Response) => {
-        res.json({ stories: sampleStories });
-    });
-
-    app.get("/api/stories/author/:authorId", (req: Request, res: Response) => {
-        const authorStories = sampleStories.filter((s) => s.author.userId === req.params.authorId);
-        res.json({ stories: authorStories });
-    });
-
-    app.get("/api/stories/highlights/author/:authorId", (req: Request, res: Response) => {
-        res.json({ highlights: [] });
-    });
-
-    app.post("/api/stories", (req: Request, res: Response) => {
-        const { frames } = req.body;
-        const newStory = {
-            id: `story-${Date.now()}`,
-            author: {
-                userId: currentUser?.id || "user-master-1",
-                displayName: currentUser?.name || "Александр Смирнов",
-                role: currentUser?.role || "master",
-            },
-            frames: frames || [],
-            expiresAt: new Date(Date.now() + 86400000).toISOString(),
-            createdAt: new Date().toISOString(),
-            isViewed: false,
-            viewCount: 0,
-        };
-        sampleStories.unshift(newStory);
-        res.status(201).json(newStory);
-    });
-
-    app.delete("/api/stories/:id", (req: Request, res: Response) => {
-        const idx = sampleStories.findIndex((s) => s.id === req.params.id);
-        if (idx !== -1) sampleStories.splice(idx, 1);
-        res.json({ success: true });
-    });
-
-    app.post("/api/stories/:id/view", (req: Request, res: Response) => {
-        const story = sampleStories.find((s) => s.id === req.params.id);
-        if (story) story.viewCount++;
-        res.json({ success: true });
-    });
-
-    app.post("/api/stories/:id/report", (req: Request, res: Response) => {
-        res.json({ success: true });
-    });
-
-    app.get("/api/subscriptions/:authorId", (req: Request, res: Response) => {
-        res.json({ following: false });
-    });
-
-    app.post("/api/subscriptions/:authorId", (req: Request, res: Response) => {
-        res.json({ following: true });
-    });
-
-    app.delete("/api/subscriptions/:authorId", (req: Request, res: Response) => {
-        res.json({ following: false });
-    });
-
-    // ───────────────── REVIEWS ─────────────────
-    const sampleReviews: any[] = [
-        {
-            id: "rev-1",
-            fromId: "user-cust-1",
-            from: { id: "user-cust-1", name: "Михаил К.", phone: "+7 (916) 123-45-67" },
-            toId: "user-master-1",
-            rating: 5,
-            comment: "Отличный мастер! Быстро нашел неисправность в проводке и все исправил за час.",
-            createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-        },
-        {
-            id: "rev-2",
-            fromId: "user-cust-2",
-            from: { id: "user-cust-2", name: "Елена В.", phone: "+7 (926) 987-65-43" },
-            toId: "user-as-1",
-            rating: 5,
-            comment: "Прекрасный автосервис. Чисто, вежливый персонал, сделали ТО быстро и без навязывания лишних услуг.",
-            createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-        },
-    ];
-
-    app.get("/api/reviews/:providerUserId", (req: Request, res: Response) => {
-        const revs = sampleReviews.filter((r) => r.toId === req.params.providerUserId);
-        res.json(revs);
-    });
-
-    app.get("/api/orders/:orderId/review", (req: Request, res: Response) => {
-        const rev = sampleReviews.find((r) => r.orderId === req.params.orderId);
-        res.json(rev || null);
-    });
-
-    app.post("/api/orders/:orderId/review", (req: Request, res: Response) => {
-        const newRev = {
-            id: `rev-${Date.now()}`,
-            orderId: req.params.orderId,
-            fromId: currentUser?.id || "user-anon",
-            from: currentUser ? { id: currentUser.id, name: currentUser.name } : null,
-            toId: req.body.toId || "user-master-1",
-            rating: req.body.rating || 5,
-            comment: req.body.comment || "",
-            createdAt: new Date().toISOString(),
-        };
-        sampleReviews.push(newRev);
-        res.status(201).json(newRev);
-    });
-
-    app.put("/api/orders/:orderId/review", (req: Request, res: Response) => {
-        const rev = sampleReviews.find((r) => r.orderId === req.params.orderId);
-        if (rev) {
-            if (req.body.rating) rev.rating = req.body.rating;
-            if (req.body.comment !== undefined) rev.comment = req.body.comment;
-        }
-        res.json(rev || {});
-    });
-
-    app.delete("/api/orders/:orderId/review", (req: Request, res: Response) => {
-        const idx = sampleReviews.findIndex((r) => r.orderId === req.params.orderId);
-        if (idx !== -1) sampleReviews.splice(idx, 1);
-        res.json({ success: true });
-    });
-
     // ───────────────── VITE / STATIC SERVING ─────────────────
 
     if (process.env.NODE_ENV !== "production") {
-        const { createServer: createViteServer } = await import("vite");
         const vite = await createViteServer({
-            server: {
-                middlewareMode: true,
-                hmr: false,
-            },
+            server: { middlewareMode: true },
             appType: "spa",
         });
         app.use(vite.middlewares);
     } else {
-        const distPath = path.resolve(process.cwd(), "dist");
+        const distPath = path.join(process.cwd(), "dist");
         app.use(express.static(distPath));
         app.get("*", (req: Request, res: Response) => {
             res.sendFile(path.join(distPath, "index.html"));
@@ -1083,18 +798,6 @@ async function startServer() {
     }
 
     const server = http.createServer(app);
-
-    server.on("error", (err: any) => {
-        if (err.code === "EADDRINUSE") {
-            console.error(`Port ${PORT} is already in use. Retrying in 1s...`);
-            setTimeout(() => {
-                server.close();
-                server.listen(PORT, "0.0.0.0");
-            }, 1000);
-        } else {
-            console.error("Server error:", err);
-        }
-    });
 
     server.listen(PORT, "0.0.0.0", () => {
         console.log(`AutoGIS Server is running on port ${PORT}`);

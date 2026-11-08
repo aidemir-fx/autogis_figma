@@ -29,6 +29,7 @@ type MasterUseCase struct {
 	activitySubtypeRepo     repository.ActivitySubtypeRepository
 	userActivityProfileRepo repository.UserActivityProfileRepository
 	activityAuditLogRepo    repository.ActivityAuditLogRepository
+	mediaRepo               repository.MediaRepository
 }
 
 func NewMasterUseCase(
@@ -43,6 +44,7 @@ func NewMasterUseCase(
 	activitySubtypeRepo repository.ActivitySubtypeRepository,
 	userActivityProfileRepo repository.UserActivityProfileRepository,
 	activityAuditLogRepo repository.ActivityAuditLogRepository,
+	mediaRepo repository.MediaRepository,
 ) *MasterUseCase {
 	return &MasterUseCase{
 		userRepo:                userRepo,
@@ -56,6 +58,7 @@ func NewMasterUseCase(
 		activitySubtypeRepo:     activitySubtypeRepo,
 		userActivityProfileRepo: userActivityProfileRepo,
 		activityAuditLogRepo:    activityAuditLogRepo,
+		mediaRepo:               mediaRepo,
 	}
 }
 
@@ -365,22 +368,25 @@ func (uc *MasterUseCase) registerMaster(
 	}
 
 	master := &domain.Master{
-		UserID:               user.ID,
-		FullName:             req.FullName,
-		WorkingPhone:         req.WorkingPhone,
-		Description:          req.Description,
-		Address:              req.Address,
-		Coordinates:          req.Coordinates,
-		Status:               "schedule",
-		CurrentStatus:        "unavailable",
-		OnlineBookingEnabled: false,
-		Rating:               0,
-		ReviewsCount:         0,
-		Professions:          pq.StringArray{},
-		AutoMarks:            pq.StringArray{},
-		Payments:             pq.StringArray{},
-		WorkingDays:          pq.StringArray{},
-		ActivitySubtypeID:    subtypeIDPtr(subtype),
+		UserID:                user.ID,
+		FullName:              req.FullName,
+		WorkingPhone:          req.WorkingPhone,
+		Description:           req.Description,
+		Address:               req.Address,
+		Coordinates:           req.Coordinates,
+		Status:                "schedule",
+		CurrentStatus:         "unavailable",
+		OnlineBookingEnabled:  false,
+		Rating:                0,
+		ReviewsCount:          0,
+		Professions:           pq.StringArray{},
+		AutoMarks:             pq.StringArray{},
+		Payments:              pq.StringArray{},
+		Features:              pq.StringArray{},
+		WorkPhotoAssetIDs:     pq.StringArray{},
+		HeroWorkPhotoAssetIDs: pq.StringArray{},
+		WorkingDays:           pq.StringArray{},
+		ActivitySubtypeID:     subtypeIDPtr(subtype),
 	}
 
 	if req.Professions != nil {
@@ -445,20 +451,23 @@ func (uc *MasterUseCase) registerMaster(
 		ID:      master.ID,
 		Type:    "master",
 		Data: domain.MasterProfileResponse{
-			ID:                   master.ID,
-			UserID:               master.UserID,
-			FullName:             master.FullName,
-			WorkingPhone:         master.WorkingPhone,
-			Description:          master.Description,
-			Address:              master.Address,
-			Coordinates:          master.Coordinates,
-			Status:               master.Status,
-			CurrentStatus:        master.CurrentStatus,
-			OnlineBookingEnabled: master.OnlineBookingEnabled,
-			Rating:               master.Rating,
-			ReviewsCount:         master.ReviewsCount,
-			ActivityGroup:        groupToRef(group),
-			ActivitySubtype:      subtypeToRef(subtype),
+			ID:                    master.ID,
+			UserID:                master.UserID,
+			FullName:              master.FullName,
+			WorkingPhone:          master.WorkingPhone,
+			Description:           master.Description,
+			Address:               master.Address,
+			Coordinates:           master.Coordinates,
+			Status:                master.Status,
+			CurrentStatus:         master.CurrentStatus,
+			OnlineBookingEnabled:  master.OnlineBookingEnabled,
+			Rating:                master.Rating,
+			ReviewsCount:          master.ReviewsCount,
+			Features:              []string(master.Features),
+			WorkPhotoAssetIDs:     []string(master.WorkPhotoAssetIDs),
+			HeroWorkPhotoAssetIDs: []string(master.HeroWorkPhotoAssetIDs),
+			ActivityGroup:         groupToRef(group),
+			ActivitySubtype:       subtypeToRef(subtype),
 		},
 	}, nil
 }
@@ -879,39 +888,35 @@ func (uc *MasterUseCase) buildMasterProfileResponse(
 	workingDays := stringDaysToBool(master.WorkingDays)
 
 	return &domain.MasterProfileResponse{
-		ID:                   master.ID,
-		UserID:               master.UserID,
-		FullName:             master.FullName,
-		WorkingPhone:         master.WorkingPhone,
-		Description:          master.Description,
-		Address:              master.Address,
-		Coordinates:          master.Coordinates,
-		CoverImageAssetID:    master.CoverImageAssetID,
-		Status:               master.Status,
-		CurrentStatus:        resolveProviderCurrentStatus(master.Status, workingDays, master.WorkFrom, master.WorkTo, time.Now()),
-		OnlineBookingEnabled: master.OnlineBookingEnabled,
-		LiveQueueEnabled:     master.LiveQueueEnabled,
-		Rating:               master.Rating,
-		ReviewsCount:         master.ReviewsCount,
-		WorkFrom:             master.WorkFrom,
-		WorkTo:               master.WorkTo,
-		WorkingDays:          workingDays,
-		User:                 uc.userToResponse(master.User),
-		Professions:          master.Professions,
-		Services:             master.Services,
-		AutoMarks:            master.AutoMarks,
-		Payments:             []string(master.Payments),
-		HasParking:           master.HasParking,
-		HasWifi:              master.HasWifi,
-		HasWaitingArea:       master.HasWaitingArea,
-		OffersCoffee:         master.OffersCoffee,
-		HasEvacuation:        master.HasEvacuation,
-		HasPartsInStock:      master.HasPartsInStock,
-		LiftCount:            master.LiftCount,
-		ActivityTypes:        activityTypes,
-		ActivityGroup:        groupRef,
-		ActivitySubtype:      subtypeRef,
-		CreatedAt:            master.CreatedAt.Format(time.RFC3339),
+		ID:                    master.ID,
+		UserID:                master.UserID,
+		FullName:              master.FullName,
+		WorkingPhone:          master.WorkingPhone,
+		Description:           master.Description,
+		Address:               master.Address,
+		Coordinates:           master.Coordinates,
+		AvatarURL:             master.AvatarURL,
+		Status:                master.Status,
+		CurrentStatus:         resolveProviderCurrentStatus(master.Status, workingDays, master.WorkFrom, master.WorkTo, time.Now()),
+		OnlineBookingEnabled:  master.OnlineBookingEnabled,
+		LiveQueueEnabled:      master.LiveQueueEnabled,
+		Rating:                master.Rating,
+		ReviewsCount:          master.ReviewsCount,
+		WorkFrom:              master.WorkFrom,
+		WorkTo:                master.WorkTo,
+		WorkingDays:           workingDays,
+		User:                  uc.userToResponse(master.User),
+		Professions:           master.Professions,
+		Services:              master.Services,
+		AutoMarks:             master.AutoMarks,
+		Payments:              []string(master.Payments),
+		Features:              []string(master.Features),
+		WorkPhotoAssetIDs:     []string(master.WorkPhotoAssetIDs),
+		HeroWorkPhotoAssetIDs: []string(master.HeroWorkPhotoAssetIDs),
+		ActivityTypes:         activityTypes,
+		ActivityGroup:         groupRef,
+		ActivitySubtype:       subtypeRef,
+		CreatedAt:             master.CreatedAt.Format(time.RFC3339),
 	}, nil
 }
 
@@ -1025,12 +1030,8 @@ func (uc *MasterUseCase) UpdateMasterProfile(
 	if req.Coordinates != nil {
 		master.Coordinates = req.Coordinates
 	}
-	if req.CoverImageAssetID != nil {
-		if *req.CoverImageAssetID == "" {
-			master.CoverImageAssetID = nil
-		} else {
-			master.CoverImageAssetID = req.CoverImageAssetID
-		}
+	if req.AvatarURL != nil {
+		master.AvatarURL = req.AvatarURL
 	}
 	if req.Status != nil {
 		status, err := normalizeProviderStatusMode(*req.Status)
@@ -1058,6 +1059,51 @@ func (uc *MasterUseCase) UpdateMasterProfile(
 	if req.AutoMarks != nil {
 		master.AutoMarks = pq.StringArray(req.AutoMarks)
 	}
+	if req.Payments != nil {
+		master.Payments = pq.StringArray(normalizeMasterPayments(req.Payments))
+	}
+	if req.Features != nil {
+		master.Features = pq.StringArray(normalizeMasterFeatures(req.Features))
+	}
+	if req.WorkPhotoAssetIDs != nil {
+		workPhotoIDs, err := uc.validateOwnedWorkPhotoIDs(ctx, userID, req.WorkPhotoAssetIDs)
+		if err != nil {
+			return nil, err
+		}
+		master.WorkPhotoAssetIDs = pq.StringArray(workPhotoIDs)
+	}
+	if req.HeroWorkPhotoAssetIDs != nil {
+		heroes, err := uc.validateOwnedWorkPhotoIDs(ctx, userID, req.HeroWorkPhotoAssetIDs)
+		if err != nil {
+			return nil, err
+		}
+		if len(heroes) > 2 {
+			return nil, apperrors.New("TOO_MANY_HERO_PHOTOS", "Можно выбрать не более двух главных фотографий", 400)
+		}
+		available := make(map[string]struct{}, len(master.WorkPhotoAssetIDs))
+		for _, id := range master.WorkPhotoAssetIDs {
+			available[id] = struct{}{}
+		}
+		for _, id := range heroes {
+			if _, ok := available[id]; !ok {
+				return nil, apperrors.New("HERO_PHOTO_NOT_IN_GALLERY", "Hero-фото должно входить в галерею работ", 400)
+			}
+		}
+		master.HeroWorkPhotoAssetIDs = pq.StringArray(heroes)
+	} else if req.WorkPhotoAssetIDs != nil {
+		// Удалённые из галереи фотографии больше не могут оставаться hero-фото.
+		available := make(map[string]struct{}, len(master.WorkPhotoAssetIDs))
+		for _, id := range master.WorkPhotoAssetIDs {
+			available[id] = struct{}{}
+		}
+		filteredHeroes := make([]string, 0, len(master.HeroWorkPhotoAssetIDs))
+		for _, id := range master.HeroWorkPhotoAssetIDs {
+			if _, ok := available[id]; ok {
+				filteredHeroes = append(filteredHeroes, id)
+			}
+		}
+		master.HeroWorkPhotoAssetIDs = pq.StringArray(filteredHeroes)
+	}
 	if req.WorkFrom != nil {
 		master.WorkFrom = req.WorkFrom
 	}
@@ -1066,27 +1112,6 @@ func (uc *MasterUseCase) UpdateMasterProfile(
 	}
 	if req.WorkingDays != nil {
 		master.WorkingDays = boolDaysToString(req.WorkingDays)
-	}
-	if req.HasParking != nil {
-		master.HasParking = *req.HasParking
-	}
-	if req.HasWifi != nil {
-		master.HasWifi = *req.HasWifi
-	}
-	if req.HasWaitingArea != nil {
-		master.HasWaitingArea = *req.HasWaitingArea
-	}
-	if req.OffersCoffee != nil {
-		master.OffersCoffee = *req.OffersCoffee
-	}
-	if req.HasEvacuation != nil {
-		master.HasEvacuation = *req.HasEvacuation
-	}
-	if req.HasPartsInStock != nil {
-		master.HasPartsInStock = *req.HasPartsInStock
-	}
-	if req.LiftCount != nil {
-		master.LiftCount = *req.LiftCount
 	}
 
 	if err := uc.masterRepo.Update(ctx, master); err != nil {
@@ -1106,6 +1131,102 @@ func boolDaysToString(days []bool) pq.StringArray {
 		result[i] = fmt.Sprintf("%t", day)
 	}
 	return pq.StringArray(result)
+}
+
+var allowedMasterFeatures = map[string]struct{}{
+	"parking":      {},
+	"waiting_area": {},
+	"coffee":       {},
+	"wifi":         {},
+	"towing":       {},
+	"spare_parts":  {},
+}
+
+var allowedMasterPayments = map[string]struct{}{
+	"cash":       {},
+	"card":       {},
+	"sbp":        {},
+	"qr":         {},
+	"apple_pay":  {},
+	"google_pay": {},
+}
+
+func normalizeMasterFeatures(features []string) []string {
+	result := make([]string, 0, len(features))
+	seen := make(map[string]struct{}, len(features))
+	for _, feature := range features {
+		if _, ok := allowedMasterFeatures[feature]; !ok {
+			continue
+		}
+		if _, ok := seen[feature]; ok {
+			continue
+		}
+		seen[feature] = struct{}{}
+		result = append(result, feature)
+	}
+	return result
+}
+
+func normalizeMasterPayments(payments []string) []string {
+	result := make([]string, 0, len(payments))
+	seen := make(map[string]struct{}, len(payments))
+	for _, payment := range payments {
+		payment = strings.ToLower(strings.TrimSpace(payment))
+		if _, ok := allowedMasterPayments[payment]; !ok {
+			continue
+		}
+		if _, ok := seen[payment]; ok {
+			continue
+		}
+		seen[payment] = struct{}{}
+		result = append(result, payment)
+	}
+	return result
+}
+
+func uniqueStrings(values []string) []string {
+	result := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
+}
+
+func (uc *MasterUseCase) validateOwnedWorkPhotoIDs(
+	ctx context.Context,
+	userID string,
+	ids []string,
+) ([]string, error) {
+	requested := uniqueStrings(ids)
+	if uc.mediaRepo == nil || len(requested) == 0 {
+		return requested, nil
+	}
+
+	assets, err := uc.mediaRepo.GetAssetsByEntity(ctx, string(domain.MediaEntityWork), userID)
+	if err != nil {
+		return nil, apperrors.ErrInternalServer
+	}
+	owned := make(map[string]struct{}, len(assets))
+	for _, asset := range assets {
+		if asset == nil || asset.EntityType != domain.MediaEntityWork || asset.EntityID != userID || asset.CreatedBy != userID || asset.Status != domain.MediaStatusReady {
+			continue
+		}
+		owned[asset.ID] = struct{}{}
+	}
+	for _, id := range requested {
+		if _, ok := owned[id]; !ok {
+			return nil, apperrors.New("WORK_PHOTO_FORBIDDEN", "Фотография не принадлежит профилю мастера", 403)
+		}
+	}
+	return requested, nil
 }
 
 func stringDaysToBool(days pq.StringArray) []bool {
@@ -1156,6 +1277,7 @@ func (uc *MasterUseCase) GetAutoServiceProfile(ctx context.Context, userID strin
 			Description:          profile.Description,
 			Address:              profile.Address,
 			Coordinates:          profile.Coordinates,
+			AvatarURL:            profile.AvatarURL,
 			CoverImageURL:        profile.CoverImageURL,
 			CoverImageAssetID:    profile.CoverImageAssetID,
 			Status:               profile.Status,
@@ -1199,6 +1321,9 @@ func (uc *MasterUseCase) UpdateAutoServiceProfile(ctx context.Context, userID st
 	}
 	if req.Coordinates != nil {
 		profile.Coordinates = req.Coordinates
+	}
+	if req.AvatarURL != nil {
+		profile.AvatarURL = req.AvatarURL
 	}
 	if req.CoverImageURL != nil {
 		profile.CoverImageURL = req.CoverImageURL
@@ -1306,14 +1431,13 @@ func (uc *MasterUseCase) GetAutoShopProfile(ctx context.Context, userID string) 
 			Description:          profile.Description,
 			Address:              profile.Address,
 			Coordinates:          profile.Coordinates,
+			AvatarURL:            profile.AvatarURL,
 			CoverImageURL:        profile.CoverImageURL,
 			CoverImageAssetID:    profile.CoverImageAssetID,
 			Status:               profile.Status,
 			OnlineBookingEnabled: profile.OnlineBookingEnabled,
 			Services:             []string(profile.Services),
 			Payments:             []string(profile.Payments),
-			Brands:               []string(profile.Brands),
-			ProductCategories:    []string(profile.ProductCategories),
 			WorkFrom:             profile.WorkFrom,
 			WorkTo:               profile.WorkTo,
 			WorkingDays:          stringDaysToBool(profile.WorkingDays),
@@ -1345,6 +1469,9 @@ func (uc *MasterUseCase) UpdateAutoShopProfile(ctx context.Context, userID strin
 	if req.Coordinates != nil {
 		profile.Coordinates = req.Coordinates
 	}
+	if req.AvatarURL != nil {
+		profile.AvatarURL = req.AvatarURL
+	}
 	if req.CoverImageURL != nil {
 		profile.CoverImageURL = req.CoverImageURL
 	}
@@ -1366,12 +1493,6 @@ func (uc *MasterUseCase) UpdateAutoShopProfile(ctx context.Context, userID strin
 	}
 	if req.Payments != nil {
 		profile.Payments = pq.StringArray(req.Payments)
-	}
-	if req.Brands != nil {
-		profile.Brands = pq.StringArray(req.Brands)
-	}
-	if req.ProductCategories != nil {
-		profile.ProductCategories = pq.StringArray(req.ProductCategories)
 	}
 	if req.WorkFrom != nil {
 		profile.WorkFrom = req.WorkFrom
@@ -1440,6 +1561,7 @@ func (uc *MasterUseCase) GetAutoWashProfile(ctx context.Context, userID string) 
 			Description:          profile.Description,
 			Address:              profile.Address,
 			Coordinates:          profile.Coordinates,
+			AvatarURL:            profile.AvatarURL,
 			CoverImageURL:        profile.CoverImageURL,
 			CoverImageAssetID:    profile.CoverImageAssetID,
 			Status:               profile.Status,
@@ -1487,6 +1609,9 @@ func (uc *MasterUseCase) UpdateAutoWashProfile(ctx context.Context, userID strin
 	}
 	if req.Coordinates != nil {
 		profile.Coordinates = req.Coordinates
+	}
+	if req.AvatarURL != nil {
+		profile.AvatarURL = req.AvatarURL
 	}
 	if req.CoverImageURL != nil {
 		profile.CoverImageURL = req.CoverImageURL

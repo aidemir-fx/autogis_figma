@@ -1,0 +1,45 @@
+export const designTokens = {
+    colors: {
+        blue500: "#4673D5",
+        blue600: "#416DCF",
+        gray900: "#212C3F",
+        gray500: "#8492A5",
+        gray700: "#626F83",
+        gray300: "#D7DDE6",
+        gray100: "#F6F6F6",
+        white: "#FFFFFF",
+        green500: "#5A8A36",
+        green600: "#4D792E",
+        red500: "#D05050",
+        red600: "#B83E42",
+        yellow500: "#F9D100",
+        blue500Rgb: "70 115 213",
+        gray900Rgb: "33 44 63",
+    },
+    spacing: {
+        s4: "4px",
+        s8: "8px",
+        s12: "12px",
+        s16: "16px",
+        s24: "24px",
+        s32: "32px",
+        s40: "40px",
+        s48: "48px",
+    },
+    radius: {
+        r4: "4px",
+        r8: "8px",
+        r12: "12px",
+        r16: "16px",
+        r24: "24px",
+        round: "50%",
+        pill: "999px",
+    },
+    shadows: {
+        list: "0 6px 10px rgba(33, 44, 63, 0.1)",
+        filter: "0 0 10px rgba(33, 44, 63, 0.1)",
+    },
+    fontFamily: '"Manrope", ui-sans-serif, system-ui, sans-serif',
+} as const;
+
+export type DesignTokens = typeof designTokens;

@@ -1,7 +1,6 @@
 import { http } from "@common/lib/http";
 import { Master, MasterStatus } from "@common/types";
 import { MastersSearchParams } from "../types";
-import { getAccountAvatars } from "@modules/media/api";
 
 type BackendPoint = {
     type?: string;
@@ -87,24 +86,6 @@ function mapBackendProvider(provider: BackendProvider): Master {
     } as Master;
 }
 
-function resolveAccountId(master: Master): string {
-    return master.userId || master.id;
-}
-
-function applyAvatarMap(
-    masters: Master[],
-    avatarMap: Record<string, string | null>
-): Master[] {
-    return masters.map((master) => {
-        const accountId = resolveAccountId(master);
-        const mediaAvatar = avatarMap[accountId] ?? null;
-        return {
-            ...master,
-            avatar: master.avatar ?? mediaAvatar ?? undefined,
-        };
-    });
-}
-
 export async function fetchMasters(
     params: MastersSearchParams
 ): Promise<Master[]> {
@@ -126,20 +107,22 @@ export async function fetchMasters(
 
 export async function fetchMyProfile() {
     const { data } = await http.get<BackendMaster>(`/masters/profile/me`);
-    const mapped = mapBackendMaster(data);
-    const avatarMap = await getAccountAvatars([resolveAccountId(mapped)]);
-    return applyAvatarMap([mapped], avatarMap)[0];
+    return mapBackendMaster(data);
 }
 
 export async function updateMyProfile(payload: {
     fullName?: string;
     address?: string;
     coordinates?: { x: number; y: number };
+    avatarUrl?: string;
     description?: string;
     professions?: string[];
     autoMarks?: { name: string; internationalName?: string }[];
     services?: string[];
     payments?: string[];
+    features?: string[];
+    workPhotoAssetIds?: string[];
+    heroWorkPhotoAssetIds?: string[];
     workingDays?: boolean[];
     workFrom?: string;
     workTo?: string;
@@ -147,14 +130,6 @@ export async function updateMyProfile(payload: {
     liveQueueEnabled?: boolean;
     phone?: string;
     workingPhone?: string;
-    coverImageAssetId?: string;
-    hasParking?: boolean;
-    hasWifi?: boolean;
-    hasWaitingArea?: boolean;
-    offersCoffee?: boolean;
-    hasEvacuation?: boolean;
-    hasPartsInStock?: boolean;
-    liftCount?: number;
 }) {
     const requestPayload = {
         ...payload,
@@ -204,13 +179,6 @@ export async function fetchAllAutoMarks(): Promise<
 
 export async function fetchAllServices(): Promise<string[]> {
     const { data } = await http.get<CatalogOption[]>("/catalog/services");
-    return data.map((item) => item.name);
-}
-
-export async function fetchAllProductCategories(): Promise<string[]> {
-    const { data } = await http.get<CatalogOption[]>(
-        "/catalog/product-categories",
-    );
     return data.map((item) => item.name);
 }
 

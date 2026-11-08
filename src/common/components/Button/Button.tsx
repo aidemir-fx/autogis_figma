@@ -22,7 +22,6 @@ export type ButtonProps = DetailedHTMLProps<
     children: ReactNode;
     icon?: ReactNode;
     variant?: "contained" | "text" | "outlined";
-    size?: "small" | "medium" | "large" | string;
     isFullWidth?: boolean;
     color?: Colors;
     isLoading?: boolean;
@@ -33,7 +32,6 @@ export const Button = (props: ButtonProps) => {
         children,
         icon,
         variant = "contained",
-        size,
         isFullWidth,
         color,
         isLoading,

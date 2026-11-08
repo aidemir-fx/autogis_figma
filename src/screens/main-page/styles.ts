@@ -88,7 +88,7 @@ export const ProfileButton = styled.button<{ $hasAvatar?: boolean; $square?: boo
     overflow: hidden;
     background: #111827;
     color: #3b82f6;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-family: var(--default-font-family);
     font-size: 12px;
     font-weight: 800;
 `;
@@ -291,7 +291,7 @@ export const ActivityChip = styled.button<{ $isActive: boolean }>`
     span {
         color: ${({ $isActive }) =>
             $isActive ? "rgba(255,255,255,0.62)" : "#6b7280"};
-        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-family: var(--default-font-family);
         font-size: 11px;
     }
 `;
@@ -401,7 +401,7 @@ export const CarouselTitle = styled.h2`
 
 export const CarouselMeta = styled.span`
     color: #6b7280;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-family: var(--default-font-family);
     font-size: 11px;
 
     &::before {

@@ -1,0 +1,7 @@
+.env
+*.env
+.git
+.gocache
+*.log
+*.tmp
+.DS_Store

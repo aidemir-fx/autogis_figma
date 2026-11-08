@@ -103,7 +103,6 @@ export const LoginScreen = () => {
                 localStorage.setItem("user", JSON.stringify(normalizedUser));
                 // Обновляем React Query кэш с новыми данными
                 queryClient.setQueryData(["userProfile"], normalizedUser);
-                queryClient.setQueryData(["userProfile", normalizedUser.id], normalizedUser);
             }
             navigate("/cabinet");
         } catch (err: any) {
@@ -206,7 +205,6 @@ export const LoginScreen = () => {
                                 {loading ? "Вход..." : "Войти"}
                             </Button>
                         </ButtonWrapper>
-
                         <HintWrapper>
                             <HintTitle>Еще нет аккаунта?</HintTitle>
                         </HintWrapper>

@@ -23,18 +23,12 @@ export type StoryReportReason = "spam" | "abuse" | "inappropriate" | "other";
 
 export type StoryAuthor = {
     userId: string;
+    providerId?: string;
+    activityType?: "master" | "auto_wash" | "auto_service" | "auto_shop";
     displayName: string;
     role: string;
     /** Professional profile image (business cover when configured). */
     avatarUrl?: string;
-};
-
-export type StoryPromo = {
-    tag?: string;
-    title: string;
-    description?: string;
-    benefit?: string;
-    actionType?: "book" | "call";
 };
 
 export type StoryFrame = StoryImageLayout & {
@@ -47,11 +41,6 @@ export type StoryFrame = StoryImageLayout & {
     text?: string;
     background: string;
     fontSize: number;
-    textColor?: string;
-    textBg?: string;
-    textAlign?: "center" | "left" | "right";
-    textBadge?: boolean;
-    promo?: StoryPromo;
 };
 
 export type Story = {
@@ -80,11 +69,6 @@ export type CreateStoryFrame = StoryImageLayout & {
     text?: string;
     background?: string;
     fontSize?: number;
-    textColor?: string;
-    textBg?: string;
-    textAlign?: "center" | "left" | "right";
-    textBadge?: boolean;
-    promo?: StoryPromo;
 };
 
 export async function fetchHomeStories(): Promise<Story[]> {

@@ -9,9 +9,8 @@ import { Coordinates } from "@modules/masters";
 import { DesktopTimePicker } from "@mui/x-date-pickers/DesktopTimePicker";
 import dayjs, { Dayjs } from "dayjs";
 import { mapCoordinatesToPoint } from "@modules/masters/domain/api";
-import { fetchAllAutoMarks, fetchAllProductCategories } from "@modules/masters/domain/api";
 import { toast } from "react-toastify";
-import { Button, Checkbox, CoverPhotoUpload, SettingsSection, TagSelector, TextField } from "@common/components";
+import { AvatarUpload, Button, Checkbox, CoverPhotoUpload, SettingsSection, TagSelector, TextField } from "@common/components";
 import { MapButton } from "../Settings/styles";
 import { useAutoShop } from "@common/hooks";
 import { http } from "@common/lib/http";
@@ -84,6 +83,16 @@ export function AutoShopSettings() {
     const { autoShopProfile, isLoading, error, refetch } = useAutoShop();
     const autoShop = autoShopProfile?.profile;
 
+    const saveProfileAvatar = async (avatarUrl: string) => {
+        try {
+            await http.put("/auto_shops/profile/me", { avatarUrl });
+            await refetch();
+            toast.success("Аватар профиля обновлён");
+        } catch {
+            toast.error("Не удалось сохранить аватар профиля");
+        }
+    };
+
     const form = useForm<AutoShopFormValues>({
         resolver: yupResolver(autoShopSchema) as any,
         defaultValues: {
@@ -117,16 +126,6 @@ export function AutoShopSettings() {
     const { data: availableServices } = useQuery({
         queryKey: ["autoShopAdditionalServices"],
         queryFn: fetchAutoShopAdditionalServices,
-    });
-
-    const autoShopBrandsQuery = useQuery({
-        queryKey: ["auto-shop-brands"],
-        queryFn: fetchAllAutoMarks,
-    });
-
-    const productCategoriesQuery = useQuery({
-        queryKey: ["product-categories"],
-        queryFn: fetchAllProductCategories,
     });
 
     useEffect(() => {
@@ -279,6 +278,21 @@ export function AutoShopSettings() {
                 <AutoShopStatusToggle
                     currentStatus={autoShop?.status || AutoShopStatus.SCHEDULE}
                 />
+            </SettingsSection>
+
+            <SettingsSection icon={<GearIcon color="#1d4ed8" />} title="Аватар профиля">
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Фото будет показываться в поиске и публичном профиле автомагазина.
+                    Личный аватар аккаунта не изменится.
+                </Typography>
+                {autoShop && (
+                    <AvatarUpload
+                        entityId={autoShop.id}
+                        entityType="work"
+                        fallbackText={autoShop.fullName ?? "А"}
+                        onUploaded={saveProfileAvatar}
+                    />
+                )}
             </SettingsSection>
 
             <form onSubmit={form.handleSubmit(onSubmit, () => {
@@ -500,7 +514,7 @@ export function AutoShopSettings() {
                     <TagSelector
                         name="brands"
                         control={form.control}
-                        options={autoShopBrandsQuery.data?.map((brand) => brand.name) ?? []}
+                        options={[]}
                         label="Добавить бренд"
                         placeholder="Введите бренд"
                         helperText="Укажите бренды товаров в наличии"
@@ -510,7 +524,7 @@ export function AutoShopSettings() {
                     <TagSelector
                         name="productCategories"
                         control={form.control}
-                        options={productCategoriesQuery.data ?? []}
+                        options={[]}
                         label="Добавить категорию"
                         placeholder="Введите категорию товаров"
                         helperText="Укажите категории товаров"

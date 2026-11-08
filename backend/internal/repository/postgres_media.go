@@ -208,6 +208,24 @@ func (r *mediaRepositoryImpl) CountAssetsByEntity(ctx context.Context, entityTyp
 	return count, err
 }
 
+// IsProviderProfileOwnedByUser is used by profile-scoped media uploads. The
+// public profile avatar is stored as a work media asset keyed by the provider
+// profile ID, while the personal avatar remains keyed by the account ID.
+func (r *mediaRepositoryImpl) IsProviderProfileOwnedByUser(ctx context.Context, profileID, userID string) (bool, error) {
+	var owned bool
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT EXISTS (
+			SELECT 1 FROM masters WHERE id = ? AND user_id = ?
+			UNION ALL
+			SELECT 1 FROM auto_services WHERE id = ? AND user_id = ?
+			UNION ALL
+			SELECT 1 FROM auto_shops WHERE id = ? AND user_id = ?
+			UNION ALL
+			SELECT 1 FROM auto_washes WHERE id = ? AND user_id = ?
+		)`, profileID, userID, profileID, userID, profileID, userID, profileID, userID).Scan(&owned).Error
+	return owned, err
+}
+
 func (r *mediaRepositoryImpl) GetActiveAvatarByEntity(ctx context.Context, entityType, entityID string) (*domain.MediaAsset, error) {
 	var asset domain.MediaAsset
 	err := r.db.WithContext(ctx).

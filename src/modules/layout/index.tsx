@@ -12,17 +12,22 @@ import {
     Box,
 } from "@mui/material";
 import {
-    MapPin,
+    Search,
     Calendar,
     MessageSquare,
     User,
     CheckCircle,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useMediaQuery } from "@mui/material";
+import { COMPACT_LAYOUT_MEDIA_QUERY } from "./features/layoutViewport";
 
 export const BottomNavigationBar: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const isCompact = useMediaQuery(COMPACT_LAYOUT_MEDIA_QUERY);
+
+    if (!isCompact) return null;
 
     const getCurrentValue = () => {
         const path = location.pathname;
@@ -57,11 +62,11 @@ export const BottomNavigationBar: React.FC = () => {
                 sx={{ height: 60 }}
             >
                 <BottomNavigationAction
-                    label="Карта"
-                    icon={<MapPin size={20} />}
+                    label="Поиск"
+                    icon={<Search size={20} />}
                 />
                 <BottomNavigationAction
-                    label="Заявки"
+                    label="Записи"
                     icon={<Calendar size={20} />}
                 />
                 <BottomNavigationAction
@@ -69,7 +74,7 @@ export const BottomNavigationBar: React.FC = () => {
                     icon={<MessageSquare size={20} />}
                 />
                 <BottomNavigationAction
-                    label="Кабинет"
+                    label="Профиль"
                     icon={<User size={20} />}
                 />
             </BottomNavigation>

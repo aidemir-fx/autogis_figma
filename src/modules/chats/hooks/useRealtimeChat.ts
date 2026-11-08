@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { playNotificationSound } from "@common/lib/sound";
 import { getRealtimeBaseURL, http } from "@common/lib/http";
 import { ChatMessage } from "@modules/chats/api";
-import { playNotificationSound } from "@common/lib/sound";
 
 export type ChatRealtimeEvent = {
     orderId: string;

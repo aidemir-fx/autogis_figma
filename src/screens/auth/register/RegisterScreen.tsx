@@ -112,7 +112,6 @@ export const RegisterScreen = () => {
                     ["userProfile", normalizedUser.id],
                     normalizedUser
                 );
-                queryClient.setQueryData(["userProfile"], normalizedUser);
             }
 
             navigate("/cabinet");

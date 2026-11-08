@@ -1,84 +1,92 @@
 services:
   postgres:
     image: postgis/postgis:16-3.4
-    container_name: autogis_postgres
     environment:
       POSTGRES_DB: auto_masters
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-${POSTGRES_PASSWORD:-postgres}}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d auto_masters"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
 
   rustfs:
     image: rustfs/rustfs:latest
-    container_name: autogis_rustfs
-    restart: always
-    environment:
-      - RUSTFS_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
-      - RUSTFS_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
-      - RUSTFS_CONSOLE_ENABLE=true
-      - RUSTFS_ADDRESS=:9000
-      - RUSTFS_CONSOLE_ADDRESS=:9001
-    volumes:
-      - rustfs_data:/data
     command: /data
-    healthcheck:
-      test: ["CMD", "sh", "-c", "nc -z localhost 9000 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    environment:
+      RUSTFS_ACCESS_KEY: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
+      RUSTFS_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: autogis_backend
-    restart: always
     environment:
-      - PORT=3001
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD:-postgres}}
-      - DB_NAME=auto_masters
-      - DB_SSLMODE=disable
-      - ENABLE_RUNTIME_MIGRATIONS=true
-      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key}
-      - JWT_ACCESS_EXPIRE=60
-      - JWT_REFRESH_EXPIRE=720
-      - S3_ENDPOINT=rustfs:9000
-      - S3_BUCKET=autogis-media-dev
-      - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
-      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
-      - YANDEX_MAPS_API_KEY=${YANDEX_MAPS_API_KEY:-${VITE_YMAPS_API_KEY:-}}
-      - S3_USE_SSL=false
-      - CDN_BASE_URL=${CDN_BASE_URL:-${PUBLIC_URL:-http://localhost}/api/v1/media/files}
-    ports:
-      - "3001:3001"
+      PORT: 3001
+      HOST: 0.0.0.0
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      DB_NAME: auto_masters
+      DB_SSLMODE: disable
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_ACCESS_EXPIRE: ${JWT_ACCESS_EXPIRE:-15}
+      JWT_REFRESH_EXPIRE: ${JWT_REFRESH_EXPIRE:-24}
+      ENVIRONMENT: production
+      FRONTEND_URL: ${PUBLIC_URL:-http://localhost}
+      REQUIRE_POSTGIS: "true"
+      ENABLE_RUNTIME_MIGRATIONS: "true"
+      S3_BUCKET: autogis-media
+      S3_REGION: us-east-1
+      S3_ENDPOINT: http://rustfs:9000
+      S3_PUBLIC_ENDPOINT: ${PUBLIC_MEDIA_URL:-http://localhost:9000}
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
+      S3_KMS_KEY_ID: ""
+      S3_PUBLIC_READ: "true"
+      CDN_BASE_URL: ${PUBLIC_MEDIA_URL:-http://localhost:9000}/autogis-media
+      STORIES_LOG_PATH: /var/log/autogis/stories.log
+    volumes:
+      - ./runtime-logs:/var/log/autogis
     depends_on:
       postgres:
         condition: service_healthy
       rustfs:
-        condition: service_healthy
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   frontend:
     build:
       context: .
       dockerfile: frontend.Dockerfile
       args:
-        VITE_YMAPS_API_KEY: ${VITE_YMAPS_API_KEY:-}
-    container_name: autogis_frontend
-    restart: always
+        VITE_API_URL: /api
+        VITE_YMAPS_API_KEY: ${VITE_YMAPS_API_KEY:?Set VITE_YMAPS_API_KEY in .env}
     ports:
-      - "80:80"
+      - "${APP_PORT:-80}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:
-  rustfs_data:
+  minio_data:

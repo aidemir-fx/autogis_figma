@@ -225,6 +225,8 @@ func (r *storyRepositoryImpl) ListReports(ctx context.Context, limit, offset int
 func (r *storyRepositoryImpl) GetAuthor(ctx context.Context, userID string) (*domain.StoryAuthorResponse, error) {
 	var row struct {
 		UserID          string
+		ProviderID      string
+		ActivityType    string
 		DisplayName     string
 		Role            string
 		IsPrivateMaster bool
@@ -232,11 +234,19 @@ func (r *storyRepositoryImpl) GetAuthor(ctx context.Context, userID string) (*do
 	}
 	err := r.db.WithContext(ctx).Raw(`
 		SELECT u.id AS user_id,
+			COALESCE(m.id, aw.id, ash.id, asv.id) AS provider_id,
+			CASE
+				WHEN m.id IS NOT NULL THEN 'master'
+				WHEN aw.id IS NOT NULL THEN 'auto_wash'
+				WHEN ash.id IS NOT NULL THEN 'auto_shop'
+				WHEN asv.id IS NOT NULL THEN 'auto_service'
+				ELSE ''
+			END AS activity_type,
 			COALESCE(NULLIF(m.full_name, ''), NULLIF(aw.full_name, ''),
 				NULLIF(ash.full_name, ''), NULLIF(asv.full_name, ''),
 				NULLIF(u.name, ''), u.phone) AS display_name,
 			u.role,
-			COALESCE(NULLIF(aw.cover_image_url, ''),
+			COALESCE(NULLIF(m.avatar_url, ''), NULLIF(aw.cover_image_url, ''),
 				NULLIF(ash.cover_image_url, ''),
 				NULLIF(asv.cover_image_url, '')) AS avatar_url,
 			m.user_id IS NOT NULL AS is_private_master
@@ -259,6 +269,8 @@ func (r *storyRepositoryImpl) GetAuthor(ctx context.Context, userID string) (*do
 	}
 	return &domain.StoryAuthorResponse{
 		UserID:          row.UserID,
+		ProviderID:      row.ProviderID,
+		ActivityType:    row.ActivityType,
 		DisplayName:     row.DisplayName,
 		Role:            domain.UserRole(row.Role),
 		IsPrivateMaster: row.IsPrivateMaster,

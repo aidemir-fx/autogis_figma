@@ -1,3 +1,33 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
+:root {
+    --default-font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    --ds-color-blue-500: #4673d5;
+    --ds-color-blue-600: #416dcf;
+    --ds-color-gray-900: #212c3f;
+    --ds-color-gray-500: #8492a5;
+    --ds-color-gray-700: #626f83;
+    --ds-color-gray-300: #d7dde6;
+    --ds-color-gray-100: #f6f6f6;
+    --ds-color-white: #ffffff;
+    --ds-color-green-500: #5a8a36;
+    --ds-color-green-600: #4d792e;
+    --ds-color-red-500: #d05050;
+    --ds-color-red-600: #b83e42;
+    --ds-color-yellow-500: #f9d100;
+    --ds-color-blue-500-rgb: 70 115 213;
+    --ds-color-gray-900-rgb: 33 44 63;
+    --ds-radius-4: 4px;
+    --ds-radius-8: 8px;
+    --ds-radius-12: 12px;
+    --ds-radius-16: 16px;
+    --ds-radius-24: 24px;
+    --ds-radius-round: 50%;
+    --ds-radius-pill: 999px;
+    --ds-shadow-list: 0 6px 10px rgba(33, 44, 63, 0.1);
+    --ds-shadow-filter: 0 0 10px rgba(33, 44, 63, 0.1);
+}
+
 a {
     text-decoration: none;
     color: unset;
@@ -7,6 +37,7 @@ a {
     box-sizing: border-box;
     font-family: var(
         --default-font-family,
+        "Manrope",
         ui-sans-serif,
         system-ui,
         sans-serif,

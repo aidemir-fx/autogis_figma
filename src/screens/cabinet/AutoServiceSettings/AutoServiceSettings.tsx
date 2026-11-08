@@ -15,7 +15,7 @@ import {
     mapCoordinatesToPoint,
 } from "@modules/masters/domain/api";
 import { toast } from "react-toastify";
-import { Button, CoverPhotoUpload, TagSelector, SettingsSection, TextField } from "@common/components";
+import { AvatarUpload, Button, CoverPhotoUpload, TagSelector, SettingsSection, TextField } from "@common/components";
 import { MapButton } from "../Settings/styles";
 import { useAutoService } from "@common/hooks";
 import { http } from "@common/lib/http";
@@ -107,6 +107,16 @@ export function AutoServiceSettings() {
     const [coverUploadActive, setCoverUploadActive] = useState(false);
     const { autoServiceProfile, isLoading, error, refetch } = useAutoService();
     const profile = autoServiceProfile;
+
+    const saveProfileAvatar = async (avatarUrl: string) => {
+        try {
+            await http.put("/auto_services/profile/me", { avatarUrl });
+            await refetch();
+            toast.success("Аватар профиля обновлён");
+        } catch {
+            toast.error("Не удалось сохранить аватар профиля");
+        }
+    };
 
     const form = useForm<AutoServiceFormValues>({
         resolver: yupResolver(autoServiceSchema) as any,
@@ -314,6 +324,19 @@ export function AutoServiceSettings() {
                     currentStatus={
                         profile?.profile?.status ?? AutoServiceStatus.SCHEDULE
                     }
+                />
+            </SettingsSection>
+
+            <SettingsSection icon={<GearIcon color="#1d4ed8" />} title="Аватар профиля">
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Фото будет показываться в поиске и публичном профиле автосервиса.
+                    Личный аватар аккаунта не изменится.
+                </Typography>
+                <AvatarUpload
+                    entityId={profile.profile.id}
+                    entityType="work"
+                    fallbackText={profile.profile.fullName ?? "А"}
+                    onUploaded={saveProfileAvatar}
                 />
             </SettingsSection>
 

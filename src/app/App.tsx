@@ -48,6 +48,8 @@ import { OrderPreviewShowcaseScreen } from "@screens/showcase/OrderPreviewShowca
 import { OrderPreviewFinalScreen } from "@screens/showcase/OrderPreviewFinal";
 import { ApplicationsRedesignScreen } from "@screens/showcase/ApplicationsRedesign";
 import { MasterCardRedesignScreen } from "@screens/showcase/MasterCardRedesign";
+import { MobileSearchStatesWorkbench } from "@screens/skill-workbenches/MobileSearchStates";
+import { ProviderCardBreakWorkbench } from "@screens/skill-workbenches/ProviderCardBreakWorkbench";
 import {
     BottomNavigationBar,
     WelcomeModal,
@@ -83,6 +85,8 @@ export function App() {
                             >
                                 <Box>
                                     <Routes>
+                                        <Route path="/__workbench/mobile-search" element={<MobileSearchStatesWorkbench />} />
+                                        <Route path="/__workbench/provider-card-break" element={<ProviderCardBreakWorkbench />} />
                                         <Route
                                             path="/"
                                             element={<MainpPageScreen />}
@@ -264,10 +268,6 @@ export function App() {
                                         />
                                         <Route
                                             path="/master"
-                                            element={<MasterDetailsScreen />}
-                                        />
-                                        <Route
-                                            path="/master-details"
                                             element={<MasterDetailsScreen />}
                                         />
                                         <Route

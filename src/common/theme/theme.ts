@@ -1,114 +1,109 @@
 import { breakpoints } from "./breakpoints";
+import { designTokens } from "./designTokens";
+
+const { colors, radius, shadows } = designTokens;
 
 export const theme = {
     palette: {
         blue: {
-            primary: "#3b82f6",
-            secondary: "#e1edfd",
-            text: "#1d4ed8",
-            light: "#eff6ff",
+            primary: colors.blue500,
+            secondary: colors.gray300,
+            text: colors.blue500,
+            light: colors.gray100,
         },
         green: {
-            primary: "#64B441",
-            secondary: "#26412B0A",
-            [800]: "#26412B0A",
+            primary: colors.green500,
+            secondary: "rgba(90, 138, 54, 0.08)",
+            [800]: "rgba(90, 138, 54, 0.08)",
         },
-        white: "#FFFFFF",
+        white: colors.white,
         gray: {
-            primary: "#000000B2",
+            primary: colors.gray500,
         },
         text: {
-            primary: "#262626",
-            secondary: "#808080",
-            compliment: "#4D4D4D",
-            hint: "#B2B2B2",
-            genericAccent: "#D9D9D9",
-            white: "#FFFFFF",
+            primary: colors.gray900,
+            secondary: colors.gray500,
+            compliment: colors.gray900,
+            hint: colors.gray500,
+            genericAccent: colors.gray300,
+            white: colors.white,
         },
         background: {
-            [1]: "#FFFFFF",
-            [2]: "#FAFAFA",
-            [3]: "#F7F7F7",
-            chipsAndPagiantion: "#000000B2",
+            [1]: colors.white,
+            [2]: colors.gray100,
+            [3]: colors.gray300,
+            chipsAndPagiantion: colors.gray500,
         },
         actions: {
-            brand: "#64B441",
-            brandHeavy: "#4E992D",
-            negative: "#BD0935",
-            inactive: "#D0E9C6",
-            accent: "#49CB34",
+            brand: colors.green500,
+            brandHeavy: colors.green500,
+            negative: colors.red500,
+            inactive: colors.gray300,
+            accent: colors.green500,
         },
         info: {
-            light: "#E1EFFD",
-            heavy: "#3072B3",
+            light: colors.gray100,
+            heavy: colors.blue500,
         },
         success: {
-            light: "#E8F4E3",
-            heavy: "#2A8800",
+            light: colors.gray100,
+            heavy: colors.green500,
         },
         warning: {
-            light: "#FFBE5C4D",
-            heavy: "#BD5C0A",
+            light: colors.gray100,
+            heavy: colors.gray500,
         },
         error: {
-            light: "#FFD9E2",
-            heavy: "#BD0935",
+            light: colors.gray100,
+            heavy: colors.red500,
         },
         base: {
-            generic: "#0000000D",
+            generic: "rgba(33, 44, 63, 0.08)",
         },
         // TODO: Удалить, и поправить места использования. Не должно быть привязки к конкретным компонентам
         bage: {
             primary: {
-                text: "#3697F1",
-                background: "#3697F126",
+                text: colors.blue500,
+                background: "rgba(70, 115, 213, 0.12)",
             },
             gray: {
-                text: "#4D4D4D",
-                background: "#F2F2F2",
+                text: colors.gray900,
+                background: colors.gray100,
             },
             complementary: {
-                text: "#000000",
-                background: "#0000000D",
+                text: colors.gray900,
+                background: "rgba(33, 44, 63, 0.08)",
             },
             info: {
-                text: "#3072B3",
-                background: "#E1EFFD",
+                text: colors.blue500,
+                background: colors.gray100,
             },
             warning: {
-                text: "#BD5C0A",
-                background: "#FFEBCE",
+                text: colors.gray500,
+                background: colors.gray100,
             },
             success: {
-                text: "#2A8800",
-                background: "#E8F4E3",
+                text: colors.green500,
+                background: colors.gray100,
             },
             pink: {
-                text: "#BD0935",
-                background: "#FFD9E2",
+                text: colors.red500,
+                background: colors.gray100,
             },
         },
     },
     shape: {
-        large: "10px",
-        medium: "8px",
-        small: "6px",
-        round: "50%",
+        large: radius.r12,
+        medium: radius.r8,
+        small: radius.r4,
+        round: radius.round,
     },
-    // TODO: Для теней использовать абстрактные значения: large, medium, small или цифровые индексы
     shadows: {
-        separator: "0 1px 3px 0 rgb(0 0 0 / 0.1);",
-        hover: "0 4px 6px -1px #0000001a, 0 2px 4px -2px #0000001a",
+        separator: shadows.list,
+        hover: shadows.filter,
     },
     breakpoints,
-    fontFamily: `var(--default-font-family),
-        ui-sans-serif,
-        system-ui,
-        sans-serif,
-        "Apple Color Emoji",
-        "Segoe UI Emoji",
-        "Segoe UI Symbol",
-        "Noto Color Emoji"`,
+    fontFamily: `var(--default-font-family, ${designTokens.fontFamily})`,
 };
 
 export type Theme = typeof theme;

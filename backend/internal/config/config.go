@@ -31,9 +31,6 @@ type Config struct {
 	// Environment
 	Environment string
 
-	// Yandex Maps reverse geocoding
-	YandexMapsAPIKey string
-
 	// Frontend URL for CORS
 	FrontendURL string
 
@@ -45,7 +42,6 @@ type Config struct {
 	S3Bucket          string
 	S3Region          string
 	S3Endpoint        string // custom endpoint for dev (MinIO / LocalStack); empty = use AWS
-	S3UseSSL          bool   // use HTTPS for S3 endpoint
 	S3PublicEndpoint  string // public endpoint used when generating browser presigned URLs
 	S3PublicRead      bool   // allow anonymous GETs for locally hosted media
 	S3AccessKeyID     string // leave empty to use IAM role in production
@@ -71,7 +67,6 @@ func Load() (*Config, error) {
 		JWTAccessExpire:         parseInt(os.Getenv("JWT_ACCESS_EXPIRE"), 15),
 		JWTRefreshExpire:        parseInt(os.Getenv("JWT_REFRESH_EXPIRE"), 24),
 		Environment:             getOrDefault(os.Getenv("ENVIRONMENT"), "development"),
-		YandexMapsAPIKey:        getFirstNonEmpty(os.Getenv("YANDEX_MAPS_API_KEY"), os.Getenv("VITE_YMAPS_API_KEY")),
 		FrontendURL:             os.Getenv("FRONTEND_URL"),
 		RequirePostGIS:          parseBool(os.Getenv("REQUIRE_POSTGIS"), false),
 		EnableRuntimeMigrations: parseBool(os.Getenv("ENABLE_RUNTIME_MIGRATIONS"), false),
@@ -80,11 +75,10 @@ func Load() (*Config, error) {
 		S3Bucket:          getOrDefault(os.Getenv("S3_BUCKET"), "autogis-media-dev"),
 		S3Region:          getOrDefault(os.Getenv("S3_REGION"), "us-east-1"),
 		S3Endpoint:        os.Getenv("S3_ENDPOINT"),
-		S3UseSSL:          parseBool(os.Getenv("S3_USE_SSL"), false),
 		S3PublicEndpoint:  os.Getenv("S3_PUBLIC_ENDPOINT"),
 		S3PublicRead:      parseBool(os.Getenv("S3_PUBLIC_READ"), false),
-		S3AccessKeyID:     os.Getenv("S3_ACCESS_KEY"),
-		S3SecretAccessKey: os.Getenv("S3_SECRET_KEY"),
+		S3AccessKeyID:     os.Getenv("S3_ACCESS_KEY_ID"),
+		S3SecretAccessKey: os.Getenv("S3_SECRET_ACCESS_KEY"),
 		S3KMSKeyID:        os.Getenv("S3_KMS_KEY_ID"),
 		CDNBaseURL:        getOrDefault(os.Getenv("CDN_BASE_URL"), "http://localhost:9000/autogis-media-dev"),
 		StoryLogPath:      getOrDefault(os.Getenv("STORIES_LOG_PATH"), "runtime-logs/stories.log"),
@@ -140,15 +134,6 @@ func getOrDefault(s, defaultVal string) string {
 		return defaultVal
 	}
 	return s
-}
-
-func getFirstNonEmpty(values ...string) string {
-	for _, value := range values {
-		if value != "" {
-			return value
-		}
-	}
-	return ""
 }
 
 func parseBool(s string, defaultVal bool) bool {

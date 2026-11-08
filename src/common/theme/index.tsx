@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo } from "react";
 import { ThemeProvider as StyledThemeProvider, DefaultTheme } from "styled-components";
+import { designTokens } from "./designTokens";
 
 declare module "styled-components" {
     export interface DefaultTheme {
@@ -44,37 +45,37 @@ declare module "styled-components" {
 export const defaultTheme: DefaultTheme = {
     palette: {
         blue: {
-            primary: "#1e40af",
-            secondary: "#3b82f6",
-            text: "#1e3a8a",
-            light: "#eff6ff",
+            primary: designTokens.colors.blue500,
+            secondary: designTokens.colors.gray300,
+            text: designTokens.colors.blue500,
+            light: designTokens.colors.gray100,
         },
         background: {
-            "0": "#ffffff",
-            "1": "#f8fafc",
-            "2": "#f1f5f9",
-            "3": "#e2e8f0",
+            "0": designTokens.colors.white,
+            "1": designTokens.colors.white,
+            "2": designTokens.colors.gray100,
+            "3": designTokens.colors.gray300,
         },
         border: {
-            "0": "#e2e8f0",
-            "1": "#cbd5e1",
+            "0": designTokens.colors.gray300,
+            "1": designTokens.colors.gray500,
         },
         text: {
-            "0": "#0f172a",
-            "1": "#64748b",
+            "0": designTokens.colors.gray900,
+            "1": designTokens.colors.gray500,
         },
     },
     colors: {
-        primary: "#1e40af",
-        secondary: "#f59e0b",
-        background: "#f8fafc",
-        card: "#ffffff",
-        text: "#0f172a",
-        textSecondary: "#64748b",
-        border: "#e2e8f0",
-        success: "#10b981",
-        danger: "#ef4444",
-        warning: "#f59e0b",
+        primary: designTokens.colors.blue500,
+        secondary: designTokens.colors.green500,
+        background: designTokens.colors.gray100,
+        card: designTokens.colors.white,
+        text: designTokens.colors.gray900,
+        textSecondary: designTokens.colors.gray500,
+        border: designTokens.colors.gray300,
+        success: designTokens.colors.green500,
+        danger: designTokens.colors.red500,
+        warning: designTokens.colors.gray500,
     },
 };
 

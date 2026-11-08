@@ -80,6 +80,7 @@ func main() {
 	autoServiceRepo := repository.NewAutoServiceRepository(db)
 	professionalApplicationRepo := repository.NewProfessionalApplicationRepository(db)
 	mediaRepo := repository.NewMediaRepository(db)
+	favoriteRepo := repository.NewMasterFavoriteRepository(db)
 	activityGroupRepo := repository.NewActivityGroupRepository(db)
 	activitySubtypeRepo := repository.NewActivitySubtypeRepository(db)
 	userActivityProfileRepo := repository.NewUserActivityProfileRepository(db)
@@ -132,13 +133,13 @@ func main() {
 	userUseCase := usecase.NewUserUseCase(userRepo, userActivityTypeRepo, professionalApplicationRepo)
 	orderUseCase := usecase.NewOrderUseCase(orderRepo, userRepo, activityTypeRepo, userActivityTypeRepo, chatMessageRepo, professionalApplicationRepo, userActivityProfileRepo)
 	chatUseCase := usecase.NewChatUseCase(orderRepo, userRepo, chatMessageRepo)
-	searchUseCase := usecase.NewSearchUseCase(masterRepo, autoWashRepo, autoShopRepo, autoServiceRepo, userActivityTypeRepo, userRepo, activityTypeRepo, mediaRepo, s3Client)
+	searchUseCase := usecase.NewSearchUseCase(masterRepo, autoWashRepo, autoShopRepo, autoServiceRepo, userActivityTypeRepo, userRepo, activityTypeRepo)
 	activityTypeUseCase := usecase.NewActivityTypeUseCase(activityTypeRepo)
 	reviewUseCase := usecase.NewReviewUseCase(reviewRepo, userRepo, orderRepo, masterRepo, autoWashRepo, autoShopRepo, autoServiceRepo)
 	masterUseCase := usecase.NewMasterUseCase(
 		userRepo, masterRepo, autoWashRepo, autoShopRepo, autoServiceRepo,
 		activityTypeRepo, userActivityTypeRepo,
-		activityGroupRepo, activitySubtypeRepo, userActivityProfileRepo, activityAuditLogRepo,
+		activityGroupRepo, activitySubtypeRepo, userActivityProfileRepo, activityAuditLogRepo, mediaRepo,
 	)
 	professionalApplicationUseCase := usecase.NewProfessionalApplicationUseCase(
 		professionalApplicationRepo,
@@ -147,7 +148,8 @@ func main() {
 		activitySubtypeRepo,
 	)
 	businessApplicationUseCase := usecase.NewBusinessApplicationUseCase(professionalApplicationUseCase, masterUseCase)
-	mediaUseCase := usecase.NewMediaUseCase(mediaRepo, masterRepo, orderRepo, s3Client, mediaWorker, storyLogger)
+	mediaUseCase := usecase.NewMediaUseCase(mediaRepo, orderRepo, s3Client, mediaWorker, storyLogger)
+	favoriteUseCase := usecase.NewMasterFavoriteUseCase(favoriteRepo, masterRepo)
 	activityUseCase := usecase.NewActivityUseCase(activityGroupRepo, activitySubtypeRepo)
 	catalogUseCase := usecase.NewCatalogUseCase(catalogRepo)
 	storyUseCase := usecase.NewStoryUseCase(storyRepo, subscriptionRepo, mediaRepo, mediaUseCase, storyLogger)
@@ -162,9 +164,9 @@ func main() {
 	businessApplicationHandler := handler.NewBusinessApplicationHandler(businessApplicationUseCase)
 	professionalApplicationHandler := handler.NewProfessionalApplicationHandler(professionalApplicationUseCase)
 	mediaHandler := handler.NewMediaHandler(mediaUseCase)
+	favoriteHandler := handler.NewMasterFavoriteHandler(favoriteUseCase)
 	activityHandler := handler.NewActivityHandler(activityUseCase)
 	catalogHandler := handler.NewCatalogHandler(catalogUseCase)
-	geocodingHandler := handler.NewGeocodingHandler(cfg.YandexMapsAPIKey)
 	storyHandler := handler.NewStoryHandler(storyUseCase)
 	notificationHandler := handler.NewNotificationHandler(db)
 	chatHub := realtime.NewHub()
@@ -184,7 +186,7 @@ func main() {
 	router.Use(middleware.CORSMiddleware(cfg.FrontendURL))
 
 	// Setup routes
-	setupRoutes(router, authHandler, userHandler, orderHandler, searchHandler, reviewHandler, masterHandler, chatHandler, chatWSHandler, businessApplicationHandler, professionalApplicationHandler, mediaHandler, activityHandler, catalogHandler, geocodingHandler, storyHandler, notificationHandler, supportChatHandler, jwtService, professionalApplicationRepo, db)
+	setupRoutes(router, authHandler, userHandler, orderHandler, searchHandler, reviewHandler, masterHandler, favoriteHandler, chatHandler, chatWSHandler, businessApplicationHandler, professionalApplicationHandler, mediaHandler, activityHandler, catalogHandler, storyHandler, notificationHandler, supportChatHandler, jwtService, professionalApplicationRepo, db)
 
 	// Build the HTTP server explicitly (instead of router.Run) so we can hook
 	// into Shutdown() for graceful drain.
@@ -285,6 +287,7 @@ func runMigrations(db *gorm.DB, cfg *config.Config) error {
 	err := db.AutoMigrate(
 		&domain.User{},
 		&domain.Master{},
+		&domain.MasterFavorite{},
 		&domain.ActivityType{},
 		&domain.UserActivityType{},
 		&domain.Order{},
@@ -309,7 +312,6 @@ func runMigrations(db *gorm.DB, cfg *config.Config) error {
 		&domain.ActivityAuditLog{},
 		&domain.CatalogProfession{},
 		&domain.CatalogService{},
-		&domain.ProductCategory{},
 		&domain.VehicleBrand{},
 		&domain.VehicleModel{},
 		&domain.Story{},
@@ -895,6 +897,7 @@ func setupRoutes(
 	searchHandler *handler.SearchHandler,
 	reviewHandler *handler.ReviewHandler,
 	masterHandler *handler.MasterHandler,
+	favoriteHandler *handler.MasterFavoriteHandler,
 	chatHandler *handler.ChatHandler,
 	chatWSHandler *realtime.ChatWSHandler,
 	businessApplicationHandler *handler.BusinessApplicationHandler,
@@ -902,7 +905,6 @@ func setupRoutes(
 	mediaHandler *handler.MediaHandler,
 	activityHandler *handler.ActivityHandler,
 	catalogHandler *handler.CatalogHandler,
-	geocodingHandler *handler.GeocodingHandler,
 	storyHandler *handler.StoryHandler,
 	notificationHandler *handler.NotificationHandler,
 	supportChatHandler *handler.SupportChatHandler,
@@ -941,15 +943,8 @@ func setupRoutes(
 	{
 		catalogGroup.GET("/professions", catalogHandler.ListProfessions)
 		catalogGroup.GET("/services", catalogHandler.ListServices)
-		catalogGroup.GET("/product-categories", catalogHandler.ListProductCategories)
 		catalogGroup.GET("/vehicle-brands", catalogHandler.ListVehicleBrands)
 	}
-
-	geocodingLimiter := ratelimit.New(60, time.Minute)
-	router.GET("/api/geocoding/reverse",
-		middleware.RateLimit(geocodingLimiter, middleware.ClientIPKey),
-		geocodingHandler.Reverse,
-	)
 
 	// Public profile stories are visible when a user opens a professional profile.
 	// The protected home feed contains all active professional stories for now;
@@ -990,9 +985,6 @@ func setupRoutes(
 		searchGroup.GET("/provider/:activityType/:id", searchHandler.GetProviderByTypeAndID)
 		searchGroup.GET("/activity-types", searchHandler.GetActivityTypes)
 	}
-	router.GET("/api/masters/:id/work-photos", mediaHandler.GetPublicWorkPhotos)
-	// Activity types are reference data needed by public search and booking flows.
-	router.GET("/api/activity-types", searchHandler.GetActivityTypes)
 
 	masterPublicGroup := router.Group("/api/masters")
 	{
@@ -1005,6 +997,7 @@ func setupRoutes(
 
 	// Public media read proxy for media used in provider cards.
 	router.GET("/api/v1/media/files/*key", mediaHandler.ServeFile)
+	router.GET("/api/v1/media/public/:entityType/:entityId", mediaHandler.GetPublicEntityAssets)
 
 	// Protected routes
 	apiGroup := router.Group("/api")
@@ -1036,6 +1029,7 @@ func setupRoutes(
 		apiGroup.GET("/support/chats", supportChatHandler.GetAllChats)
 		apiGroup.GET("/support/unread-count", supportChatHandler.GetUnreadCount)
 
+		apiGroup.GET("/activity-types", searchHandler.GetActivityTypes)
 		apiGroup.GET("/user-activity-types/my", userHandler.GetCurrentUserActivityTypes)
 
 		storyGroup := apiGroup.Group("/stories")
@@ -1101,6 +1095,13 @@ func setupRoutes(
 			masterGroup.GET("/profile/me", masterHandler.GetMasterProfile)
 			masterGroup.PUT("/profile/me", masterHandler.UpdateMasterProfile)
 			masterGroup.PATCH("/profile/me/status", masterHandler.UpdateMasterStatus)
+		}
+
+		favoriteGroup := apiGroup.Group("/favorites/masters")
+		{
+			favoriteGroup.GET("/:masterId", favoriteHandler.Get)
+			favoriteGroup.PUT("/:masterId", favoriteHandler.Add)
+			favoriteGroup.DELETE("/:masterId", favoriteHandler.Remove)
 		}
 
 		autoServiceGroup := apiGroup.Group("/auto_services")

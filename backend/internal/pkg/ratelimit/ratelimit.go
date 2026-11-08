@@ -1,3 +1,4 @@
+// Package ratelimit provides a simple in-memory sliding-window rate limiter.
 package ratelimit
 
 import (
@@ -5,46 +6,45 @@ import (
 	"time"
 )
 
-type entry struct {
-	count     int
-	resetTime time.Time
-}
-
+// Limiter tracks per-key request counts within a sliding time window.
 type Limiter struct {
 	mu     sync.Mutex
-	limits map[string]entry
-	max    int
+	store  map[string][]time.Time
+	limit  int
 	window time.Duration
 }
 
-func New(max int, window time.Duration) *Limiter {
+// New creates a Limiter that allows at most limit requests per window per key.
+func New(limit int, window time.Duration) *Limiter {
 	return &Limiter{
-		limits: make(map[string]entry),
-		max:    max,
+		store:  make(map[string][]time.Time),
+		limit:  limit,
 		window: window,
 	}
 }
 
+// Allow returns true if the key is within its rate limit, false otherwise.
+// Expired timestamps are pruned on every call.
 func (l *Limiter) Allow(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
 	now := time.Now()
-	e, exists := l.limits[key]
+	cutoff := now.Add(-l.window)
 
-	if !exists || now.After(e.resetTime) {
-		l.limits[key] = entry{
-			count:     1,
-			resetTime: now.Add(l.window),
+	ts := l.store[key]
+	// prune expired
+	valid := ts[:0]
+	for _, t := range ts {
+		if t.After(cutoff) {
+			valid = append(valid, t)
 		}
-		return true
 	}
 
-	if e.count >= l.max {
+	if len(valid) >= l.limit {
+		l.store[key] = valid
 		return false
 	}
-
-	e.count++
-	l.limits[key] = e
+	l.store[key] = append(valid, now)
 	return true
 }

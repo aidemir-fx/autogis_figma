@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { CameraAlt as CameraIcon, PersonOutline as PersonIcon } from "@mui/icons-material";
 import { Tooltip } from "@mui/material";
 import { useAvatarUpload, type UploadPhase } from "@modules/media/hooks/useAvatarUpload";
+import type { MediaEntityType } from "@modules/media/api";
 import {
     Root,
     AvatarCircle,
@@ -22,12 +23,14 @@ interface AvatarUploadProps {
     /** Optional name initials to show as fallback. */
     fallbackText?: string;
     className?: string;
+    entityType?: MediaEntityType;
+    onUploaded?: (url: string) => void;
 }
 
-export function AvatarUpload({ entityId, fallbackText, className }: AvatarUploadProps) {
+export function AvatarUpload({ entityId, fallbackText, className, entityType = "account", onUploaded }: AvatarUploadProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const { avatarUrl, phase, uploadProgress, error, upload, refetch } =
-        useAvatarUpload(entityId);
+        useAvatarUpload(entityId, entityType, onUploaded);
 
     // Load current avatar on mount
     useEffect(() => {

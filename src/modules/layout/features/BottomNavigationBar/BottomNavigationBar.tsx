@@ -1,26 +1,16 @@
-import {
-    Badge,
-    Box,
-    BottomNavigation,
-    BottomNavigationAction,
-    Paper,
-    useMediaQuery,
-} from "@mui/material";
+import { Badge, Box, BottomNavigation, BottomNavigationAction, Paper, useMediaQuery } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { hasCapability } from "@common/lib/userAccess";
 import { useUserProfile } from "@common/hooks";
-import { getProviderOrders, ChatOrder } from "@modules/chats/api";
+import { getProviderOrders, type ChatOrder } from "@modules/chats/api";
 import { useUnreadChatsCount } from "@modules/chats/hooks";
-import {
-    BOTTOM_NAV_RESERVED_SPACE,
-    COMPACT_LAYOUT_MEDIA_QUERY,
-} from "../layoutViewport";
+import { COMPACT_LAYOUT_MEDIA_QUERY } from "../layoutViewport";
 
 const SEARCH_ROUTE = "/";
 const BOOKINGS_ROUTE = "/cabinet/bookings";
 const CHATS_ROUTE = "/cabinet/chats";
-const CABINET_ROUTE = "/cabinet/professional";
+const PROFESSIONAL_CABINET_ROUTE = "/cabinet/professional";
 const PROFILE_ROUTE = "/cabinet";
 export const BOTTOM_NAV_MEDIA_QUERY = COMPACT_LAYOUT_MEDIA_QUERY;
 
@@ -72,7 +62,7 @@ function getActiveValue(pathname: string): NavigationValue {
         return "bookings";
     }
 
-    if (pathname.startsWith("/cabinet/professional")) {
+    if (pathname.startsWith(PROFESSIONAL_CABINET_ROUTE)) {
         return "cabinet";
     }
 
@@ -95,16 +85,10 @@ export const BottomNavigationBar = () => {
         typeof window !== "undefined"
             ? localStorage.getItem("accessToken")
             : null;
-    const shouldFetchNavData =
-        !!accessToken && pathname.startsWith("/cabinet");
+    const shouldFetchNavData = !!accessToken;
     const { profile } = useUserProfile({ enabled: shouldFetchNavData });
-
-    const hasProfessionalCabinetAccess = hasCapability(
-        profile,
-        "professionalCabinet",
-    );
+    const hasProfessionalCabinetAccess = hasCapability(profile, "professionalCabinet");
     const hasApplicationsAccess = hasCapability(profile, "applications");
-
     const { data: providerOrders } = useQuery<ChatOrder[]>({
         queryKey: ["providerOrders", profile?.id],
         queryFn: getProviderOrders,
@@ -112,11 +96,9 @@ export const BottomNavigationBar = () => {
         refetchInterval: 60_000,
         retry: false,
     });
-
     const pendingCount = hasApplicationsAccess
-        ? (providerOrders ?? []).filter((o) => o.status === "pending").length
+        ? (providerOrders ?? []).filter((order) => order.status === "pending").length
         : 0;
-
     const unreadChatsCount = useUnreadChatsCount(shouldFetchNavData);
 
     if (!isMobile) {
@@ -125,7 +107,7 @@ export const BottomNavigationBar = () => {
 
     return (
         <Paper
-            elevation={8}
+            elevation={0}
             sx={{
                 position: "fixed",
                 bottom: 0,
@@ -133,6 +115,7 @@ export const BottomNavigationBar = () => {
                 right: 0,
                 zIndex: 1300,
                 borderTop: "1px solid #e5e7eb",
+                boxShadow: "none",
                 pb: "env(safe-area-inset-bottom, 0px)",
             }}
         >
@@ -140,9 +123,8 @@ export const BottomNavigationBar = () => {
                 showLabels
                 value={getActiveValue(pathname)}
                 sx={{
-                    minHeight: 56,
-                    bgcolor: "rgba(250,250,250,0.97)",
-                    backdropFilter: "blur(10px)",
+                    minHeight: 57,
+                    bgcolor: "#ffffff",
                     "& .MuiBottomNavigationAction-root": {
                         minWidth: 0,
                         px: 0.5,
@@ -150,7 +132,7 @@ export const BottomNavigationBar = () => {
                         color: "#6b7280",
                         "& .MuiBottomNavigationAction-label": {
                             color: "#6b7280",
-                            fontSize: "10px",
+                            fontSize: "11px",
                             fontWeight: 600,
                             letterSpacing: 0,
                             lineHeight: 1.2,
@@ -160,12 +142,9 @@ export const BottomNavigationBar = () => {
                             color: "#111827",
                             "& .MuiBottomNavigationAction-label": {
                                 color: "#111827",
-                                fontSize: "10px",
+                                fontSize: "11px",
                             },
-                            "& .nav-icon": {
-                                color: "#1d4ed8",
-                                backgroundColor: "#eff6ff",
-                            },
+                            "& .nav-icon": { color: "#4673d5" },
                         },
                     },
                     "& .nav-icon": {
@@ -181,8 +160,8 @@ export const BottomNavigationBar = () => {
                     },
                     "& .nav-icon svg": {
                         display: "block",
-                        width: 18,
-                        height: 18,
+                        width: 22,
+                        height: 22,
                     },
                 }}
                 onChange={(_event, newValue: NavigationValue) => {
@@ -191,7 +170,7 @@ export const BottomNavigationBar = () => {
                     } else if (newValue === "bookings") {
                         navigate(BOOKINGS_ROUTE);
                     } else if (newValue === "cabinet") {
-                        navigate(CABINET_ROUTE);
+                        navigate(PROFESSIONAL_CABINET_ROUTE);
                     } else if (newValue === "chats") {
                         navigate(CHATS_ROUTE);
                     } else {
@@ -205,7 +184,7 @@ export const BottomNavigationBar = () => {
                     icon={<MockupNavIcon name="search" />}
                 />
                 <BottomNavigationAction
-                    label="Мои записи"
+                    label="Записи"
                     value="bookings"
                     icon={<MockupNavIcon name="calendar" />}
                 />
@@ -213,36 +192,22 @@ export const BottomNavigationBar = () => {
                     <BottomNavigationAction
                         label="Кабинет"
                         value="cabinet"
+                        aria-label="PRO кабинет"
                         icon={
-                            <Badge
-                                badgeContent={pendingCount}
-                                color="error"
-                                max={99}
-                            >
+                            <Badge badgeContent={pendingCount} color="error" max={99}>
                                 <Box
                                     sx={{
                                         width: 28,
                                         height: 28,
                                         borderRadius: "8px",
-                                        background:
-                                            "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                                        background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
                                         boxShadow: "0 2px 6px rgba(99,102,241,0.35)",
                                     }}
                                 >
-                                    <Box
-                                        component="span"
-                                        sx={{
-                                            color: "#fff",
-                                            fontSize: "9px",
-                                            fontWeight: 800,
-                                            letterSpacing: "0.08em",
-                                            lineHeight: 1,
-                                            fontFamily: "inherit",
-                                        }}
-                                    >
+                                    <Box component="span" sx={{ color: "#fff", fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", lineHeight: 1, fontFamily: "inherit" }}>
                                         PRO
                                     </Box>
                                 </Box>

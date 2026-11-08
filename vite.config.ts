@@ -85,12 +85,35 @@ export default defineConfig({
         },
     },
     preview: {
+        proxy: {
+            "/api": {
+                target: "http://localhost:3001",
+                changeOrigin: true,
+            },
+            "/ws": {
+                target: "ws://localhost:3001",
+                changeOrigin: true,
+                ws: true,
+            },
+        },
         host: "0.0.0.0",
-        port: 3000,
+        port: 5173,
+        strictPort: true,
     },
     server: {
-        host: "0.0.0.0",
-        port: 3000,
-        hmr: false,
+        allowedHosts: true,
+        port: 5173,
+        strictPort: true,
+        proxy: {
+            "/api": {
+                target: "http://localhost:3001",
+                changeOrigin: true,
+            },
+            "/ws": {
+                target: "ws://localhost:3001",
+                changeOrigin: true,
+                ws: true,
+            },
+        },
     },
 });

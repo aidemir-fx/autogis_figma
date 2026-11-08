@@ -954,7 +954,7 @@ function VariantTicket({ order }: { order: DemoOrder }) {
                         <Typography sx={{ fontSize: 10, color: accent.textSecondary, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
                             Заявка
                         </Typography>
-                        <Typography sx={{ fontSize: 13, fontWeight: 800, color: accent.textPrimary, fontFamily: "ui-monospace, monospace" }}>
+                        <Typography sx={{ fontSize: 13, fontWeight: 800, color: accent.textPrimary, fontFamily: "var(--default-font-family)" }}>
                             #{order.id}
                         </Typography>
                     </Box>
@@ -1204,7 +1204,7 @@ function ComparisonTable() {
                         <Typography sx={{ fontSize: 13, color: "#1c2233", fontWeight: 600 }}>
                             {label}
                         </Typography>
-                        <Typography sx={{ fontSize: 12, color: "#6b7384", fontFamily: "ui-monospace, monospace" }}>
+                        <Typography sx={{ fontSize: 12, color: "#6b7384", fontFamily: "var(--default-font-family)" }}>
                             {source}
                         </Typography>
                     </Box>

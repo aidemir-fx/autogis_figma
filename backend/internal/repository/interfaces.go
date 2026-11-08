@@ -30,6 +30,12 @@ type MasterRepository interface {
 	Delete(ctx context.Context, id string) error
 }
 
+type MasterFavoriteRepository interface {
+	IsFavorite(ctx context.Context, userID, masterID string) (bool, error)
+	Add(ctx context.Context, userID, masterID string) error
+	Remove(ctx context.Context, userID, masterID string) error
+}
+
 // OrderRepository defines methods for order persistence
 type OrderRepository interface {
 	Create(ctx context.Context, order *domain.Order) error
@@ -160,7 +166,6 @@ type ActivitySubtypeRepository interface {
 type CatalogRepository interface {
 	ListProfessions(ctx context.Context) ([]*domain.CatalogProfession, error)
 	ListServices(ctx context.Context) ([]*domain.CatalogService, error)
-	ListProductCategories(ctx context.Context) ([]*domain.ProductCategory, error)
 	ListVehicleBrands(ctx context.Context) ([]*domain.VehicleBrand, error)
 }
 
@@ -199,6 +204,7 @@ type MediaRepository interface {
 	UpdateAsset(ctx context.Context, asset *domain.MediaAsset) error
 	SoftDeleteAsset(ctx context.Context, id string) error
 	CountAssetsByEntity(ctx context.Context, entityType, entityID, category string) (int64, error)
+	IsProviderProfileOwnedByUser(ctx context.Context, profileID, userID string) (bool, error)
 	GetActiveAvatarByEntity(ctx context.Context, entityType, entityID string) (*domain.MediaAsset, error)
 	GetAssetsForHardDelete(ctx context.Context, grace time.Duration) ([]*domain.MediaAsset, error)
 	HardDeleteAsset(ctx context.Context, id string) error

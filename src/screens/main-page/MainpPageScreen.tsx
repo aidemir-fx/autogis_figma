@@ -1,23 +1,68 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMediaQuery } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 
+import { Filters, GeolocationPrompt, MasterStatus } from "@modules/masters";
 import {
     ActivityType,
     DEFAULT_SEARCH_RADIUS,
     Provider,
     ProvidersMap,
 } from "@modules/providers";
+import { AppActivityTypes } from "@modules/providers/features/ActivityTypeFilters/constants";
 import { fetchCombinedProviders } from "@modules/providers/api";
 import { CreateOrderModal } from "@modules/masters/features/CreateOrderModal";
+import { ProviderShowcaseCard } from "@modules/providers/features/ProviderShowcaseCard";
+import { Button, ErrorState } from "@common/components";
+import { LogoIcon } from "@common/icons";
 import { useAuth, useCoords, useQueryParams, useUserProfile } from "@common/hooks";
-import { UserRole } from "@common/types";
 import { NotificationBell } from "../../components/NotificationBell";
+import { StoryRing, StoryStrip } from "@modules/stories";
+import { getAccountAvatars } from "@modules/media/api";
 import { RadiusPickerModal } from "./components/RadiusPickerModal";
-import { FigmaMasterCard } from "./components/FigmaMasterCard";
-import { FigmaOrgCard } from "./components/FigmaOrgCard";
-import { FigmaStoryStrip } from "./components/FigmaStoryStrip";
-import { BookingModal } from "./components/BookingModal";
+import {
+    MobileSearchExperience,
+    MobileProviderCategory,
+} from "./MobileSearchExperience";
+import { COMPACT_LAYOUT_MEDIA_QUERY } from "@modules/layout/features/layoutViewport";
+import {
+    ActivityChip,
+    AvailableToggle,
+    BrandLogo,
+    BrandMark,
+    CarouselHead,
+    CarouselMeta,
+    CarouselSection,
+    CarouselTitle,
+    CarouselTrack,
+    ContentFlow,
+    EmptyCard,
+    ErrorWrapper,
+    FiltersStrip,
+    HeroCopy,
+    HeroGrid,
+    HeroMapCard,
+    HomeShell,
+    LoadingPanel,
+    MapAttentionMarker,
+    MapWrapper,
+    PageRoot,
+    ProfileButton,
+    RadiusFilterButton,
+    SearchPanel,
+    TenderBarActions,
+    TenderBarBadge,
+    TenderBarHeader,
+    TenderBarInfo,
+    TenderCloseButtonDesktop,
+    TenderCloseButtonMobile,
+    TenderFloatingBar,
+    TopActions,
+    TopActionTile,
+    TopBar,
+} from "./styles";
 
 type ProviderCategory = {
     type: ActivityType;
@@ -26,912 +71,961 @@ type ProviderCategory = {
     empty: string;
 };
 
-// Exact order from Figma mock:
-// 1. Частные мастера
-// 2. Автосервисы
-// 3. Автомагазины
-// 4. Автомойки
-const FIGMA_CATEGORIES: ProviderCategory[] = [
+const PROVIDER_CATEGORIES: ProviderCategory[] = [
     {
         type: ActivityType.master,
         title: "Частные мастера",
         chip: "Частные",
-        empty: "Частные мастера в выбранном радиусе не найдены.",
+        empty: "Пока нет частных мастеров в выбранном радиусе.",
     },
     {
         type: ActivityType.auto_service,
         title: "Автосервисы",
         chip: "Автосервисы",
-        empty: "Автосервисы в выбранном радиусе не найдены.",
-    },
-    {
-        type: ActivityType.auto_shop,
-        title: "Автомагазины",
-        chip: "Автомагазины",
-        empty: "Автомагазины в выбранном радиусе не найдены.",
+        empty: "Автосервисы не найдены. Попробуйте увеличить радиус.",
     },
     {
         type: ActivityType.auto_wash,
         title: "Автомойки",
         chip: "Автомойки",
-        empty: "Автомойки в выбранном радиусе не найдены.",
+        empty: "Автомоек рядом пока не найдено.",
+    },
+    {
+        type: ActivityType.auto_shop,
+        title: "Автомагазины",
+        chip: "Магазины",
+        empty: "Автомагазинов рядом пока не найдено.",
     },
 ];
 
-type FilterStripProps = {
-    totalCount: number;
-    onlyAvailable: boolean;
-    selectedCategory: ActivityType | "all";
-    radius: number;
-    providersByType: Record<ActivityType, Provider[]>;
-    onSelectCategory: (type: ActivityType | "all") => void;
-    onToggleAvailability: () => void;
-    onOpenRadiusPicker: () => void;
-};
+const DEFAULT_CENTER: [number, number] = [43.21564479600424, 46.89458462676669];
+const MAP_FOCUS_ZOOM = 17;
+const MAP_FOCUS_DURATION = 650;
+const MAP_SCROLL_FOCUS_MAX_WAIT = 1800;
+const MAP_SCROLL_STABLE_FRAMES = 6;
+const MAP_ATTENTION_AFTER_FOCUS_DELAY = 120;
+const MAP_ATTENTION_VISIBLE_DURATION = 1280;
 
-function FilterStrip({
-    totalCount,
-    onlyAvailable,
-    selectedCategory,
-    radius,
-    providersByType,
-    onSelectCategory,
-    onToggleAvailability,
-    onOpenRadiusPicker,
-}: FilterStripProps) {
-    return (
-        <div
-            aria-label="Фильтры поиска"
-            style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                overflowX: "auto",
-                padding: "0 16px 12px",
-                scrollbarWidth: "none",
-                msOverflowStyle: "none",
-                WebkitOverflowScrolling: "touch",
-            }}
-        >
-            <button
-                type="button"
-                onClick={() => onSelectCategory("all")}
-                style={{
-                    height: 32,
-                    padding: "0 12px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    border: "none",
-                    backgroundColor: selectedCategory === "all" ? "#1E293B" : "#FFFFFF",
-                    color: selectedCategory === "all" ? "#FFFFFF" : "#475569",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                }}
-            >
-                Все {totalCount}
-            </button>
+function isElementFocusedInViewport(element: HTMLElement): boolean {
+    const rect = element.getBoundingClientRect();
 
-            <button
-                type="button"
-                onClick={onToggleAvailability}
-                style={{
-                    height: 32,
-                    padding: "0 12px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 500,
-                    border: onlyAvailable ? "1.5px solid #16A34A" : "1px solid #E2E8F0",
-                    backgroundColor: onlyAvailable ? "#DCFCE7" : "#FFFFFF",
-                    color: onlyAvailable ? "#15803D" : "#475569",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                }}
-            >
-                Открыто сейчас
-            </button>
+    if (rect.height <= 0 || rect.width <= 0) {
+        return false;
+    }
 
-            <button
-                type="button"
-                onClick={onOpenRadiusPicker}
-                style={{
-                    height: 32,
-                    padding: "0 10px 0 12px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 500,
-                    border: "1px solid #E2E8F0",
-                    backgroundColor: "#FFFFFF",
-                    color: "#475569",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                }}
-            >
-                Радиус {radius} км
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="6 9 12 15 18 9" />
-                </svg>
-            </button>
+    const elementCenter = rect.top + rect.height / 2;
+    const hasVisibleCenter =
+        elementCenter >= 0 && elementCenter <= window.innerHeight;
+    const isMostlyOnscreen =
+        rect.top <= window.innerHeight * 0.72 &&
+        rect.bottom >= window.innerHeight * 0.28;
 
-            {FIGMA_CATEGORIES.map((category) => {
-                const count = providersByType[category.type].length;
-                const isSelected = selectedCategory === category.type;
-                return (
-                    <button
-                        key={category.type}
-                        type="button"
-                        onClick={() => onSelectCategory(category.type)}
-                        style={{
-                            height: 32,
-                            padding: "0 12px",
-                            borderRadius: 8,
-                            fontSize: 12,
-                            fontWeight: isSelected ? 600 : 500,
-                            border: isSelected ? "none" : "1px solid #E2E8F0",
-                            backgroundColor: isSelected ? "#1E293B" : "#FFFFFF",
-                            color: isSelected ? "#FFFFFF" : "#475569",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                            whiteSpace: "nowrap",
-                            flexShrink: 0,
-                            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                        }}
-                    >
-                        {category.chip} {count}
-                    </button>
-                );
-            })}
-        </div>
-    );
+    return hasVisibleCenter || isMostlyOnscreen;
 }
 
-export function MainpPageScreen() {
+function normalizeActivityTypes(value: unknown): ActivityType[] {
+    if (!value) {
+        return [];
+    }
+
+    const rawValue = Array.isArray(value) ? value.join(",") : String(value);
+    return rawValue
+        .split(",")
+        .filter((type): type is ActivityType =>
+            Object.values(ActivityType).includes(type as ActivityType)
+        )
+        .sort();
+}
+
+function getProviderText(provider: Provider): string {
+    return [
+        provider.fullName,
+        provider.name,
+        provider.businessName,
+        provider.address,
+        provider.description,
+        ...(provider.professions || []),
+        ...(provider.services || []),
+        ...(provider.autoMarks || []),
+        ...(provider.brandSupport || []),
+    ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+}
+
+function filterByQuery(providers: Provider[], query: string[]): Provider[] {
+    const terms = query.map((item) => item.trim().toLowerCase()).filter(Boolean);
+
+    if (terms.length === 0) {
+        return providers;
+    }
+
+    return providers.filter((provider) => {
+        const haystack = getProviderText(provider);
+        return terms.every((term) => haystack.includes(term));
+    });
+}
+
+function countAvailable(providers: Provider[]): number {
+    return providers.reduce((count, provider) => {
+        const visibleStatus = provider.currentStatus || provider.status;
+        return visibleStatus === MasterStatus.AVAILABLE ? count + 1 : count;
+    }, 0);
+}
+
+function getInitials(name?: string | null): string {
+    if (!name) {
+        return "AG";
+    }
+
+    return name
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join("")
+        .toUpperCase();
+}
+
+
+interface ProviderCardProps {
+    provider: Provider;
+    onShowOnMap: (provider: Provider) => void;
+    onOpenProfile: (provider: Provider) => void;
+    isCarouselItem?: boolean;
+}
+
+const ProviderCard = ({
+    provider,
+    onShowOnMap,
+    onOpenProfile,
+    isCarouselItem = false,
+}: ProviderCardProps) => {
+    return (
+        <div
+            style={{
+                position: 'relative',
+                borderRadius: '16px',
+                flex: isCarouselItem ? '0 0 auto' : undefined,
+                width: isCarouselItem ? 'fit-content' : undefined,
+                marginInline: 0,
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+        >
+            <ProviderShowcaseCard
+                provider={provider}
+                onShowOnMap={onShowOnMap}
+                onOpenProfile={onOpenProfile}
+            />
+        </div>
+    );
+};
+
+export const MainpPageScreen = () => {
+
+    const [query, setQuery] = useState<string[]>([]);
+    const [onlyAvailable, setOnlyAvailable] = useState(false);
+    const [isRadiusPickerOpen, setIsRadiusPickerOpen] = useState(false);
+    const [isMapAttentionVisible, setIsMapAttentionVisible] = useState(false);
+    const [mapAttentionKey, setMapAttentionKey] = useState(0);
+    const mastersRef = useRef<Record<string, any>>({});
+    const mapRef = useRef<HTMLDivElement>(null);
+    const yandexMapRef = useRef<any>(null);
+    const mapAttentionTimeoutRef = useRef<number | null>(null);
+    const mapFocusFrameRef = useRef<number | null>(null);
     const navigate = useNavigate();
+    const isCompact = useMediaQuery(COMPACT_LAYOUT_MEDIA_QUERY);
     const { isAuthenticated } = useAuth();
-    const { profile } = useUserProfile();
+    const { profile } = useUserProfile({ enabled: isAuthenticated });
+    const { data: profileAvatars = {} } = useQuery({
+        queryKey: ["account-avatar", profile?.id],
+        queryFn: () => getAccountAvatars([profile!.id]),
+        enabled: Boolean(isAuthenticated && profile?.id),
+        staleTime: 5 * 60_000,
+    });
+    const { userCoords } = useCoords();
     const { params, setParam } = useQueryParams();
 
-    // Search query & filters
-    const [searchQuery, setSearchQuery] = useState("");
-    const [onlyAvailable, setOnlyAvailable] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState<ActivityType | "all">("all");
-    const [isRadiusPickerOpen, setIsRadiusPickerOpen] = useState(false);
-    const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
+    const [lat, lng] = userCoords ?? DEFAULT_CENTER;
+    const profileAvatarUrl = profile?.master?.avatar
+        ?? profile?.master?.avatarUrl
+        ?? profile?.autoService?.coverImageUrl
+        ?? profile?.autoService?.avatar
+        ?? profile?.autoService?.avatarUrl
+        ?? profile?.autoWash?.coverImageUrl
+        ?? profile?.autoWash?.avatar
+        ?? profile?.autoWash?.avatarUrl
+        ?? profile?.autoShop?.coverImageUrl
+        ?? profile?.autoShop?.avatar
+        ?? profile?.autoShop?.avatarUrl
+        ?? profileAvatars[profile?.id ?? ""];
+    const radius = params.radius
+        ? parseFloat(params.radius as string)
+        : DEFAULT_SEARCH_RADIUS;
 
-    // Online booking modal
-    const [bookingModalOpen, setBookingModalOpen] = useState(false);
-    const [selectedBookingProvider, setSelectedBookingProvider] = useState<Provider | null>(null);
-
-    // Radius from URL or 5 km default (as in Figma mock: "Радиус 5 км")
-    const radiusParam = params.radius as string | undefined;
-    const radius = useMemo(() => {
-        if (!radiusParam) return 5;
-        const parsed = parseInt(radiusParam, 10);
-        return isNaN(parsed) ? 5 : parsed;
-    }, [radiusParam]);
-
-    // Coordinates & Map
-    const { userCoords } = useCoords();
-    const centerCoords: [number, number] = useMemo(
-        () => userCoords || [55.7558, 37.6173],
-        [userCoords]
+    const selectedActivityTypes = useMemo(
+        () => normalizeActivityTypes(params.activityTypes),
+        [params.activityTypes]
     );
-    const yandexMapRef = useRef<any>(null);
-    const mastersRef = useRef<any>({});
-    const categoryRefs = {
-        [ActivityType.master]: useRef<HTMLDivElement>(null),
-        [ActivityType.auto_service]: useRef<HTMLDivElement>(null),
-        [ActivityType.auto_shop]: useRef<HTMLDivElement>(null),
-        [ActivityType.auto_wash]: useRef<HTMLDivElement>(null),
-    };
 
-    // Providers query
-    const { data, isLoading } = useQuery({
-        queryKey: ["providers", centerCoords[0], centerCoords[1], radius],
-        queryFn: () =>
-            fetchCombinedProviders(
-                centerCoords[0],
-                centerCoords[1],
-                radius
-            ),
-        staleTime: 60_000,
+    const activeTypes = useMemo(
+        () =>
+            selectedActivityTypes.length > 0
+                ? selectedActivityTypes
+                : (AppActivityTypes as ActivityType[]),
+        [selectedActivityTypes]
+    );
+
+    const isAllTypesActive = selectedActivityTypes.length === 0;
+
+    const { data, isLoading, error, isError, refetch } = useQuery({
+        queryKey: [
+            "combined-providers",
+            lat,
+            lng,
+            radius,
+        ],
+        queryFn: () => fetchCombinedProviders(lat, lng, radius),
+        enabled: true,
+        retry: false,
+        refetchOnWindowFocus: false,
     });
 
-    const allProviders = useMemo(() => data?.allProviders ?? [], [data?.allProviders]);
-    const nearbyProviders = useMemo(() => data?.nearbyProviders ?? allProviders, [data?.nearbyProviders, allProviders]);
+    const nearbyAfterSearch = useMemo(
+        () => filterByQuery(data?.nearbyProviders ?? [], query),
+        [data?.nearbyProviders, query]
+    );
 
-    // Filter providers by search query and availability
-    const filteredProviders = useMemo(() => {
-        let list = nearbyProviders.length > 0 ? nearbyProviders : allProviders;
+    const allAfterSearch = useMemo(
+        () => filterByQuery(data?.allProviders ?? [], query),
+        [data?.allProviders, query]
+    );
 
-        if (onlyAvailable) {
-            list = list.filter((p) => p.status === "available");
+    const filteredNearbyProviders = useMemo(
+        () =>
+            nearbyAfterSearch.filter((provider) =>
+                activeTypes.includes(provider.activityType || ActivityType.master)
+            ).filter((provider) =>
+                !onlyAvailable ||
+                (provider.currentStatus || provider.status) === MasterStatus.AVAILABLE
+            ),
+        [activeTypes, nearbyAfterSearch, onlyAvailable]
+    );
+
+    const filteredAllProviders = useMemo(
+        () =>
+            allAfterSearch.filter((provider) =>
+                activeTypes.includes(provider.activityType || ActivityType.master)
+            ).filter((provider) =>
+                !onlyAvailable ||
+                (provider.currentStatus || provider.status) === MasterStatus.AVAILABLE
+            ),
+        [activeTypes, allAfterSearch, onlyAvailable]
+    );
+
+    const providersByType = useMemo(() => {
+        return PROVIDER_CATEGORIES.reduce(
+            (acc, category) => {
+                acc[category.type] = filteredNearbyProviders.filter(
+                    (provider) =>
+                        (provider.activityType || ActivityType.master) ===
+                        category.type
+                );
+                return acc;
+            },
+            {} as Record<ActivityType, Provider[]>
+        );
+    }, [filteredNearbyProviders]);
+
+    const countsByType = useMemo(() => {
+        return PROVIDER_CATEGORIES.reduce(
+            (acc, category) => {
+                acc[category.type] = filteredNearbyProviders.filter(
+                    (provider) =>
+                        (provider.activityType || ActivityType.master) ===
+                        category.type
+                ).length;
+                return acc;
+            },
+            {} as Record<ActivityType, number>
+        );
+    }, [filteredNearbyProviders]);
+
+    const categoriesToRender = useMemo(
+        () =>
+            PROVIDER_CATEGORIES.filter((category) =>
+                activeTypes.includes(category.type)
+            ),
+        [activeTypes]
+    );
+
+    const availableCount = countAvailable(filteredNearbyProviders);
+
+    const clearMapAttentionTimers = useCallback(() => {
+        if (mapAttentionTimeoutRef.current !== null) {
+            window.clearTimeout(mapAttentionTimeoutRef.current);
+            mapAttentionTimeoutRef.current = null;
         }
 
-        if (searchQuery.trim()) {
-            const q = searchQuery.toLowerCase().trim();
-            list = list.filter((p) => {
-                const name = (p.fullName || p.businessName || p.name || "").toLowerCase();
-                const desc = (p.description || "").toLowerCase();
-                const professions = (p.professions || []).some((prof) => prof.toLowerCase().includes(q));
-                const services = (p.services || []).some((s) => s.toLowerCase().includes(q));
-                const autoMarks = (p.autoMarks || []).some((m) => m.toLowerCase().includes(q));
-                return name.includes(q) || desc.includes(q) || professions || services || autoMarks;
+        if (mapFocusFrameRef.current !== null) {
+            window.cancelAnimationFrame(mapFocusFrameRef.current);
+            mapFocusFrameRef.current = null;
+        }
+    }, []);
+
+    const hideMapAttention = useCallback(() => {
+        clearMapAttentionTimers();
+        setIsMapAttentionVisible(false);
+    }, [clearMapAttentionTimers]);
+
+    const showMapAttention = useCallback(() => {
+        if (mapAttentionTimeoutRef.current !== null) {
+            window.clearTimeout(mapAttentionTimeoutRef.current);
+        }
+
+        setMapAttentionKey((key) => key + 1);
+        setIsMapAttentionVisible(true);
+        mapAttentionTimeoutRef.current = window.setTimeout(() => {
+            setIsMapAttentionVisible(false);
+            mapAttentionTimeoutRef.current = null;
+        }, MAP_ATTENTION_VISIBLE_DURATION);
+    }, []);
+
+    const focusMapOnCoordinates = useCallback((coordinates: [number, number]) => {
+        try {
+            yandexMapRef.current?.container?.fitToViewport?.();
+            yandexMapRef.current?.setCenter(coordinates, MAP_FOCUS_ZOOM, {
+                duration: MAP_FOCUS_DURATION,
+                checkZoomRange: true,
+            });
+        } catch (_) {
+            try {
+                yandexMapRef.current?.setCenter(coordinates, MAP_FOCUS_ZOOM);
+            } catch (_) {}
+        }
+    }, []);
+
+    const scheduleMapAttentionAfterFocus = useCallback(
+        (coordinates: [number, number]) => {
+            const mapElement = mapRef.current;
+
+            if (!mapElement) {
+                focusMapOnCoordinates(coordinates);
+                mapAttentionTimeoutRef.current = window.setTimeout(() => {
+                    showMapAttention();
+                }, MAP_FOCUS_DURATION + MAP_ATTENTION_AFTER_FOCUS_DELAY);
+                return;
+            }
+
+            const startedAt = window.performance.now();
+            let lastScrollY = window.scrollY;
+            let stableFrames = 0;
+
+            const waitForMapFocus = () => {
+                const now = window.performance.now();
+                const currentScrollY = window.scrollY;
+                const scrollDelta = Math.abs(currentScrollY - lastScrollY);
+
+                stableFrames =
+                    scrollDelta < 1 ? stableFrames + 1 : 0;
+                lastScrollY = currentScrollY;
+
+                const elapsed = now - startedAt;
+                const isMapFocused = isElementFocusedInViewport(mapElement);
+                const isScrollSettled =
+                    stableFrames >= MAP_SCROLL_STABLE_FRAMES;
+                const isMapMoveSettled = elapsed >= MAP_FOCUS_DURATION;
+                const timedOut = elapsed >= MAP_SCROLL_FOCUS_MAX_WAIT;
+
+                if (
+                    (isMapFocused && isScrollSettled && isMapMoveSettled) ||
+                    timedOut
+                ) {
+                    mapFocusFrameRef.current = null;
+                    focusMapOnCoordinates(coordinates);
+                    mapAttentionTimeoutRef.current = window.setTimeout(() => {
+                        showMapAttention();
+                    }, MAP_FOCUS_DURATION + MAP_ATTENTION_AFTER_FOCUS_DELAY);
+                    return;
+                }
+
+                mapFocusFrameRef.current =
+                    window.requestAnimationFrame(waitForMapFocus);
+            };
+
+            mapFocusFrameRef.current = window.requestAnimationFrame(waitForMapFocus);
+        },
+        [focusMapOnCoordinates, showMapAttention]
+    );
+
+    useEffect(() => {
+        return () => {
+            clearMapAttentionTimers();
+        };
+    }, [clearMapAttentionTimers]);
+
+    const handleProviderClick = useCallback((provider: Provider) => {
+        const coordinates: [number, number] = [
+            provider.coordinates.x,
+            provider.coordinates.y,
+        ];
+
+        hideMapAttention();
+
+        if (isCompact) {
+            focusMapOnCoordinates(coordinates);
+        } else {
+            mapRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
             });
         }
 
-        return list;
-    }, [nearbyProviders, allProviders, onlyAvailable, searchQuery]);
+        scheduleMapAttentionAfterFocus(coordinates);
+    }, [focusMapOnCoordinates, hideMapAttention, isCompact, scheduleMapAttentionAfterFocus]);
 
-    // Group filtered providers by category
-    const providersByType = useMemo(() => {
-        const map: Record<ActivityType, Provider[]> = {
-            [ActivityType.master]: [],
-            [ActivityType.auto_service]: [],
-            [ActivityType.auto_shop]: [],
-            [ActivityType.auto_wash]: [],
-        };
+    const handleProviderProfileClick = useCallback((provider: Provider) => {
+        const type = provider.activityType || ActivityType.master;
+        navigate(`/provider?id=${encodeURIComponent(provider.id)}&type=${encodeURIComponent(type)}`);
+    }, [navigate]);
 
-        for (const p of filteredProviders) {
-            const rawType = (p.activityType || (p as any).providerType) as string;
-            let type: ActivityType = ActivityType.master;
-            if (rawType === "auto_service" || rawType === "1") type = ActivityType.auto_service;
-            else if (rawType === "master" || rawType === "2") type = ActivityType.master;
-            else if (rawType === "auto_wash" || rawType === "3") type = ActivityType.auto_wash;
-            else if (rawType === "auto_shop" || rawType === "4") type = ActivityType.auto_shop;
+    const handleAllTypesClick = useCallback(() => {
+        setParam("activityTypes", null);
+    }, [setParam]);
 
-            if (map[type]) {
-                map[type].push(p);
+    const handleActivityTypeClick = useCallback(
+        (type: ActivityType) => {
+            if (isAllTypesActive) {
+                setParam("activityTypes", type);
+                return;
             }
+
+            const next = activeTypes.includes(type)
+                ? activeTypes.filter((item) => item !== type)
+                : [...activeTypes, type];
+
+            setParam(
+                "activityTypes",
+                next.length === 0 || next.length === AppActivityTypes.length
+                    ? null
+                    : next.join(",")
+            );
+        },
+        [activeTypes, isAllTypesActive, setParam]
+    );
+
+
+    const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
+    const tenderMode = false;
+    const selectedProviders: Provider[] = [];
+    const showTenderHint = false;
+    const setTenderMode = (_value: boolean) => undefined;
+    const setSelectedProviders = (_value: Provider[]) => undefined;
+    const handleSelectAllInRadius = () => undefined;
+    const handleDeselectAll = () => undefined;
+    const handleDismissHintPermanently = () => undefined;
+
+    const providersErrorMessage = useMemo(() => {
+        if (!error) {
+            return "Не удалось загрузить список специалистов.";
         }
 
-        return map;
-    }, [filteredProviders]);
-
-    // Counts for filter pills
-    const totalCount = filteredProviders.length;
-    const masterCount = providersByType[ActivityType.master].length;
-    const serviceCount = providersByType[ActivityType.auto_service].length;
-    const shopCount = providersByType[ActivityType.auto_shop].length;
-    const washCount = providersByType[ActivityType.auto_wash].length;
-
-    // Action handlers
-    const handleRecenterMap = () => {
-        if (yandexMapRef.current) {
-            yandexMapRef.current.setCenter(centerCoords, 15, { duration: 500 });
+        if (isAxiosError(error) && error.code === "ERR_NETWORK") {
+            return "Не удалось подключиться к серверу. Проверьте, что backend запущен и доступен на порту 3001.";
         }
-    };
 
-    const handleOpenBooking = (provider: Provider) => {
-        setSelectedBookingProvider(provider);
-        setBookingModalOpen(true);
-    };
+        return "Не удалось загрузить список специалистов. Попробуйте обновить страницу.";
+    }, [error]);
 
-    const handleCall = (phone: string) => {
-        window.location.href = `tel:${phone.replace(/[^\d+]/g, "")}`;
-    };
+    const mobileCategories = useMemo<MobileProviderCategory[]>(() => {
+        const order = [
+            ActivityType.master,
+            ActivityType.auto_service,
+            ActivityType.auto_shop,
+            ActivityType.auto_wash,
+        ];
+        return categoriesToRender
+            .slice()
+            .sort((left, right) => order.indexOf(left.type) - order.indexOf(right.type))
+            .map(({ type, title, empty }) => ({ type, title, empty }));
+    }, [categoriesToRender]);
 
-    const handleChat = (provider: Provider) => {
-        if (!isAuthenticated) {
-            navigate("/login");
-            return;
-        }
-        navigate(`/cabinet/chats?providerId=${provider.id}`);
-    };
-
-    const handleCategoryFilterClick = (type: ActivityType | "all") => {
-        setSelectedCategory(type);
-        if (type !== "all" && categoryRefs[type]?.current) {
-            categoryRefs[type].current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-    };
-
-    // Scroll & Collapse mechanics for Bottom Sheet over Map
-    const [scrollY, setScrollY] = useState(0);
-    const [isDragging, setIsDragging] = useState(false);
-    const dragStartY = useRef(0);
-    const scrollStartY = useRef(0);
-    const hasDragged = useRef(false);
-
-    React.useEffect(() => {
-        let ticking = false;
-        const handleScroll = () => {
-            if (!ticking) {
-                window.requestAnimationFrame(() => {
-                    setScrollY(window.scrollY);
-                    ticking = false;
-                });
-                ticking = true;
-            }
-        };
-
-        window.addEventListener("scroll", handleScroll, { passive: true });
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
-
-    const handleToggleMap = () => {
-        if (hasDragged.current) return;
-        if (window.scrollY > 160) {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-        } else {
-            window.scrollTo({ top: 480, behavior: "smooth" });
-        }
-    };
-
-    const handlePointerDown = (e: React.PointerEvent) => {
-        dragStartY.current = e.clientY;
-        scrollStartY.current = window.scrollY;
-        hasDragged.current = false;
-        setIsDragging(true);
-        try {
-            (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-        } catch (_) {}
-    };
-
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (!isDragging) return;
-        const deltaY = dragStartY.current - e.clientY;
-        if (Math.abs(deltaY) > 4) {
-            hasDragged.current = true;
-        }
-        window.scrollTo({
-            top: Math.max(0, scrollStartY.current + deltaY),
-            behavior: "auto",
-        });
-    };
-
-    const handlePointerUp = (e: React.PointerEvent) => {
-        if (!isDragging) return;
-        setIsDragging(false);
-        try {
-            (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-        } catch (_) {}
-    };
-
-    const isMapCollapsed = scrollY > 120;
-
-    const categoriesToRender = useMemo(() => {
-        if (selectedCategory === "all") return FIGMA_CATEGORIES;
-        return FIGMA_CATEGORIES.filter((c) => c.type === selectedCategory);
-    }, [selectedCategory]);
+    if (isCompact) {
+        return (
+            <MobileSearchExperience
+                query={query}
+                onQueryChange={setQuery}
+                onlyAvailable={onlyAvailable}
+                onOnlyAvailableChange={setOnlyAvailable}
+                isRadiusPickerOpen={isRadiusPickerOpen}
+                onRadiusPickerOpen={() => setIsRadiusPickerOpen(true)}
+                onRadiusPickerClose={() => setIsRadiusPickerOpen(false)}
+                onRadiusChange={(nextRadius) => {
+                    setParam("radius", nextRadius);
+                    setIsRadiusPickerOpen(false);
+                }}
+                radius={radius}
+                activeTypes={activeTypes}
+                isAllTypesActive={isAllTypesActive}
+                onAllTypesClick={handleAllTypesClick}
+                onActivityTypeClick={handleActivityTypeClick}
+                categories={mobileCategories}
+                providersByType={providersByType}
+                countsByType={countsByType}
+                totalNearbyCount={filteredNearbyProviders.length}
+                filteredAllProviders={filteredAllProviders}
+                isLoading={isLoading}
+                isError={Boolean(isError && !data)}
+                errorMessage={providersErrorMessage}
+                onRetry={() => void refetch()}
+                onShowOnMap={handleProviderClick}
+                onOpenProfile={handleProviderProfileClick}
+                onFocusMap={focusMapOnCoordinates}
+                userCoords={userCoords}
+                mastersRef={mastersRef}
+                mapInstanceRef={yandexMapRef}
+                mapRef={mapRef}
+                isMapAttentionVisible={isMapAttentionVisible}
+                mapAttentionKey={mapAttentionKey}
+                isAuthenticated={isAuthenticated}
+                profileName={profile?.name}
+                profileAvatarUrl={profileAvatarUrl ?? undefined}
+            />
+        );
+    }
 
     return (
-        <div
-            style={{
-                width: "100%",
-                maxWidth: 480,
-                margin: "0 auto",
-                backgroundColor: "#FFFFFF",
-                minHeight: "100vh",
-                display: "flex",
-                flexDirection: "column",
-                position: "relative",
-                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                color: "#1E293B",
-                overflowX: "clip",
-                boxSizing: "border-box",
-                paddingBottom: 72, // Leave space for fixed bottom navigation
-            }}
-        >
-            {/* 1. Header (Sticky at top, white background, light aesthetic) */}
-            <header
-                style={{
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 50,
-                    height: 60,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "0 16px",
-                    backgroundColor: "#FFFFFF",
-                    borderBottom: "1px solid #F1F5F9",
-                    flexShrink: 0,
-                }}
-            >
-                {/* Logo left: full brand logo image (graphic + text included) */}
-                <div
-                    onClick={() => navigate("/")}
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        cursor: "pointer",
-                        userSelect: "none",
-                    }}
-                >
-                    <img
-                        src="/assets/aistudio/image_ae9be8c8.png"
-                        alt="АвтоГис"
-                        style={{
-                            height: 38,
-                            width: "auto",
-                            maxWidth: 160,
-                            objectFit: "contain",
-                            display: "block",
-                        }}
-                    />
-                </div>
-
-                {/* Right actions: Notifications & Login/Profile */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {/* Notification bell square (40x40, rounded 8px) */}
-                    <div
-                        style={{
-                            width: 40,
-                            height: 40,
-                            backgroundColor: "#F1F5F9",
-                            borderRadius: 8,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                        }}
-                    >
-                        <NotificationBell isAdmin={profile?.role === UserRole.ADMIN} />
-                    </div>
-
-                    {/* Login button (68x40, rounded 8px, dark text) or profile */}
-                    {isAuthenticated ? (
-                        <button
-                            type="button"
-                            onClick={() => navigate("/cabinet")}
-                            style={{
-                                height: 40,
-                                padding: "0 14px",
-                                backgroundColor: "#F1F5F9",
-                                borderRadius: 8,
-                                border: "none",
-                                fontSize: 13,
-                                fontWeight: 600,
-                                color: "#1E293B",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 6,
-                            }}
-                        >
-                            Профиль
-                        </button>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={() => navigate("/login")}
-                            style={{
-                                width: 68,
-                                height: 40,
-                                backgroundColor: "#F1F5F9",
-                                borderRadius: 8,
-                                border: "none",
-                                fontSize: 13,
-                                fontWeight: 600,
-                                color: "#1E293B",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                transition: "background-color 0.15s ease",
-                            }}
-                        >
-                            Войти
-                        </button>
-                    )}
-                </div>
-            </header>
-
-            {/* 2. Story Strip: 5 rounded-square items */}
-            <div
-                style={{
-                    paddingTop: 8,
-                    paddingBottom: 8,
-                    backgroundColor: "#FFFFFF",
-                    position: "relative",
-                    zIndex: 40,
-                }}
-            >
-                <FigmaStoryStrip />
-            </div>
-
-            {/* 3. Map Section: Sticky at top (under 60px header), covered smoothly by sheet on scroll */}
-            <div
-                style={{
-                    position: "sticky",
-                    top: 60,
-                    width: "100%",
-                    // Keep the map nearly full-screen on mobile; the sheet still
-                    // peeks over its bottom edge and can be pulled up normally.
-                    height: "calc(100dvh - 60px)",
-                    backgroundColor: "#E2E8F0",
-                    zIndex: 10,
-                    overflow: "hidden",
-                }}
-            >
-                <ProvidersMap
-                    masters={filteredProviders}
-                    mastersRef={mastersRef}
-                    mapInstanceRef={yandexMapRef}
-                    isLoading={isLoading}
-                    height="calc(100dvh - 60px)"
-                />
-
-                {/* Floating Geolocation Square Button (centered vertically on right, compact icon) */}
-                <button
-                    type="button"
-                    onClick={handleRecenterMap}
-                    aria-label="Определить мое местоположение"
-                    title="Мое местоположение"
-                    style={{
-                        position: "absolute",
-                        top: "50%",
-                        right: 16,
-                        transform: "translateY(-50%)",
-                        width: 36,
-                        height: 36,
-                        backgroundColor: "#FFFFFF",
-                        borderRadius: 8,
-                        border: "none",
-                        boxShadow: "0 2px 10px rgba(0, 0, 0, 0.16)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        zIndex: 15,
-                        transition: "background-color 0.15s ease",
-                    }}
-                >
-                    <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#2563EB"
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <polygon points="3 11 22 2 13 21 11 13 3 11" />
-                    </svg>
-                </button>
-
-                {/* The filter row lifts onto the full-screen map and returns to the sheet on scroll. */}
-                <div
-                    style={{
-                        position: "absolute",
-                        left: 0,
-                        right: 0,
-                        bottom: 72,
-                        zIndex: 18,
-                        paddingTop: 24,
-                        background: "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,.92) 55%)",
-                        opacity: isMapCollapsed ? 0 : 1,
-                        transform: isMapCollapsed ? "translateY(14px)" : "translateY(0)",
-                        pointerEvents: isMapCollapsed ? "none" : "auto",
-                        transition: "opacity 220ms ease, transform 280ms ease",
-                    }}
-                >
-                    <FilterStrip
-                        totalCount={totalCount}
-                        onlyAvailable={onlyAvailable}
-                        selectedCategory={selectedCategory}
-                        radius={radius}
-                        providersByType={providersByType}
-                        onSelectCategory={handleCategoryFilterClick}
-                        onToggleAvailability={() => setOnlyAvailable((value) => !value)}
-                        onOpenRadiusPicker={() => setIsRadiusPickerOpen(true)}
-                    />
-                </div>
-
-            </div>
-
-            {/* 4. Results Panel ("Шторка", slides up over the map, covering it smoothly as you scroll down) */}
-            <main
-                style={{
-                    position: "relative",
-                    marginTop: -72,
-                    backgroundColor: "#F6F6F6",
-                    borderTopLeftRadius: 18,
-                    borderTopRightRadius: 18,
-                    paddingTop: 8,
-                    paddingBottom: 24,
-                    boxShadow: "0 -6px 20px rgba(0, 0, 0, 0.10)",
-                    zIndex: 20,
-                    boxSizing: "border-box",
-                    minHeight: "calc(100vh - 60px)",
-                }}
-            >
-                {/* Interactive Drag Handle Area (pull down/up, or tap to toggle map view) */}
-                <div
-                    onPointerDown={handlePointerDown}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    onClick={handleToggleMap}
-                    style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: isDragging ? "grabbing" : "grab",
-                        userSelect: "none",
-                        touchAction: "none",
-                        padding: "4px 16px 10px",
-                        gap: 6,
-                    }}
-                    title={isMapCollapsed ? "Нажмите, чтобы развернуть карту" : "Нажмите или потяните, чтобы свернуть карту"}
-                >
-                    {/* Drag handle line (42x4 px, centered) */}
-                    <div
-                        style={{
-                            width: 42,
-                            height: 4,
-                            backgroundColor: isDragging ? "#94A3B8" : "#CBD5E1",
-                            borderRadius: 2,
-                            transition: "background-color 0.15s ease, transform 0.15s ease",
-                            transform: isDragging ? "scaleX(1.2)" : "scaleX(1)",
-                        }}
-                    />
-
-                    {/* Dynamic Status / Action Hint */}
-                    <div
-                        style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            color: isMapCollapsed ? "#0284C7" : "#94A3B8",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                            transition: "color 0.15s ease",
-                        }}
-                    >
-                        {isMapCollapsed ? (
-                            <>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <polyline points="18 15 12 9 6 15" />
-                                </svg>
-                                <span>Развернуть карту</span>
-                            </>
+        <PageRoot>
+            <HomeShell>
+                <TopBar>
+                    <BrandMark href="/" aria-label="Автогис">
+                        <BrandLogo src={LogoIcon} alt="Автогис" />
+                    </BrandMark>
+                    <TopActions>
+                        {isAuthenticated && profile && (
+                            <TopActionTile>
+                                <NotificationBell
+                                    isAdmin={
+                                        profile.role === "admin"
+                                    }
+                                />
+                            </TopActionTile>
+                        )}
+                        {isAuthenticated ? (
+                            <TopActionTile $profile>
+                                <StoryRing authorId={profile?.id} size={40}>
+                                    <ProfileButton
+                                        aria-label="Профиль"
+                                        onClick={() => navigate("/cabinet")}
+                                        $hasAvatar={Boolean(profileAvatarUrl)}
+                                        $square
+                                    >
+                                        {profileAvatarUrl ? <img src={profileAvatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : getInitials(profile?.name)}
+                                    </ProfileButton>
+                                </StoryRing>
+                            </TopActionTile>
                         ) : (
-                            <span>Потяните вверх или прокрутите для каталога</span>
+                            <ProfileButton
+                                aria-label="Войти в профиль"
+                                onClick={() => navigate("/login")}
+                            >
+                                Войти
+                            </ProfileButton>
                         )}
-                    </div>
-                </div>
-
-                {/* Sticky Search & Filters Header Bar inside the Sheet */}
+                    </TopActions>
+                </TopBar>
+                {isAuthenticated && <StoryStrip />}
                 <div
                     style={{
-                        position: "sticky",
-                        top: 60,
-                        zIndex: 25,
-                        backgroundColor: "#F6F6F6",
-                        paddingTop: 4,
-                        paddingBottom: 4,
-                        boxShadow: scrollY > 480 ? "0 4px 12px rgba(0, 0, 0, 0.05)" : "none",
-                        transition: "box-shadow 0.2s ease",
+                        margin: '12px 0 20px',
+                        display: 'none',
+                        padding: '16px 20px',
+                        background: '#ffffff',
+                        borderRadius: '16px',
+                        border: tenderMode ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+                        boxShadow: tenderMode
+                            ? '0 8px 24px rgba(37, 99, 235, 0.1)'
+                            : '0 1px 3px rgba(0, 0, 0, 0.04)',
+                        transition: 'all 0.2s ease',
                     }}
                 >
-
-                {/* Search Bar (328 px / padding 16px, height 44 px, rounded 8px, white bg) */}
-                <div style={{ padding: "0 16px", marginBottom: 12 }}>
                     <div
                         style={{
-                            display: "flex",
-                            alignItems: "center",
-                            height: 44,
-                            backgroundColor: "#FFFFFF",
-                            borderRadius: 8,
-                            padding: "0 12px",
-                            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
-                            border: "1px solid #E2E8F0",
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '12px',
                         }}
                     >
-                        <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#94A3B8"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            style={{ flexShrink: 0, marginRight: 8 }}
-                        >
-                            <circle cx="11" cy="11" r="8" />
-                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                        </svg>
-
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Поиск по профессиям, маркам, услугам"
+                        <label
                             style={{
-                                width: "100%",
-                                border: "none",
-                                outline: "none",
-                                fontSize: 13,
-                                color: "#1E293B",
-                                backgroundColor: "transparent",
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                cursor: 'pointer',
+                                userSelect: 'none',
                             }}
-                        />
-
-                        {searchQuery && (
-                            <button
-                                type="button"
-                                onClick={() => setSearchQuery("")}
-                                style={{
-                                    border: "none",
-                                    background: "transparent",
-                                    color: "#94A3B8",
-                                    cursor: "pointer",
-                                    padding: 4,
-                                    fontSize: 16,
+                        >
+                            <input
+                                type="checkbox"
+                                checked={tenderMode}
+                                onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    setTenderMode(checked);
+                                    if (!checked) setSelectedProviders([]);
                                 }}
-                            >
-                                ✕
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                <div
-                    style={{
-                        maxHeight: isMapCollapsed ? 52 : 0,
-                        overflow: "hidden",
-                        opacity: isMapCollapsed ? 1 : 0,
-                        transform: isMapCollapsed ? "translateY(0)" : "translateY(-10px)",
-                        pointerEvents: isMapCollapsed ? "auto" : "none",
-                        transition: "max-height 280ms ease, opacity 220ms ease, transform 280ms ease",
-                    }}
-                >
-                    <FilterStrip
-                        totalCount={totalCount}
-                        onlyAvailable={onlyAvailable}
-                        selectedCategory={selectedCategory}
-                        radius={radius}
-                        providersByType={providersByType}
-                        onSelectCategory={handleCategoryFilterClick}
-                        onToggleAvailability={() => setOnlyAvailable((value) => !value)}
-                        onOpenRadiusPicker={() => setIsRadiusPickerOpen(true)}
-                    />
-                </div>
-            </div>
-
-                {/* 5. Four Category Sections vertically */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 32, marginTop: 8 }}>
-                    {categoriesToRender.map((category) => {
-                        const providers = providersByType[category.type];
-
-                        return (
-                            <section
-                                key={category.type}
-                                ref={categoryRefs[category.type]}
-                                style={{ display: "flex", flexDirection: "column" }}
-                            >
-                                {/* Category Header */}
-                                <div
-                                    style={{
-                                        padding: "0 16px",
-                                        marginBottom: 12,
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "baseline",
-                                    }}
-                                >
-                                    <h2
+                                style={{
+                                    width: '20px',
+                                    height: '20px',
+                                    cursor: 'pointer',
+                                    accentColor: '#2563eb',
+                                }}
+                            />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <strong style={{ fontSize: '16px', color: '#111827' }}>
+                                    Режим Мульти-рассылки
+                                </strong>
+                                {tenderMode && (
+                                    <span
                                         style={{
-                                            fontSize: 20,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '5px',
+                                            padding: '3px 8px',
+                                            borderRadius: '12px',
+                                            fontSize: '11px',
                                             fontWeight: 700,
-                                            color: "#0F172A",
-                                            margin: 0,
-                                            letterSpacing: "-0.01em",
+                                            background: '#dbeafe',
+                                            color: '#1d4ed8',
+                                            letterSpacing: '0.02em',
+                                            textTransform: 'uppercase',
                                         }}
                                     >
-                                        {category.title}
-                                    </h2>
-                                    <span style={{ fontSize: 12, color: "#64748B", fontWeight: 500 }}>
-                                        {providers.length} предл.
-                                    </span>
-                                </div>
-
-                                {/* Horizontal Scroll Track with Partial Next Card Peek */}
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        gap: 16,
-                                        overflowX: "auto",
-                                        padding: "4px 16px 12px",
-                                        scrollbarWidth: "none",
-                                        msOverflowStyle: "none",
-                                        WebkitOverflowScrolling: "touch",
-                                    }}
-                                >
-                                    {providers.length > 0 ? (
-                                        providers.map((p) => {
-                                            if (category.type === ActivityType.master) {
-                                                return (
-                                                    <FigmaMasterCard
-                                                        key={p.id}
-                                                        provider={p}
-                                                        onCall={handleCall}
-                                                        onChat={handleChat}
-                                                        onClick={() => navigate(`/master-details?id=${p.id}`)}
-                                                    />
-                                                );
-                                            }
-
-                                            return (
-                                                <FigmaOrgCard
-                                                    key={p.id}
-                                                    provider={p}
-                                                    categoryType={category.type}
-                                                    onBook={handleOpenBooking}
-                                                    onCall={handleCall}
-                                                    onChat={handleChat}
-                                                    onClick={() => navigate(`/provider?id=${p.id}&type=${category.type}`)}
-                                                />
-                                            );
-                                        })
-                                    ) : (
-                                        <div
+                                        <span
                                             style={{
-                                                backgroundColor: "#FFFFFF",
-                                                borderRadius: 12,
-                                                padding: "24px 20px",
-                                                color: "#64748B",
-                                                fontSize: 13,
-                                                width: "calc(100% - 32px)",
-                                                border: "1px dashed #CBD5E1",
-                                                textAlign: "center",
+                                                width: '6px',
+                                                height: '6px',
+                                                borderRadius: '50%',
+                                                background: '#2563eb',
                                             }}
-                                        >
-                                            {category.empty}
-                                        </div>
-                                    )}
+                                        />
+                                        Активен
+                                    </span>
+                                )}
+                            </div>
+                        </label>
+
+                        {tenderMode && (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    flexWrap: 'wrap',
+                                }}
+                            >
+                                <Button
+                                    variant="outlined"
+                                    onClick={handleSelectAllInRadius}
+                                >
+                                    Выбрать всех в радиусе ({filteredNearbyProviders?.length ?? 0})
+                                </Button>
+                                {selectedProviders.length > 0 && (
+                                    <Button
+                                        variant="outlined"
+                                        onClick={handleDeselectAll}
+                                    >
+                                        Сбросить
+                                    </Button>
+                                )}
+                                <Button
+                                    variant="contained"
+                                    disabled={selectedProviders.length === 0}
+                                    onClick={() => setIsCreateOrderOpen(true)}
+                                >
+                                    Отправить заявку ({selectedProviders.length})
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+
+                    {tenderMode && showTenderHint && (
+                        <div
+                            style={{
+                                marginTop: '12px',
+                                padding: '10px 14px',
+                                background: '#eff6ff',
+                                borderRadius: '12px',
+                                border: '1px solid #bfdbfe',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '12px',
+                                flexWrap: 'wrap',
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '240px' }}>
+                                <span style={{ fontSize: '18px', flexShrink: 0 }}>💡</span>
+                                <div style={{ fontSize: '13px', lineHeight: 1.45, color: '#1e3a8a' }}>
+                                    <strong>Мульти-рассылка:</strong> нажимайте на карточки мастеров или «Выбрать всех», чтобы отправить заявку сразу нескольким специалистам.
                                 </div>
-                            </section>
-                        );
-                    })}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                <button
+                                    type="button"
+                                    onClick={handleDismissHintPermanently}
+                                    style={{
+                                        border: 'none',
+                                        background: 'transparent',
+                                        color: '#2563eb',
+                                        fontSize: '12px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        padding: '4px 8px',
+                                        borderRadius: '6px',
+                                        whiteSpace: 'nowrap',
+                                        transition: 'background-color 0.15s ease',
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#dbeafe')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                >
+                                    Не показывать больше
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </main>
 
-            {/* Online Booking Modal */}
-            <BookingModal
-                isOpen={bookingModalOpen}
-                provider={selectedBookingProvider}
-                onClose={() => {
-                    setBookingModalOpen(false);
-                    setSelectedBookingProvider(null);
-                }}
-            />
 
-            {/* Radius Picker Modal */}
+                {isError && !data ? (
+                    <ErrorWrapper>
+                        <ErrorState
+                            message={providersErrorMessage}
+                            onRetry={() => {
+                                void refetch();
+                            }}
+                        />
+                    </ErrorWrapper>
+                ) : (
+                    <>
+                        <HeroGrid>
+                            <HeroCopy>
+                                <SearchPanel>
+                                    <Filters
+                                        query={query}
+                                        onChange={(next) =>
+                                            setQuery(next.query)
+                                        }
+                                    />
+                                </SearchPanel>
+                            </HeroCopy>
+
+                            <HeroMapCard ref={mapRef}>
+                                <MapWrapper>
+                                    <ProvidersMap
+                                        masters={filteredAllProviders}
+                                        mastersRef={mastersRef}
+                                        mapInstanceRef={yandexMapRef}
+                                        height="418px"
+                                    />
+                                    {isMapAttentionVisible && (
+                                        <MapAttentionMarker
+                                            key={mapAttentionKey}
+                                            aria-hidden="true"
+                                        />
+                                    )}
+                                </MapWrapper>
+                            </HeroMapCard>
+                        </HeroGrid>
+
+                        <FiltersStrip>
+                            <ActivityChip
+                                $isActive={isAllTypesActive}
+                                onClick={handleAllTypesClick}
+                            >
+                                Все
+                                <span>{filteredNearbyProviders.length}</span>
+                            </ActivityChip>
+                            {PROVIDER_CATEGORIES.map((category) => (
+                                <ActivityChip
+                                    key={category.type}
+                                    $isActive={
+                                        !isAllTypesActive &&
+                                        activeTypes.includes(category.type)
+                                    }
+                                    onClick={() =>
+                                        handleActivityTypeClick(category.type)
+                                    }
+                                >
+                                    {category.chip}
+                                    <span>{countsByType[category.type] || 0}</span>
+                                </ActivityChip>
+                            ))}
+                            <AvailableToggle
+                                type="button"
+                                $isActive={onlyAvailable}
+                                aria-pressed={onlyAvailable}
+                                onClick={() => setOnlyAvailable((value) => !value)}
+                            >
+                                <span>Доступны сейчас</span>
+                            </AvailableToggle>
+                            <RadiusFilterButton
+                                type="button"
+                                onClick={() => setIsRadiusPickerOpen(true)}
+                                aria-label={`Изменить радиус поиска, сейчас ${radius} километров`}
+                            >
+                                Радиус: {radius} км
+                            </RadiusFilterButton>
+                        </FiltersStrip>
+
+                        {isLoading ? (
+                            <LoadingPanel>Загрузка предложений...</LoadingPanel>
+                        ) : (
+                            <ContentFlow>
+                                {categoriesToRender.map((category) => {
+                                    const providers =
+                                        providersByType[category.type] || [];
+                                    const categoryAvailable =
+                                        countAvailable(providers);
+
+                                    return (
+                                        <CarouselSection key={category.type}>
+                                            <CarouselHead>
+                                                <CarouselTitle>
+                                                    {category.title}
+                                                </CarouselTitle>
+                                                <CarouselMeta>
+                                                    {providers.length} рядом ·{" "}
+                                                    {categoryAvailable} доступно
+                                                </CarouselMeta>
+                                            </CarouselHead>
+                                            <CarouselTrack>
+                                                {providers.length > 0 ? (
+                                                    providers.map((provider) => {
+                                                        return (
+                                                            <ProviderCard
+                                                                key={`${provider.activityType}-${provider.id}`}
+                                                                provider={provider}
+                                                                onShowOnMap={handleProviderClick}
+                                                                onOpenProfile={handleProviderProfileClick}
+                                                                isCarouselItem
+                                                            />
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <EmptyCard>
+                                                        {category.empty}
+                                                    </EmptyCard>
+                                                )}
+                                            </CarouselTrack>
+                                        </CarouselSection>
+                                    );
+                                })}
+
+                            </ContentFlow>
+                        )}
+                    </>
+                )}
+            </HomeShell>
+
+            {tenderMode && selectedProviders.length > 0 && (
+                <TenderFloatingBar>
+                    <TenderBarHeader>
+                        <TenderBarInfo>
+                            <TenderBarBadge>
+                                {selectedProviders.length}
+                            </TenderBarBadge>
+                            <div>
+                                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
+                                    {selectedProviders.length > 0
+                                        ? `Выбрано: ${selectedProviders.length} ${
+                                              selectedProviders.length === 1
+                                                  ? 'мастер'
+                                                  : selectedProviders.length < 5
+                                                  ? 'мастера'
+                                                  : 'мастеров'
+                                          }`
+                                        : 'Мастера не выбраны'}
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                    {selectedProviders.length > 0
+                                        ? 'Нажмите «Отправить заявку»'
+                                        : 'Нажимайте на карточки для выбора'}
+                                </div>
+                            </div>
+                        </TenderBarInfo>
+
+                        <TenderCloseButtonMobile
+                            type="button"
+                            onClick={() => {
+                                setTenderMode(false);
+                                setSelectedProviders([]);
+                            }}
+                            title="Выйти из режима мульти-рассылки"
+                        >
+                            ✕
+                        </TenderCloseButtonMobile>
+                    </TenderBarHeader>
+
+                    <TenderBarActions>
+                        {selectedProviders.length > 0 ? (
+                            <Button
+                                variant="outlined"
+                                onClick={handleDeselectAll}
+                            >
+                                Сбросить
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="outlined"
+                                onClick={handleSelectAllInRadius}
+                            >
+                                Выбрать всех
+                            </Button>
+                        )}
+                        <Button
+                            variant="contained"
+                            disabled={selectedProviders.length === 0}
+                            onClick={() => setIsCreateOrderOpen(true)}
+                        >
+                            Отправить ({selectedProviders.length})
+                        </Button>
+                        <TenderCloseButtonDesktop
+                            type="button"
+                            onClick={() => {
+                                setTenderMode(false);
+                                setSelectedProviders([]);
+                            }}
+                            title="Выйти из режима мульти-рассылки"
+                        >
+                            ✕
+                        </TenderCloseButtonDesktop>
+                    </TenderBarActions>
+                </TenderFloatingBar>
+            )}
+            <GeolocationPrompt />
+
             <RadiusPickerModal
                 open={isRadiusPickerOpen}
                 currentRadius={radius}
-                onSelectRadius={(newRadius: number) => {
-                    setParam("radius", String(newRadius));
-                    setIsRadiusPickerOpen(false);
-                }}
                 onClose={() => setIsRadiusPickerOpen(false)}
+                onSelectRadius={(nextRadius) => setParam("radius", nextRadius)}
             />
 
-            {/* Create Order Modal (retained for custom tender workflow) */}
-            <CreateOrderModal
-                open={isCreateOrderOpen}
-                onClose={() => setIsCreateOrderOpen(false)}
-                providers={filteredProviders}
-            />
-        </div>
+            {isCreateOrderOpen && selectedProviders.length > 0 && (
+                <CreateOrderModal
+                    open={isCreateOrderOpen}
+                    onClose={() => setIsCreateOrderOpen(false)}
+                    onSuccess={() => {
+                        setSelectedProviders([]);
+                        setTenderMode(false);
+                    }}
+                    providers={selectedProviders}
+                />
+            )}
+        </PageRoot>
+
     );
-}
+};

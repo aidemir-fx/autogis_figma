@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
     Box,
@@ -19,6 +18,7 @@ import ArrowForwardIosRoundedIcon from "@mui/icons-material/ArrowForwardIosRound
 import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { markStoryViewed, reportStory, type Story, type StoryReportReason } from "../api";
 
 import { StoryCanvas } from "./StoryCanvas";
@@ -29,7 +29,6 @@ type StoryViewerProps = {
     open: boolean;
     onClose: () => void;
     footer?: ReactNode | ((story: Story) => ReactNode);
-    onAction?: (actionType?: "book" | "call", story?: Story) => void;
 };
 
 const REPORT_OPTIONS: Array<{ value: StoryReportReason; label: string }> = [
@@ -39,9 +38,9 @@ const REPORT_OPTIONS: Array<{ value: StoryReportReason; label: string }> = [
     { value: "other", label: "Другое" },
 ];
 
-export function StoryViewer({ groups, initialGroupIndex, open, onClose, footer, onAction }: StoryViewerProps) {
-    const navigate = useNavigate();
+export function StoryViewer({ groups, initialGroupIndex, open, onClose, footer }: StoryViewerProps) {
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
     // The feed is invalidated after marking a story as viewed. Keep the list
     // used by the current viewer stable, otherwise Instagram-like sorting can
     // move the next unseen author into the current numeric index and advance
@@ -131,6 +130,12 @@ export function StoryViewer({ groups, initialGroupIndex, open, onClose, footer, 
         }
     };
 
+    const openAuthorProfile = () => {
+        if (!story?.author.providerId || !story.author.activityType) return;
+        onClose();
+        navigate(`/provider?id=${encodeURIComponent(story.author.providerId)}&type=${encodeURIComponent(story.author.activityType)}`);
+    };
+
     if (!story || !frame) return null;
 
     return (
@@ -147,24 +152,24 @@ export function StoryViewer({ groups, initialGroupIndex, open, onClose, footer, 
                             <Box key={index} sx={{ height: 3, flex: 1, borderRadius: 2, background: state === "idle" ? "rgba(255,255,255,.35)" : "white" }} />
                         ))}
                     </Box>
-                    <Stack
-                        direction="row"
-                        alignItems="center"
-                        spacing={1}
-                        onClick={() => {
-                            onClose();
-                            navigate(`/master-details?id=${story.author.userId}&type=${story.author.role || "master"}`);
-                        }}
-                        sx={{ px: 2, pb: 1, zIndex: 2, cursor: "pointer", "&:hover": { opacity: 0.9 } }}
-                    >
-                        <Box sx={{ width: 36, height: 36, borderRadius: 2, background: "#2563EB", color: "#ffffff", display: "grid", placeItems: "center", fontWeight: 800 }}>
-                            {story.author.displayName.slice(0, 1).toUpperCase()}
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ px: 2, pb: 1, zIndex: 2 }}>
+                        <Box
+                            component="button"
+                            type="button"
+                            onClick={openAuthorProfile}
+                            disabled={!story.author.providerId || !story.author.activityType}
+                            aria-label={`Открыть профиль: ${story.author.displayName}`}
+                            sx={{ width: 40, height: 40, p: 0, flex: "0 0 auto", border: "2px solid rgba(255,255,255,.9)", borderRadius: "13px", overflow: "hidden", background: "#dbeafe", color: "#1d4ed8", display: "grid", placeItems: "center", fontWeight: 800, cursor: story.author.providerId && story.author.activityType ? "pointer" : "default", opacity: 1, "&:disabled": { color: "#1d4ed8", opacity: 1 } }}
+                        >
+                            {story.author.avatarUrl ? (
+                                <Box component="img" src={story.author.avatarUrl} alt="" sx={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+                            ) : story.author.displayName.slice(0, 1).toUpperCase()}
                         </Box>
-                        <Typography sx={{ fontWeight: 700, flex: 1 }}>{story.author.displayName} ↗</Typography>
-                        <IconButton onClick={(e) => { e.stopPropagation(); setReportOpen(true); }} aria-label="Пожаловаться" sx={{ color: "white" }}>
+                        <Typography sx={{ fontWeight: 700, flex: 1 }}>{story.author.displayName}</Typography>
+                        <IconButton onClick={() => setReportOpen(true)} aria-label="Пожаловаться" sx={{ color: "white" }}>
                             <FlagOutlinedIcon />
                         </IconButton>
-                        <IconButton onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Закрыть" sx={{ color: "white" }}>
+                        <IconButton onClick={onClose} aria-label="Закрыть" sx={{ color: "white" }}>
                             <CloseRoundedIcon />
                         </IconButton>
                     </Stack>
@@ -186,7 +191,7 @@ export function StoryViewer({ groups, initialGroupIndex, open, onClose, footer, 
                             <ArrowBackIosNewRoundedIcon />
                         </IconButton>
                         <Box sx={{ height: "100%", width: "100%", maxWidth: 440 }}>
-                            <StoryCanvas key={frame.id} frame={frame} sound onPromoActionClick={(actionType) => onAction?.(actionType, story)} />
+                            <StoryCanvas key={frame.id} frame={frame} sound />
                         </Box>
                         <IconButton onClick={goNext} aria-label="Следующее объявление" sx={{ position: "absolute", right: 8, zIndex: 2, color: "white", background: "rgba(0,0,0,.3)" }}>
                             <ArrowForwardIosRoundedIcon />

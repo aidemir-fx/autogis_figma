@@ -1,6 +1,9 @@
 package errors
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+)
 
 type AppError struct {
 	Code    string `json:"code"`
@@ -9,22 +12,72 @@ type AppError struct {
 }
 
 func (e *AppError) Error() string {
-	return e.Message
+	return fmt.Sprintf("%s: %s", e.Code, e.Message)
 }
 
 var (
-	ErrUnauthorized       = &AppError{Code: "UNAUTHORIZED", Message: "Unauthorized", Status: http.StatusUnauthorized}
-	ErrInvalidToken       = &AppError{Code: "INVALID_TOKEN", Message: "Invalid or expired token", Status: http.StatusUnauthorized}
-	ErrInvalidCredentials = &AppError{Code: "INVALID_CREDENTIALS", Message: "Invalid phone or password", Status: http.StatusUnauthorized}
-	ErrUserNotFound       = &AppError{Code: "USER_NOT_FOUND", Message: "User not found", Status: http.StatusNotFound}
-	ErrUserExists         = &AppError{Code: "USER_EXISTS", Message: "User already exists", Status: http.StatusConflict}
-	ErrOrderNotFound      = &AppError{Code: "ORDER_NOT_FOUND", Message: "Order not found", Status: http.StatusNotFound}
-	ErrInvalidOrderStatus = &AppError{Code: "INVALID_ORDER_STATUS", Message: "Invalid order status", Status: http.StatusBadRequest}
-	ErrValidationFailed   = &AppError{Code: "VALIDATION_FAILED", Message: "Validation failed", Status: http.StatusBadRequest}
-	ErrInternalServer     = &AppError{Code: "INTERNAL_SERVER", Message: "Internal server error", Status: http.StatusInternalServerError}
-	ErrForbidden          = &AppError{Code: "FORBIDDEN", Message: "Forbidden", Status: http.StatusForbidden}
-	ErrNotFound           = &AppError{Code: "NOT_FOUND", Message: "Not found", Status: http.StatusNotFound}
-	ErrBadRequest         = &AppError{Code: "BAD_REQUEST", Message: "Bad request", Status: http.StatusBadRequest}
+	// Auth errors
+	ErrInvalidCredentials = &AppError{
+		Code:    "INVALID_CREDENTIALS",
+		Message: "Invalid phone or password",
+		Status:  http.StatusUnauthorized,
+	}
+
+	ErrUserNotFound = &AppError{
+		Code:    "USER_NOT_FOUND",
+		Message: "User not found",
+		Status:  http.StatusNotFound,
+	}
+
+	ErrUserExists = &AppError{
+		Code:    "USER_EXISTS",
+		Message: "User already exists",
+		Status:  http.StatusConflict,
+	}
+
+	ErrInvalidToken = &AppError{
+		Code:    "INVALID_TOKEN",
+		Message: "Invalid or expired token",
+		Status:  http.StatusUnauthorized,
+	}
+
+	ErrUnauthorized = &AppError{
+		Code:    "UNAUTHORIZED",
+		Message: "Unauthorized",
+		Status:  http.StatusUnauthorized,
+	}
+
+	// Order errors
+	ErrOrderNotFound = &AppError{
+		Code:    "ORDER_NOT_FOUND",
+		Message: "Order not found",
+		Status:  http.StatusNotFound,
+	}
+
+	ErrInvalidOrderStatus = &AppError{
+		Code:    "INVALID_ORDER_STATUS",
+		Message: "Invalid order status",
+		Status:  http.StatusBadRequest,
+	}
+
+	// General errors
+	ErrInternalServer = &AppError{
+		Code:    "INTERNAL_SERVER_ERROR",
+		Message: "Internal server error",
+		Status:  http.StatusInternalServerError,
+	}
+
+	ErrValidationFailed = &AppError{
+		Code:    "VALIDATION_FAILED",
+		Message: "Validation failed",
+		Status:  http.StatusBadRequest,
+	}
+
+	ErrNotFound = &AppError{
+		Code:    "NOT_FOUND",
+		Message: "Resource not found",
+		Status:  http.StatusNotFound,
+	}
 )
 
 func New(code, message string, status int) *AppError {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type TouchEvent } from "react";
 import {
-    Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
+    Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
     IconButton, LinearProgress, Slider, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography,
 } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -11,42 +11,13 @@ import TextFieldsRoundedIcon from "@mui/icons-material/TextFieldsRounded";
 import PhotoCameraRoundedIcon from "@mui/icons-material/PhotoCameraRounded";
 import VideocamRoundedIcon from "@mui/icons-material/VideocamRounded";
 import FlipCameraIosRoundedIcon from "@mui/icons-material/FlipCameraIosRounded";
-import FormatAlignLeftRoundedIcon from "@mui/icons-material/FormatAlignLeftRounded";
-import FormatAlignCenterRoundedIcon from "@mui/icons-material/FormatAlignCenterRounded";
-import FormatAlignRightRoundedIcon from "@mui/icons-material/FormatAlignRightRounded";
-import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
-import CropRoundedIcon from "@mui/icons-material/CropRounded";
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
-import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { createStory, uploadStoryMedia, type CreateStoryFrame, type StoryPromo } from "../api";
+import { createStory, uploadStoryMedia, type CreateStoryFrame } from "../api";
 import { StoryCanvas, type StoryCanvasFrame } from "./StoryCanvas";
 
-const BACKGROUNDS = [
-    "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)",
-    "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)",
-    "linear-gradient(135deg, #1e3a8a, #3b82f6, #06b6d4)",
-    "linear-gradient(135deg, #064e3b, #059669, #10b981)",
-    "linear-gradient(135deg, #4c1d95, #7c3aed, #c026d3)",
-    "linear-gradient(135deg, #7f1d1d, #dc2626, #f97316)",
-    "linear-gradient(180deg, #18181b, #09090b)",
-    "linear-gradient(135deg, #ea580c, #f59e0b, #fbbf24)",
-];
-const COLOR_NAMES = ["Закат", "Инстаграм", "Неон Синий", "Изумруд", "Пурпур", "Огонь", "Тёмный", "Золото"];
-
-const INSTA_COLORS = [
-    { label: "Белый", color: "#FFFFFF", text: "#000000" },
-    { label: "Чёрный", color: "#000000", text: "#FFFFFF" },
-    { label: "Жёлтый", color: "#FACC15", text: "#000000" },
-    { label: "Оранжевый", color: "#FB923C", text: "#000000" },
-    { label: "Красный", color: "#EF4444", text: "#FFFFFF" },
-    { label: "Розовый", color: "#EC4899", text: "#FFFFFF" },
-    { label: "Фиолетовый", color: "#A855F7", text: "#FFFFFF" },
-    { label: "Синий", color: "#3B82F6", text: "#FFFFFF" },
-    { label: "Бирюзовый", color: "#14B8A6", text: "#000000" },
-    { label: "Зелёный", color: "#22C55E", text: "#FFFFFF" },
-];
+const BACKGROUNDS = ["#1d4ed8", "#0f766e", "#be123c", "#7c3aed", "#0f172a", "#f59e0b"];
+const COLOR_NAMES = ["Синий", "Зелёный", "Красный", "Фиолетовый", "Тёмный", "Оранжевый"];
 const MAX_FRAMES = 10;
 const MAX_STORY_SECONDS = 4 * 60;
 const MAX_VIDEO_SECONDS = 60;
@@ -217,19 +188,9 @@ export function StoryComposer({ authorId, compact = false }: { authorId: string;
     const [captureOpen, setCaptureOpen] = useState(false);
     const [textOpen, setTextOpen] = useState(false);
     const [textValue, setTextValue] = useState("");
-    const [textSize, setTextSize] = useState(30);
-    const [textColor, setTextColor] = useState("#FFFFFF");
-    const [textBg, setTextBg] = useState("rgba(0,0,0,0.7)");
-    const [textAlign, setTextAlign] = useState<"center" | "left" | "right">("center");
-    const [textBadge, setTextBadge] = useState(true);
+    const [textSize, setTextSize] = useState(28);
     const [backgroundOpen, setBackgroundOpen] = useState(false);
     const [cropOpen, setCropOpen] = useState(false);
-    const [promoOpen, setPromoOpen] = useState(false);
-    const [promoTag, setPromoTag] = useState("Акция");
-    const [promoTitle, setPromoTitle] = useState("");
-    const [promoDescription, setPromoDescription] = useState("");
-    const [promoBenefit, setPromoBenefit] = useState("");
-    const [promoActionType, setPromoActionType] = useState<"book" | "call">("book");
     const [videoTrim, setVideoTrim] = useState<VideoTrimDraft | null>(null);
     const [publishing, setPublishing] = useState(false);
     const [publishError, setPublishError] = useState<string | null>(null);
@@ -256,106 +217,12 @@ export function StoryComposer({ authorId, compact = false }: { authorId: string;
     const updateFrame = (patch: Partial<Draft>) => {
         setFrames((current) => current.map((item, index) => index === selected ? { ...item, ...patch } : item));
     };
-
     const editText = () => {
         if (!frame) return;
-        setTextValue(frame.text || "");
-        setTextSize(frame.fontSize || 30);
-        setTextColor(frame.textColor || "#FFFFFF");
-        setTextBg(frame.textBg || "rgba(0,0,0,0.7)");
-        setTextAlign(frame.textAlign || "center");
-        setTextBadge(frame.textBadge ?? true);
+        setTextValue(frame.text);
+        setTextSize(frame.fontSize);
         setTextOpen(true);
     };
-
-    const cycleBackground = () => {
-        if (!frame) return;
-        const currentIndex = BACKGROUNDS.indexOf(frame.background);
-        const nextIndex = (currentIndex + 1) % BACKGROUNDS.length;
-        updateFrame({ background: BACKGROUNDS[nextIndex] });
-    };
-
-    const toggleAlign = () => {
-        const next = textAlign === "center" ? "left" : textAlign === "left" ? "right" : "center";
-        setTextAlign(next);
-        updateFrame({ textAlign: next });
-    };
-
-    const toggleBadge = () => {
-        const next = !textBadge;
-        setTextBadge(next);
-        if (next) {
-            const badgeBg = textColor === "#FFFFFF" ? "#000000" : textColor;
-            const matching = INSTA_COLORS.find(c => c.color.toLowerCase() === badgeBg.toLowerCase());
-            const tColor = matching ? matching.text : "#FFFFFF";
-            setTextColor(tColor);
-            setTextBg(badgeBg);
-            updateFrame({ textBadge: true, textColor: tColor, textBg: badgeBg });
-        } else {
-            const newColor = textBg && textBg !== "transparent" ? textBg : "#FFFFFF";
-            setTextColor(newColor);
-            updateFrame({ textBadge: false, textColor: newColor });
-        }
-    };
-
-    const handleColorSelect = (item: typeof INSTA_COLORS[number]) => {
-        if (textBadge) {
-            setTextColor(item.text);
-            setTextBg(item.color);
-            updateFrame({ textColor: item.text, textBg: item.color });
-        } else {
-            setTextColor(item.color);
-            updateFrame({ textColor: item.color });
-        }
-    };
-
-    const handleSizeChange = (val: number) => {
-        setTextSize(val);
-        updateFrame({ fontSize: val });
-    };
-
-    const openPromoEditor = () => {
-        if (!frame) return;
-        if (frame.promo) {
-            setPromoTag(frame.promo.tag || "Акция");
-            setPromoTitle(frame.promo.title || "");
-            setPromoDescription(frame.promo.description || "");
-            setPromoBenefit(frame.promo.benefit || "");
-            setPromoActionType(frame.promo.actionType || "book");
-        } else {
-            setPromoTag("Акция");
-            setPromoTitle("");
-            setPromoDescription("");
-            setPromoBenefit("");
-            setPromoActionType("book");
-        }
-        setPromoOpen(true);
-    };
-
-    const savePromo = () => {
-        if (!promoTitle.trim()) {
-            toast.error("Введите название акции");
-            return;
-        }
-        updateFrame({
-            promo: {
-                tag: promoTag.trim() || undefined,
-                title: promoTitle.trim(),
-                description: promoDescription.trim() || undefined,
-                benefit: promoBenefit.trim() || undefined,
-                actionType: promoActionType,
-            },
-        });
-        setPromoOpen(false);
-        toast.success("Стикер акции добавлен");
-    };
-
-    const removePromo = () => {
-        updateFrame({ promo: undefined });
-        setPromoOpen(false);
-        toast.info("Стикер акции удалён");
-    };
-
     const appendMany = (drafts: Draft[]) => {
         setFrames((current) => [...current, ...drafts]);
         setSelected(frames.length + drafts.length - 1);
@@ -365,28 +232,12 @@ export function StoryComposer({ authorId, compact = false }: { authorId: string;
         setPublishError(null);
         setOpen(true);
     };
-
     const append = (draft: Draft) => appendMany([draft]);
-
     const addText = () => {
         if (frames.length >= MAX_FRAMES) return;
-        append({
-            id: `draft-${nextId.current++}`,
-            kind: "text",
-            text: "",
-            background: BACKGROUNDS[0],
-            fontSize: 30,
-            textColor: "#FFFFFF",
-            textBg: "rgba(0,0,0,0.7)",
-            textAlign: "center",
-            textBadge: true,
-        });
+        append({ id: `draft-${nextId.current++}`, kind: "text", text: "", background: BACKGROUNDS[0], fontSize: 28 });
         setTextValue("");
-        setTextSize(30);
-        setTextColor("#FFFFFF");
-        setTextBg("rgba(0,0,0,0.7)");
-        setTextAlign("center");
-        setTextBadge(true);
+        setTextSize(28);
         setTextOpen(true);
     };
     const addImageFile = async (file?: File) => {
@@ -564,26 +415,12 @@ export function StoryComposer({ authorId, compact = false }: { authorId: string;
                         uploadedAssets.set(item.file, assetId);
                     }
                 }
-                payload.push({
-                    kind: item.kind,
-                    text: item.text.trim() || undefined,
-                    assetId,
-                    background: item.background,
-                    fontSize: item.fontSize,
-                    textColor: item.textColor,
-                    textBg: item.textBg,
-                    textAlign: item.textAlign,
-                    textBadge: item.textBadge,
-                    promo: item.promo,
-                    imageFit: item.imageFit,
-                    imageScale: item.imageScale,
-                    imageX: item.imageX,
-                    imageY: item.imageY,
-                    textX: item.textX,
-                    textY: item.textY,
+                payload.push({ kind: item.kind, text: item.text.trim() || undefined, assetId,
+                    background: item.background, fontSize: item.fontSize, imageFit: item.imageFit,
+                    imageScale: item.imageScale, imageX: item.imageX, imageY: item.imageY,
+                    textX: item.textX, textY: item.textY,
                     videoStart: item.kind === "video" ? (item.videoStart ?? 0) - (item.videoSourceStart ?? 0) : item.videoStart,
-                    videoEnd: item.kind === "video" ? (item.videoEnd ?? 0) - (item.videoSourceStart ?? 0) : item.videoEnd,
-                });
+                    videoEnd: item.kind === "video" ? (item.videoEnd ?? 0) - (item.videoSourceStart ?? 0) : item.videoEnd });
                 if (mounted.current) setProgress((index + 1) / frames.length * 90);
             }
             await createStory(payload);
@@ -594,12 +431,12 @@ export function StoryComposer({ authorId, compact = false }: { authorId: string;
                 setFrames([]);
                 setOpen(false);
                 setSelected(0);
-                toast.success("История опубликована на 24 часа");
+                toast.success("Объявление опубликовано на 24 часа");
             }
         } catch (error) {
             if (mounted.current) {
                 const reason = error instanceof Error ? error.message : "Неизвестная ошибка";
-                setPublishError(`Не удалось опубликовать историю. ${reason}. Черновик сохранён на этом экране — попробуйте ещё раз.`);
+                setPublishError(`Не удалось опубликовать объявление. ${reason}. Черновик сохранён на этом экране — попробуйте ещё раз.`);
             }
         } finally {
             publishLock.current = false;
@@ -614,22 +451,17 @@ export function StoryComposer({ authorId, compact = false }: { authorId: string;
         <input id="story-video-camera" hidden type="file" accept="video/mp4,video/webm" capture="environment" onChange={(event) => void addVideo(event)} />
         <Box sx={compact
             ? { p: 0, border: 0, bgcolor: "transparent" }
-            : { p: 2, border: "1px solid", borderColor: "rgba(226, 232, 240, 0.8)", borderRadius: 3, bgcolor: "background.paper", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
+            : { p: 2.5, border: "1px solid", borderColor: "divider", borderRadius: 3, bgcolor: "background.paper" }}>
             {!compact && <>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                    <Typography sx={{ fontWeight: 800, fontSize: 16 }}>Истории · 24 часа</Typography>
-                    <Box sx={{ px: 1, py: 0.25, borderRadius: 10, bgcolor: "#ecfdf5", color: "#059669", fontSize: 11, fontWeight: 700 }}>Актуально</Box>
-                </Stack>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: 13, lineHeight: 1.4 }}>
-                    Акции, скидки, анонсы и рабочие моменты для клиентов и подписчиков.
-                </Typography>
+                <Typography sx={{ fontWeight: 800, mb: 0.5 }}>Поделитесь новостями</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Анонс, акция или новые работы — достаточно фото или текста.</Typography>
             </>}
             {compact ? (
                 <Box
                     component="button"
                     type="button"
                     onClick={openCapture}
-                    aria-label="Добавить историю"
+                    aria-label="Добавить объявление"
                     sx={{
                         width: 66,
                         flex: "0 0 66px",
@@ -647,16 +479,14 @@ export function StoryComposer({ authorId, compact = false }: { authorId: string;
                             height: 60,
                             mx: "auto",
                             p: "2px",
-                            border: "2px dashed #38bdf8",
+                            border: "1.5px dashed #cbd5e1",
                             borderRadius: "20px",
-                            background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)",
+                            background: "#ffffff",
                             display: "grid",
                             placeItems: "center",
                             color: "#0284c7",
-                            fontSize: 26,
+                            fontSize: 28,
                             lineHeight: 1,
-                            transition: "all 0.15s ease",
-                            "&:active": { transform: "scale(0.95)" },
                         }}
                     >
                         +
@@ -666,525 +496,98 @@ export function StoryComposer({ authorId, compact = false }: { authorId: string;
                     </Typography>
                 </Box>
             ) : frames.length ? <>
-                <Button fullWidth variant="contained" onClick={() => setOpen(true)}
-                    sx={{ background: "linear-gradient(135deg, #2563eb, #1d4ed8)", borderRadius: 2, py: 1.25, fontWeight: 700 }}>
-                    Продолжить черновик ({frames.length} слайд{frames.length > 1 ? "а" : ""})
-                </Button>
-                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1, textAlign: "center" }}>
-                    Черновик хранится до закрытия страницы.
-                </Typography>
-            </> : (
-                <Stack direction="row" spacing={1.25}>
-                    <Box
-                        component="button"
-                        type="button"
-                        onClick={openCapture}
-                        sx={{
-                            flex: 1,
-                            p: 1.5,
-                            border: "1px solid #e2e8f0",
-                            borderRadius: 2.5,
-                            bgcolor: "#f8fafc",
-                            cursor: "pointer",
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: 0.75,
-                            transition: "all 0.15s ease",
-                            "&:hover": { bgcolor: "#f1f5f9", borderColor: "#cbd5e1" },
-                            "&:active": { transform: "scale(0.97)" },
-                        }}
-                    >
-                        <Box sx={{ width: 40, height: 40, borderRadius: "50%", bgcolor: "#eff6ff", color: "#2563eb", display: "grid", placeItems: "center" }}>
-                            <PhotoCameraRoundedIcon fontSize="small" />
-                        </Box>
-                        <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>Камера</Typography>
-                    </Box>
-
-                    <Box
-                        component="button"
-                        type="button"
-                        onClick={() => gallery.current?.click()}
-                        sx={{
-                            flex: 1,
-                            p: 1.5,
-                            border: "1px solid #e2e8f0",
-                            borderRadius: 2.5,
-                            bgcolor: "#f8fafc",
-                            cursor: "pointer",
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: 0.75,
-                            transition: "all 0.15s ease",
-                            "&:hover": { bgcolor: "#f1f5f9", borderColor: "#cbd5e1" },
-                            "&:active": { transform: "scale(0.97)" },
-                        }}
-                    >
-                        <Box sx={{ width: 40, height: 40, borderRadius: "50%", bgcolor: "#fdf2f8", color: "#db2777", display: "grid", placeItems: "center" }}>
-                            <ImageRoundedIcon fontSize="small" />
-                        </Box>
-                        <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>Галерея</Typography>
-                    </Box>
-
-                    <Box
-                        component="button"
-                        type="button"
-                        onClick={addText}
-                        sx={{
-                            flex: 1,
-                            p: 1.5,
-                            border: "1px solid #e2e8f0",
-                            borderRadius: 2.5,
-                            bgcolor: "#f8fafc",
-                            cursor: "pointer",
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: 0.75,
-                            transition: "all 0.15s ease",
-                            "&:hover": { bgcolor: "#f1f5f9", borderColor: "#cbd5e1" },
-                            "&:active": { transform: "scale(0.97)" },
-                        }}
-                    >
-                        <Box sx={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg, #ec4899, #8b5cf6)", color: "white", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 16 }}>
-                            Aa
-                        </Box>
-                        <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>Текст</Typography>
-                    </Box>
-                </Stack>
-            )}
+                <Button fullWidth variant="contained" onClick={() => setOpen(true)}>Продолжить · {frames.length} слайд(а)</Button>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>Черновик хранится только до ухода с этой страницы.</Typography>
+            </> : <Stack direction="row" spacing={1}>
+                <Button fullWidth variant="outlined" startIcon={<TextFieldsRoundedIcon />} onClick={addText}>Текст</Button>
+                <Button fullWidth variant="contained" startIcon={<PhotoCameraRoundedIcon />} onClick={openCapture}>Камера</Button>
+            </Stack>}
         </Box>
 
         <Dialog fullScreen open={open && Boolean(frame)} onClose={() => { if (!publishing) setOpen(false); }}
-            PaperProps={{ sx: { bgcolor: "#000000", color: "white", height: "100dvh", maxHeight: "100%", overflow: "hidden" } }}>
-            {frame && (
-                <Box sx={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box", pt: "env(safe-area-inset-top)", pb: "env(safe-area-inset-bottom)" }}>
-                    {/* Top Instagram Toolbar */}
-                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 1.5, py: 1, flexShrink: 0, zIndex: 10 }}>
-                        <IconButton aria-label="Закрыть редактор" disabled={publishing} onClick={() => setOpen(false)} sx={{ color: "white", bgcolor: "rgba(255,255,255,0.12)", backdropFilter: "blur(4px)" }}>
-                            <CloseRoundedIcon />
-                        </IconButton>
-
-                        <Typography sx={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.8)", bgcolor: "rgba(0,0,0,0.4)", px: 1.5, py: 0.5, borderRadius: 10 }}>
-                            {selected + 1} / {frames.length}
-                        </Typography>
-
-                        <Stack direction="row" spacing={0.75} alignItems="center">
-                            {/* Aa Text Button */}
-                            <IconButton
-                                aria-label="Редактировать текст"
-                                onClick={editText}
-                                disabled={publishing}
-                                sx={{
-                                    color: "white",
-                                    bgcolor: frame.text ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.12)",
-                                    width: 40,
-                                    height: 40,
-                                    fontWeight: 900,
-                                    fontSize: 16,
-                                }}
-                            >
-                                Aa
-                            </IconButton>
-
-                            {/* Promo Sticker Button */}
-                            <IconButton
-                                aria-label="Стикер акции"
-                                onClick={openPromoEditor}
-                                disabled={publishing}
-                                sx={{
-                                    color: "white",
-                                    bgcolor: frame.promo ? "#2563eb" : "rgba(255,255,255,0.12)",
-                                    width: 40,
-                                    height: 40,
-                                    border: frame.promo ? "1.5px solid #60a5fa" : "none",
-                                    boxShadow: frame.promo ? "0 0 10px rgba(37, 99, 235, 0.5)" : "none",
-                                }}
-                                title={frame.promo ? "Редактировать стикер акции" : "Прикрепить стикер акции"}
-                            >
-                                <LocalOfferRoundedIcon sx={{ fontSize: 18 }} />
-                            </IconButton>
-
-                            {/* Cycle Background (Color Palette) */}
-                            <IconButton
-                                aria-label="Сменить фон"
-                                onClick={cycleBackground}
-                                onContextMenu={(e) => { e.preventDefault(); setBackgroundOpen(true); }}
-                                disabled={publishing}
-                                sx={{
-                                    width: 40,
-                                    height: 40,
-                                    p: 0,
-                                    background: frame.background,
-                                    border: "2px solid rgba(255,255,255,0.7)",
-                                    boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-                                }}
-                            >
-                                <PaletteRoundedIcon sx={{ fontSize: 18, color: "white", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.6))" }} />
-                            </IconButton>
-
-                            {/* Crop / Fit toggle if image */}
-                            {frame.kind === "image" && (
-                                <IconButton
-                                    aria-label="Кадрирование"
-                                    onClick={() => setCropOpen(!cropOpen)}
-                                    disabled={publishing}
-                                    sx={{
-                                        color: "white",
-                                        bgcolor: cropOpen ? "#3b82f6" : "rgba(255,255,255,0.12)",
-                                        width: 40,
-                                        height: 40,
-                                    }}
-                                >
-                                    <CropRoundedIcon fontSize="small" />
-                                </IconButton>
-                            )}
-
-                            {/* Delete slide */}
-                            <IconButton
-                                aria-label="Удалить слайд"
-                                disabled={publishing}
-                                onClick={removeFrame}
-                                sx={{ color: "rgba(255,255,255,0.8)", bgcolor: "rgba(255,255,255,0.12)", width: 40, height: 40 }}
-                            >
-                                <DeleteOutlineRoundedIcon fontSize="small" />
-                            </IconButton>
-                        </Stack>
-                    </Stack>
-
-                    {/* Canvas Stage */}
-                    <Box sx={{ flex: 1, minHeight: 120, width: "100%", maxWidth: 440, mx: "auto", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", px: 1 }}>
-                        <StoryCanvas
-                            key={frame.id}
-                            frame={{
-                                ...frame,
-                                text: frame.kind === "text" && !frame.text ? "Нажмите для ввода текста" : frame.text,
-                            }}
-                            onImageChange={publishing ? undefined : updateFrame}
-                            onTextChange={publishing ? undefined : updateFrame}
-                            onTextClick={editText}
-                            onCanvasClick={() => { if (!frame.text) editText(); }}
-                            onPromoClick={openPromoEditor}
-                        />
-                    </Box>
-
-                    {/* Quick Hint */}
-                    {!publishing && (
-                        <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", textAlign: "center", py: 0.5, fontSize: 11 }}>
-                            ✨ Нажмите на текст для изменения · Перетаскивайте для перемещения
-                        </Typography>
-                    )}
-
-                    {/* Image Crop Slider (collapsible) */}
-                    {frame.kind === "image" && cropOpen && (
-                        <Box sx={{ px: 2, py: 1, bgcolor: "rgba(15, 23, 42, 0.9)", backdropFilter: "blur(8px)", maxWidth: 440, mx: "auto", width: "100%", boxSizing: "border-box", borderRadius: 2 }}>
-                            <Stack direction="row" spacing={1} alignItems="center">
-                                <Button size="small" disabled={publishing} onClick={() => updateFrame({ imageFit: "contain", imageScale: 1, imageX: 0, imageY: 0 })}
-                                    sx={{ color: "white", minWidth: 0, px: 1.5, fontSize: 12, bgcolor: frame.imageFit === "contain" ? "#2563eb" : "rgba(255,255,255,0.1)" }}>Целиком</Button>
-                                <Button size="small" disabled={publishing} onClick={() => updateFrame({ imageFit: "cover", imageScale: 1, imageX: 0, imageY: 0 })}
-                                    sx={{ color: "white", minWidth: 0, px: 1.5, fontSize: 12, bgcolor: frame.imageFit === "cover" ? "#2563eb" : "rgba(255,255,255,0.1)", whiteSpace: "nowrap" }}>Заполнить</Button>
-                                <Slider aria-label="Масштаб фото" min={1} max={4} step={0.05} value={frame.imageScale ?? 1} disabled={publishing}
-                                    valueLabelDisplay="auto" valueLabelFormat={(value) => `${value.toFixed(1)}×`}
-                                    onChange={(_, value) => updateFrame({ imageScale: value as number })} sx={{ flex: 1, mx: 1.5, color: "#38bdf8" }} />
-                            </Stack>
-                        </Box>
-                    )}
-
-                    {/* Bottom Slide Strip and Instagram-Style Publish Bar */}
-                    <Box sx={{ p: 1.5, width: "100%", maxWidth: 500, mx: "auto", boxSizing: "border-box", flexShrink: 0 }}>
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ overflowX: "auto", py: 0.5, mb: 1.25, minHeight: 62 }} aria-label="Слайды публикации">
-                            {frames.map((item, index) => (
-                                <Box
-                                    key={item.id}
-                                    component="button"
-                                    type="button"
-                                    disabled={publishing}
-                                    aria-label={`Слайд ${index + 1}`}
-                                    aria-pressed={index === selected}
-                                    onClick={() => { setSelected(index); setTextOpen(false); }}
-                                    sx={{
-                                        p: 0,
-                                        width: 36,
-                                        height: 60,
-                                        flexShrink: 0,
-                                        overflow: "hidden",
-                                        bgcolor: "transparent",
-                                        cursor: "pointer",
-                                        borderRadius: 1.5,
-                                        border: index === selected ? "2.5px solid #38bdf8" : "1.5px solid rgba(255,255,255,0.25)",
-                                        transform: index === selected ? "scale(1.04)" : "scale(1)",
-                                        transition: "all 0.15s ease",
-                                        boxShadow: index === selected ? "0 0 10px rgba(56, 189, 248, 0.5)" : "none",
-                                    }}
-                                >
-                                    <StoryCanvas frame={item} />
-                                </Box>
-                            ))}
-                            {frames.length < MAX_FRAMES && (
-                                <IconButton
-                                    aria-label="Добавить слайд"
-                                    disabled={publishing}
-                                    onClick={() => setChooseOpen(true)}
-                                    sx={{
-                                        width: 44,
-                                        height: 60,
-                                        borderRadius: 1.5,
-                                        color: "white",
-                                        border: "1.5px dashed rgba(255,255,255,0.4)",
-                                        bgcolor: "rgba(255,255,255,0.06)",
-                                        "&:hover": { bgcolor: "rgba(255,255,255,0.15)" },
-                                    }}
-                                >
-                                    <AddRoundedIcon />
-                                </IconButton>
-                            )}
-                        </Stack>
-
-                        {publishing && <LinearProgress variant="determinate" value={progress} aria-label="Загрузка истории" sx={{ mb: 1, borderRadius: 1 }} />}
-                        {publishError && <Alert severity="error" onClose={() => setPublishError(null)} sx={{ mb: 1 }}>{publishError}</Alert>}
-
-                        <Button
-                            fullWidth
-                            size="large"
-                            variant="contained"
-                            disabled={publishing}
-                            onClick={() => void publish()}
-                            startIcon={publishing ? <CircularProgress size={20} color="inherit" /> : undefined}
-                            sx={{
-                                py: 1.5,
-                                borderRadius: 3,
-                                fontWeight: 800,
-                                fontSize: 15,
-                                textTransform: "none",
-                                letterSpacing: "0.01em",
-                                background: "linear-gradient(90deg, #ec4899 0%, #8b5cf6 50%, #3b82f6 100%)",
-                                boxShadow: "0 4px 18px rgba(139, 92, 246, 0.4)",
-                                "&:hover": {
-                                    background: "linear-gradient(90deg, #db2777 0%, #7c3aed 50%, #2563eb 100%)",
-                                    boxShadow: "0 6px 22px rgba(139, 92, 246, 0.6)",
-                                },
-                            }}
-                        >
-                            {publishing ? "Публикуем…" : "Опубликовать историю · 24ч"}
-                        </Button>
-                    </Box>
-
-                    {/* Fullscreen Instagram Type Mode Overlay */}
-                    {textOpen && (
-                        <Box
-                            sx={{
-                                position: "absolute",
-                                inset: 0,
-                                zIndex: 100,
-                                bgcolor: "rgba(0, 0, 0, 0.76)",
-                                backdropFilter: "blur(14px)",
-                                display: "flex",
-                                flexDirection: "column",
-                                justifyContent: "space-between",
-                                p: 2,
-                                boxSizing: "border-box",
-                                pt: "max(16px, env(safe-area-inset-top, 16px))",
-                                pb: "max(20px, env(safe-area-inset-bottom, 20px))",
-                            }}
-                        >
-                            {/* Top Controls: Align, [A=] Badge Toggle, Done */}
-                            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ width: "100%", maxWidth: 440, mx: "auto" }}>
-                                <Stack direction="row" spacing={1} alignItems="center">
-                                    {/* Text Alignment */}
-                                    <IconButton
-                                        onClick={toggleAlign}
-                                        aria-label="Выравнивание текста"
-                                        sx={{
-                                            color: "white",
-                                            bgcolor: "rgba(255,255,255,0.18)",
-                                            width: 44,
-                                            height: 44,
-                                            "&:hover": { bgcolor: "rgba(255,255,255,0.28)" },
-                                        }}
-                                    >
-                                        {textAlign === "left" && <FormatAlignLeftRoundedIcon fontSize="small" />}
-                                        {textAlign === "center" && <FormatAlignCenterRoundedIcon fontSize="small" />}
-                                        {textAlign === "right" && <FormatAlignRightRoundedIcon fontSize="small" />}
-                                    </IconButton>
-
-                                    {/* Instagram Badge Highlight Toggle [A=] */}
-                                    <IconButton
-                                        onClick={toggleBadge}
-                                        aria-label="Подложка текста"
-                                        sx={{
-                                            color: textBadge ? "#000000" : "#ffffff",
-                                            bgcolor: textBadge ? "#ffffff" : "rgba(255,255,255,0.18)",
-                                            width: 44,
-                                            height: 44,
-                                            fontWeight: 900,
-                                            fontSize: 16,
-                                            fontFamily: "monospace",
-                                            border: textBadge ? "2px solid #ffffff" : "1px solid rgba(255,255,255,0.3)",
-                                            "&:hover": { bgcolor: textBadge ? "#f1f5f9" : "rgba(255,255,255,0.28)" },
-                                        }}
-                                    >
-                                        A=
-                                    </IconButton>
-
-                                    {/* Fast Background Cycle on text slide */}
-                                    {frame.kind === "text" && (
-                                        <IconButton
-                                            onClick={cycleBackground}
-                                            aria-label="Сменить фон"
-                                            sx={{
-                                                background: frame.background,
-                                                width: 44,
-                                                height: 44,
-                                                border: "2px solid rgba(255,255,255,0.8)",
-                                                boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-                                            }}
-                                        >
-                                            <AutoAwesomeRoundedIcon sx={{ fontSize: 18, color: "white" }} />
-                                        </IconButton>
-                                    )}
-                                </Stack>
-
-                                {/* Done Button */}
-                                <Button
-                                    variant="contained"
-                                    onClick={() => setTextOpen(false)}
-                                    sx={{
-                                        bgcolor: "white",
-                                        color: "black",
-                                        fontWeight: 800,
-                                        borderRadius: 9999,
-                                        px: 2.75,
-                                        py: 0.85,
-                                        fontSize: 14,
-                                        textTransform: "none",
-                                        boxShadow: "0 4px 14px rgba(0,0,0,0.4)",
-                                        "&:hover": { bgcolor: "#f8fafc" },
-                                    }}
-                                >
-                                    Готово
-                                </Button>
-                            </Stack>
-
-                            {/* Center Typing Area with Left Vertical Font Size Slider */}
-                            <Box sx={{ flex: 1, display: "flex", alignItems: "center", width: "100%", maxWidth: 440, mx: "auto", position: "relative", my: 2 }}>
-                                {/* Instagram Vertical Slider */}
-                                <Box
-                                    sx={{
-                                        position: "absolute",
-                                        left: 0,
-                                        top: "50%",
-                                        transform: "translateY(-50%)",
-                                        height: 180,
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        alignItems: "center",
-                                        zIndex: 10,
-                                    }}
-                                >
-                                    <Typography sx={{ color: "white", fontSize: 16, fontWeight: 800, mb: 1, lineHeight: 1 }}>A</Typography>
-                                    <Slider
-                                        orientation="vertical"
-                                        min={18}
-                                        max={48}
-                                        step={2}
-                                        value={textSize}
-                                        onChange={(_, val) => handleSizeChange(val as number)}
-                                        aria-label="Размер шрифта"
-                                        sx={{
-                                            color: "white",
-                                            "& .MuiSlider-thumb": {
-                                                width: 18,
-                                                height: 18,
-                                                bgcolor: "white",
-                                                boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
-                                                "&:focus, &:hover, &.Mui-active": { boxShadow: "0 0 0 8px rgba(255,255,255,0.2)" },
-                                            },
-                                            "& .MuiSlider-track": { bgcolor: "white" },
-                                            "& .MuiSlider-rail": { bgcolor: "rgba(255,255,255,0.3)" },
-                                        }}
-                                    />
-                                    <Typography sx={{ color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: 700, mt: 1, lineHeight: 1 }}>a</Typography>
-                                </Box>
-
-                                {/* Center In-place Textarea */}
-                                <Box sx={{ width: "100%", pl: 5, pr: 2, display: "flex", justifyContent: textAlign === "left" ? "flex-start" : textAlign === "right" ? "flex-end" : "center" }}>
-                                    <Box
-                                        component="textarea"
-                                        autoFocus
-                                        rows={4}
-                                        value={textValue}
-                                        placeholder="Напишите что-нибудь…"
-                                        onChange={(e) => {
-                                            const val = (e.target as HTMLTextAreaElement).value;
-                                            setTextValue(val);
-                                            updateFrame({ text: val });
-                                        }}
-                                        maxLength={1000}
-                                        sx={{
-                                            width: "100%",
-                                            maxWidth: 320,
-                                            border: "none",
-                                            outline: "none",
-                                            resize: "none",
-                                            textAlign,
-                                            fontSize: textSize,
-                                            lineHeight: 1.25,
-                                            fontWeight: 800,
-                                            letterSpacing: "-0.01em",
-                                            fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-                                            color: textColor,
-                                            bgcolor: textBadge ? textBg : "transparent",
-                                            p: textBadge ? "10px 14px" : "4px 8px",
-                                            borderRadius: textBadge ? "14px" : "0",
-                                            boxShadow: textBadge ? "0 4px 20px rgba(0,0,0,0.35)" : "none",
-                                            textShadow: textBadge ? "none" : "0 2px 10px rgba(0,0,0,0.85)",
-                                            boxDecorationBreak: "clone",
-                                            WebkitBoxDecorationBreak: "clone",
-                                            "&::placeholder": {
-                                                color: "rgba(255,255,255,0.45)",
-                                                fontWeight: 600,
-                                            },
-                                        }}
-                                    />
-                                </Box>
-                            </Box>
-
-                            {/* Bottom Instagram Color Palette Chips */}
-                            <Box sx={{ width: "100%", maxWidth: 440, mx: "auto", overflowX: "auto", py: 1, "::-webkit-scrollbar": { display: "none" } }}>
-                                <Stack direction="row" spacing={1.5} justifyContent="center" sx={{ minWidth: "max-content", px: 1 }}>
-                                    {INSTA_COLORS.map((c) => {
-                                        const isSelected = textBadge
-                                            ? textBg.toLowerCase() === c.color.toLowerCase()
-                                            : textColor.toLowerCase() === c.color.toLowerCase();
-                                        return (
-                                            <Box
-                                                key={c.color}
-                                                component="button"
-                                                type="button"
-                                                onClick={() => handleColorSelect(c)}
-                                                aria-label={c.label}
-                                                sx={{
-                                                    width: 34,
-                                                    height: 34,
-                                                    borderRadius: "50%",
-                                                    bgcolor: c.color,
-                                                    border: isSelected ? "3px solid white" : "2px solid rgba(255,255,255,0.3)",
-                                                    transform: isSelected ? "scale(1.2)" : "scale(1)",
-                                                    transition: "all 0.15s ease",
-                                                    cursor: "pointer",
-                                                    boxShadow: isSelected ? "0 0 10px rgba(255,255,255,0.6)" : "0 2px 4px rgba(0,0,0,0.3)",
-                                                    outline: "none",
-                                                }}
-                                            />
-                                        );
-                                    })}
-                                </Stack>
-                            </Box>
-                        </Box>
-                    )}
+            PaperProps={{ sx: { bgcolor: "#0b1020", color: "white", height: "100dvh", maxHeight: "100%" } }}>
+            {frame && <Stack sx={{ height: "100%", boxSizing: "border-box", pt: "env(safe-area-inset-top)", pb: "env(safe-area-inset-bottom)" }}>
+                <Stack direction="row" alignItems="center" sx={{ px: 1, py: 0.5, flexShrink: 0 }}>
+                    <IconButton aria-label="Закрыть редактор, сохранив черновик" disabled={publishing} onClick={() => setOpen(false)} sx={{ color: "inherit" }}><CloseRoundedIcon /></IconButton>
+                    <Typography sx={{ flex: 1, textAlign: "center", fontWeight: 700 }}>Новое объявление · {selected + 1}/{frames.length}</Typography>
+                    <IconButton aria-label="Удалить текущий слайд" disabled={publishing} onClick={removeFrame} sx={{ color: "inherit" }}><DeleteOutlineRoundedIcon /></IconButton>
+                </Stack>
+                <Box sx={{ flex: 1, minHeight: 100, width: "100%", maxWidth: 440, mx: "auto" }}>
+                    <StoryCanvas key={frame.id} frame={{ ...frame, text: frame.kind === "text" && !frame.text ? "Ваш текст" : frame.text }}
+                        onImageChange={publishing ? undefined : updateFrame}
+                        onTextChange={publishing ? undefined : updateFrame} />
                 </Box>
-            )}
+                {!publishing && frame.text && <Typography variant="caption" sx={{ color: "#cbd5e1", textAlign: "center", px: 2 }}>
+                    Перемещайте текст пальцем или мышью прямо на экране
+                </Typography>}
+                <Stack spacing={1} sx={{ p: 1.5, width: "100%", maxWidth: 520, mx: "auto", boxSizing: "border-box", flexShrink: 0,
+                    maxHeight: "48dvh", overflowY: "auto" }}>
+                    <Stack direction="row" alignItems="center" justifyContent="space-evenly" spacing={1}>
+                        <Button startIcon={<TextFieldsRoundedIcon />} aria-label={frame.text ? "Редактировать текст" : "Добавить текст"}
+                            onClick={editText} disabled={publishing} sx={{ color: "white", whiteSpace: "nowrap" }}>
+                            Текст
+                        </Button>
+                        <Button disabled={publishing} onClick={() => setBackgroundOpen(true)} sx={{ color: "white" }}
+                            startIcon={<Box sx={{ width: 18, height: 18, borderRadius: "50%", bgcolor: frame.background, border: "1px solid #94a3b8" }} />}>Фон</Button>
+                        {frame.kind === "image" && <Button disabled={publishing} aria-pressed={cropOpen} onClick={() => setCropOpen(!cropOpen)}
+                            sx={{ color: "white", bgcolor: cropOpen ? "#334155" : "transparent" }}>Кадр</Button>}
+                    </Stack>
+                    {textOpen && <Stack spacing={1} sx={{ p: 1.25, borderRadius: 2, bgcolor: "#111827", border: "1px solid #334155" }}>
+                        <TextField autoFocus fullWidth multiline minRows={2} maxRows={5} label={frame.kind === "image" ? "Текст на фото" : "Текст объявления"}
+                            value={textValue} onChange={(event) => {
+                                const value = event.target.value;
+                                setTextValue(value);
+                                updateFrame({ text: value });
+                            }} inputProps={{ maxLength: 1000 }}
+                            helperText={`${textValue.length}/1000 · предпросмотр обновляется сразу`}
+                            sx={{ "& .MuiInputBase-root": { color: "white" }, "& .MuiInputLabel-root": { color: "#cbd5e1" },
+                                "& .MuiFormHelperText-root": { color: "#94a3b8" }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#64748b" } }} />
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <Typography variant="caption" sx={{ color: "#cbd5e1", whiteSpace: "nowrap" }}>Размер</Typography>
+                            <ToggleButtonGroup value={textSize} exclusive fullWidth aria-label="Размер текста"
+                                onChange={(_, value) => {
+                                    if (value !== null) {
+                                        setTextSize(value);
+                                        updateFrame({ fontSize: value });
+                                    }
+                                }}>
+                                <ToggleButton value={20} sx={{ color: "white", borderColor: "#64748b" }}>Мелкий</ToggleButton>
+                                <ToggleButton value={28} sx={{ color: "white", borderColor: "#64748b" }}>Средний</ToggleButton>
+                                <ToggleButton value={36} sx={{ color: "white", borderColor: "#64748b" }}>Крупный</ToggleButton>
+                            </ToggleButtonGroup>
+                            <Button size="small" onClick={() => setTextOpen(false)} sx={{ color: "#93c5fd", whiteSpace: "nowrap" }}>Готово</Button>
+                        </Stack>
+                    </Stack>}
+                    {frame.kind === "image" && cropOpen && <>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <Button size="small" disabled={publishing} onClick={() => updateFrame({ imageFit: "contain", imageScale: 1, imageX: 0, imageY: 0 })}
+                                sx={{ color: "white", minWidth: 0, flexShrink: 0, px: 1, fontSize: 12, bgcolor: frame.imageFit === "contain" ? "#334155" : "transparent" }}>Целиком</Button>
+                            <Button size="small" disabled={publishing} onClick={() => updateFrame({ imageFit: "cover", imageScale: 1, imageX: 0, imageY: 0 })}
+                                sx={{ color: "white", minWidth: 0, flexShrink: 0, px: 1, fontSize: 12, bgcolor: frame.imageFit === "cover" ? "#334155" : "transparent", whiteSpace: "nowrap" }}>Заполнить</Button>
+                            <Slider aria-label="Масштаб фото" min={1} max={4} step={0.05} value={frame.imageScale ?? 1} disabled={publishing}
+                                valueLabelDisplay="auto" valueLabelFormat={(value) => `${value.toFixed(1)}×`}
+                                onChange={(_, value) => updateFrame({ imageScale: value as number })} sx={{ flex: 1, width: "auto", minWidth: 50, mx: "10px !important" }} />
+                        </Stack>
+                        <Typography variant="caption" sx={{ color: "#cbd5e1", textAlign: "center" }}>Перемещайте фото пальцем, увеличивайте двумя</Typography>
+                    </>}
+                    <Stack direction="row" spacing={1} sx={{ overflowX: "auto", py: 0.5, minHeight: 60 }} aria-label="Слайды публикации">
+                        {frames.map((item, index) => <Box key={item.id} component="button" type="button" disabled={publishing}
+                            aria-label={`Слайд ${index + 1}`} aria-pressed={index === selected} onClick={() => { setSelected(index); setTextOpen(false); }}
+                            sx={{ p: 0, width: 34, height: 58, flexShrink: 0, overflow: "hidden", bgcolor: "transparent", cursor: "pointer",
+                                borderRadius: 1, border: index === selected ? "2px solid #60a5fa" : "2px solid #475569" }}>
+                            <StoryCanvas frame={item} />
+                        </Box>)}
+                        {frames.length < MAX_FRAMES && <IconButton aria-label="Добавить слайд" disabled={publishing} onClick={() => setChooseOpen(true)}
+                            sx={{ width: 44, height: 58, borderRadius: 1.5, color: "white", border: "1px dashed #64748b" }}><AddRoundedIcon /></IconButton>}
+                    </Stack>
+                    {publishing && <LinearProgress variant="determinate" value={progress} aria-label="Загрузка объявления" />}
+                    {publishError && <Alert severity="error" onClose={() => setPublishError(null)}>{publishError}</Alert>}
+                    <Button fullWidth size="large" variant="contained" disabled={publishing} onClick={() => void publish()}
+                        startIcon={publishing ? <CircularProgress size={18} color="inherit" /> : undefined}>
+                        {publishing ? "Публикуем…" : "Опубликовать · 24 часа"}
+                    </Button>
+                </Stack>
+            </Stack>}
         </Dialog>
 
         <Dialog open={backgroundOpen} onClose={() => setBackgroundOpen(false)} fullWidth maxWidth="xs">
@@ -1197,109 +600,6 @@ export function StoryComposer({ authorId, compact = false }: { authorId: string;
                         border: frame?.background === background ? "3px solid #94a3b8" : "3px solid transparent" }} />)}
             </Stack></DialogContent>
             <DialogActions><Button onClick={() => setBackgroundOpen(false)}>Готово</Button></DialogActions>
-        </Dialog>
-
-        {/* Promo / Discount Sticker Dialog */}
-        <Dialog open={promoOpen} onClose={() => setPromoOpen(false)} fullWidth maxWidth="xs">
-            <DialogTitle sx={{ fontWeight: 800, display: "flex", alignItems: "center", gap: 1 }}>
-                <LocalOfferRoundedIcon sx={{ color: "#2563eb" }} />
-                Стикер акции и спецпредложения
-            </DialogTitle>
-            <DialogContent>
-                <Stack spacing={2} sx={{ pt: 1 }}>
-                    <Box>
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", mb: 0.75, display: "block" }}>
-                            Категория (бейдж)
-                        </Typography>
-                        <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mb: 1 }}>
-                            {["Акция", "Скидка", "Подарок", "Диагностика", "ТО", "Сезонное"].map((tag) => (
-                                <Chip
-                                    key={tag}
-                                    label={tag}
-                                    size="small"
-                                    clickable
-                                    color={promoTag === tag ? "primary" : "default"}
-                                    onClick={() => setPromoTag(tag)}
-                                    variant={promoTag === tag ? "filled" : "outlined"}
-                                />
-                            ))}
-                        </Stack>
-                        <TextField
-                            fullWidth
-                            size="small"
-                            placeholder="Или свой тег (например: Шиномонтаж)"
-                            value={promoTag}
-                            onChange={(e) => setPromoTag(e.target.value)}
-                            inputProps={{ maxLength: 30 }}
-                        />
-                    </Box>
-
-                    <TextField
-                        autoFocus
-                        required
-                        fullWidth
-                        size="small"
-                        label="Название акции *"
-                        placeholder="Например: Компьютерная диагностика в подарок"
-                        value={promoTitle}
-                        onChange={(e) => setPromoTitle(e.target.value)}
-                        inputProps={{ maxLength: 80 }}
-                        helperText="Главный крупный заголовок на плашке"
-                    />
-
-                    <TextField
-                        fullWidth
-                        multiline
-                        rows={2}
-                        size="small"
-                        label="Описание условий"
-                        placeholder="Например: Считывание ошибок всех блоков управления сканером при ремонте"
-                        value={promoDescription}
-                        onChange={(e) => setPromoDescription(e.target.value)}
-                        inputProps={{ maxLength: 200 }}
-                    />
-
-                    <TextField
-                        fullWidth
-                        size="small"
-                        label="Выгода или размер скидки"
-                        placeholder="Например: ✨ Бесплатно вместо 1 500 ₽ или Скидка 15%"
-                        value={promoBenefit}
-                        onChange={(e) => setPromoBenefit(e.target.value)}
-                        inputProps={{ maxLength: 60 }}
-                        helperText="Отобразится в полупрозрачной золотистой рамке"
-                    />
-
-                    <Box>
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", mb: 0.75, display: "block" }}>
-                            Кнопка действия в истории
-                        </Typography>
-                        <ToggleButtonGroup
-                            value={promoActionType}
-                            exclusive
-                            fullWidth
-                            size="small"
-                            onChange={(_, val) => { if (val) setPromoActionType(val); }}
-                        >
-                            <ToggleButton value="book">Записаться онлайн</ToggleButton>
-                            <ToggleButton value="call">Позвонить</ToggleButton>
-                        </ToggleButtonGroup>
-                    </Box>
-                </Stack>
-            </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 2.5, justifyContent: "space-between" }}>
-                {frame?.promo ? (
-                    <Button color="error" onClick={removePromo} sx={{ fontWeight: 600 }}>
-                        Удалить
-                    </Button>
-                ) : <Box />}
-                <Stack direction="row" spacing={1}>
-                    <Button onClick={() => setPromoOpen(false)}>Отмена</Button>
-                    <Button variant="contained" onClick={savePromo} sx={{ fontWeight: 700, px: 2.5 }}>
-                        Готово
-                    </Button>
-                </Stack>
-            </DialogActions>
         </Dialog>
         <Dialog open={Boolean(videoTrim)} onClose={cancelVideoTrim} fullWidth maxWidth="sm">
             <DialogTitle>Обрезать видео</DialogTitle>

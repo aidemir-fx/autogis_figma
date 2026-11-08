@@ -146,7 +146,7 @@ export const WorkingDay = styled.span`
     padding: 0;
     border-radius: 5px;
     color: #475569;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-family: var(--default-font-family);
     font-size: 10px;
     font-weight: 700;
     line-height: 1;

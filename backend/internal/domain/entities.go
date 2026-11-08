@@ -101,38 +101,34 @@ type User struct {
 
 // Master represents a master profile
 type Master struct {
-	ID                   string         `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
-	UserID               string         `gorm:"not null;uniqueIndex" json:"userId"`
-	User                 *User          `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
-	FullName             *string        `gorm:"type:varchar(255)" json:"fullName,omitempty"`
-	WorkingPhone         *string        `gorm:"type:varchar(20)" json:"workingPhone,omitempty"`
-	Description          *string        `gorm:"type:text" json:"description,omitempty"`
-	Address              *string        `gorm:"type:text" json:"address,omitempty"`
-	Coordinates          *Point         `gorm:"type:jsonb" json:"coordinates,omitempty"`
-	CoverImageAssetID    *string        `gorm:"type:uuid" json:"coverImageAssetId,omitempty"`
-	Status               string         `gorm:"type:varchar(20);default:'schedule'" json:"status"`
-	CurrentStatus        string         `gorm:"type:varchar(20);default:'unavailable'" json:"currentStatus"`
-	OnlineBookingEnabled bool           `gorm:"default:false;not null" json:"onlineBookingEnabled"`
-	LiveQueueEnabled     bool           `gorm:"default:false;not null" json:"liveQueueEnabled"`
-	Rating               float32        `gorm:"default:0" json:"rating"`
-	ReviewsCount         int            `gorm:"default:0" json:"reviewsCount"`
-	WorkFrom             *string        `gorm:"type:varchar(5)" json:"workFrom,omitempty"`
-	WorkTo               *string        `gorm:"type:varchar(5)" json:"workTo,omitempty"`
-	WorkingDays          pq.StringArray `gorm:"type:text[]" json:"workingDays,omitempty"`
-	Professions          pq.StringArray `gorm:"type:text[]" json:"professions,omitempty"`
-	Services             pq.StringArray `gorm:"type:text[]" json:"services,omitempty"`
-	AutoMarks            pq.StringArray `gorm:"type:text[]" json:"autoMarks,omitempty"`
-	Payments             pq.StringArray `gorm:"type:text[]" json:"payments,omitempty"`
-	HasParking           bool           `gorm:"default:false;not null" json:"hasParking"`
-	HasWifi              bool           `gorm:"default:false;not null" json:"hasWifi"`
-	HasWaitingArea       bool           `gorm:"default:false;not null" json:"hasWaitingArea"`
-	OffersCoffee         bool           `gorm:"default:false;not null" json:"offersCoffee"`
-	HasEvacuation        bool           `gorm:"default:false;not null" json:"hasEvacuation"`
-	HasPartsInStock      bool           `gorm:"default:false;not null" json:"hasPartsInStock"`
-	LiftCount            int            `gorm:"default:0;not null" json:"liftCount"`
-	ActivitySubtypeID    *string        `gorm:"type:uuid;index" json:"activitySubtypeId,omitempty"`
-	CreatedAt            time.Time      `gorm:"autoCreateTime:milli" json:"createdAt"`
-	UpdatedAt            time.Time      `gorm:"autoUpdateTime:milli" json:"updatedAt"`
+	ID                    string         `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
+	UserID                string         `gorm:"not null;uniqueIndex" json:"userId"`
+	User                  *User          `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"user,omitempty"`
+	FullName              *string        `gorm:"type:varchar(255)" json:"fullName,omitempty"`
+	WorkingPhone          *string        `gorm:"type:varchar(20)" json:"workingPhone,omitempty"`
+	Description           *string        `gorm:"type:text" json:"description,omitempty"`
+	Address               *string        `gorm:"type:text" json:"address,omitempty"`
+	Coordinates           *Point         `gorm:"type:jsonb" json:"coordinates,omitempty"`
+	AvatarURL             *string        `gorm:"type:text" json:"avatarUrl,omitempty"`
+	Status                string         `gorm:"type:varchar(20);default:'schedule'" json:"status"`
+	CurrentStatus         string         `gorm:"type:varchar(20);default:'unavailable'" json:"currentStatus"`
+	OnlineBookingEnabled  bool           `gorm:"default:false;not null" json:"onlineBookingEnabled"`
+	LiveQueueEnabled      bool           `gorm:"default:false;not null" json:"liveQueueEnabled"`
+	Rating                float32        `gorm:"default:0" json:"rating"`
+	ReviewsCount          int            `gorm:"default:0" json:"reviewsCount"`
+	WorkFrom              *string        `gorm:"type:varchar(5)" json:"workFrom,omitempty"`
+	WorkTo                *string        `gorm:"type:varchar(5)" json:"workTo,omitempty"`
+	WorkingDays           pq.StringArray `gorm:"type:text[]" json:"workingDays,omitempty"`
+	Professions           pq.StringArray `gorm:"type:text[]" json:"professions,omitempty"`
+	Services              pq.StringArray `gorm:"type:text[]" json:"services,omitempty"`
+	AutoMarks             pq.StringArray `gorm:"type:text[]" json:"autoMarks,omitempty"`
+	Payments              pq.StringArray `gorm:"type:text[]" json:"payments,omitempty"`
+	Features              pq.StringArray `gorm:"type:text[]" json:"features,omitempty"`
+	WorkPhotoAssetIDs     pq.StringArray `gorm:"type:text[]" json:"workPhotoAssetIds,omitempty"`
+	HeroWorkPhotoAssetIDs pq.StringArray `gorm:"type:text[]" json:"heroWorkPhotoAssetIds,omitempty"`
+	ActivitySubtypeID     *string        `gorm:"type:uuid;index" json:"activitySubtypeId,omitempty"`
+	CreatedAt             time.Time      `gorm:"autoCreateTime:milli" json:"createdAt"`
+	UpdatedAt             time.Time      `gorm:"autoUpdateTime:milli" json:"updatedAt"`
 }
 
 // Order represents an order/request
@@ -240,6 +236,7 @@ type AutoWash struct {
 	Description          *string               `gorm:"type:text" json:"description,omitempty"`
 	Address              *string               `gorm:"type:text" json:"address,omitempty"`
 	Coordinates          *Point                `gorm:"type:jsonb" json:"coordinates,omitempty"`
+	AvatarURL            *string               `gorm:"type:text" json:"avatarUrl,omitempty"`
 	CoverImageURL        *string               `gorm:"type:text" json:"coverImageUrl,omitempty"`
 	CoverImageAssetID    *string               `gorm:"type:uuid" json:"coverImageAssetId,omitempty"`
 	Status               string                `gorm:"type:varchar(20);default:'schedule'" json:"status"`
@@ -280,6 +277,7 @@ type AutoShop struct {
 	Description          *string               `gorm:"type:text" json:"description,omitempty"`
 	Address              *string               `gorm:"type:text" json:"address,omitempty"`
 	Coordinates          *Point                `gorm:"type:jsonb" json:"coordinates,omitempty"`
+	AvatarURL            *string               `gorm:"type:text" json:"avatarUrl,omitempty"`
 	CoverImageURL        *string               `gorm:"type:text" json:"coverImageUrl,omitempty"`
 	CoverImageAssetID    *string               `gorm:"type:uuid" json:"coverImageAssetId,omitempty"`
 	Status               string                `gorm:"type:varchar(20);default:'schedule'" json:"status"`
@@ -291,8 +289,6 @@ type AutoShop struct {
 	WorkingDays          pq.StringArray        `gorm:"type:text[]" json:"workingDays,omitempty"`
 	Services             pq.StringArray        `gorm:"type:text[]" json:"services,omitempty"`
 	Payments             pq.StringArray        `gorm:"type:text[]" json:"payments,omitempty"`
-	Brands               pq.StringArray        `gorm:"type:text[]" json:"brands,omitempty"`
-	ProductCategories    pq.StringArray        `gorm:"type:text[]" json:"productCategories,omitempty"`
 	CreatedAt            time.Time             `gorm:"autoCreateTime:milli" json:"createdAt"`
 	UpdatedAt            time.Time             `gorm:"autoUpdateTime:milli" json:"updatedAt"`
 	AdditionalASServices []AdditionalASService `json:"additionalASServices,omitempty"`
@@ -365,6 +361,7 @@ type AutoService struct {
 	Description          *string        `gorm:"type:text" json:"description,omitempty"`
 	Address              *string        `gorm:"type:text" json:"address,omitempty"`
 	Coordinates          *Point         `gorm:"type:jsonb" json:"coordinates,omitempty"`
+	AvatarURL            *string        `gorm:"type:text" json:"avatarUrl,omitempty"`
 	CoverImageURL        *string        `gorm:"type:text" json:"coverImageUrl,omitempty"`
 	CoverImageAssetID    *string        `gorm:"type:uuid" json:"coverImageAssetId,omitempty"`
 	Status               string         `gorm:"type:varchar(20);default:'schedule'" json:"status"`

@@ -1,54 +1,49 @@
 import { createTheme } from '@mui/material/styles';
+import { designTokens } from './designTokens';
 
-const fontFamily = `var(--default-font-family),
-  ui-sans-serif,
-  system-ui,
-  sans-serif,
-  "Apple Color Emoji",
-  "Segoe UI Emoji",
-  "Segoe UI Symbol",
-  "Noto Color Emoji"`;
+const { colors, radius } = designTokens;
+const fontFamily = `var(--default-font-family, ${designTokens.fontFamily})`;
 
 export const muiTheme = createTheme({
   palette: {
     primary: {
-      main: '#3b82f6',
-      dark: '#2563eb',
-      light: '#eff6ff',
-      contrastText: '#ffffff',
+      main: colors.blue500,
+      dark: colors.blue500,
+      light: colors.gray100,
+      contrastText: colors.white,
     },
     secondary: {
-      main: '#64B441',
-      dark: '#4E992D',
-      light: '#E8F4E3',
-      contrastText: '#ffffff',
+      main: colors.green500,
+      dark: colors.green500,
+      light: colors.gray100,
+      contrastText: colors.white,
     },
     error: {
-      main: '#BD0935',
-      light: '#FFD9E2',
+      main: colors.red500,
+      light: colors.gray100,
     },
     warning: {
-      main: '#BD5C0A',
-      light: '#FFEBCE',
+      main: colors.gray500,
+      light: colors.gray100,
     },
     success: {
-      main: '#2A8800',
-      light: '#E8F4E3',
+      main: colors.green500,
+      light: colors.gray100,
     },
     info: {
-      main: '#3072B3',
-      light: '#E1EFFD',
+      main: colors.blue500,
+      light: colors.gray100,
     },
     text: {
-      primary: '#262626',
-      secondary: '#808080',
-      disabled: '#B2B2B2',
+      primary: colors.gray900,
+      secondary: colors.gray500,
+      disabled: colors.gray500,
     },
     background: {
-      default: '#FAFAFA',
-      paper: '#FFFFFF',
+      default: colors.gray100,
+      paper: colors.white,
     },
-    divider: '#D9D9D9',
+    divider: colors.gray300,
   },
   typography: {
     fontFamily,
@@ -64,7 +59,7 @@ export const muiTheme = createTheme({
     button: { fontSize: '0.875rem', fontWeight: 500, textTransform: 'none' },
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: Number.parseInt(radius.r8, 10),
   },
   components: {
     MuiCssBaseline: {
@@ -76,14 +71,24 @@ export const muiTheme = createTheme({
       styleOverrides: {
         root: {
           textTransform: 'none',
-          borderRadius: 8,
+          borderRadius: radius.r8,
         },
       },
     },
     MuiPaper: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
+          borderRadius: radius.r12,
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: radius.r8,
+          '&:hover': {
+            backgroundColor: colors.gray100,
+          },
         },
       },
     },

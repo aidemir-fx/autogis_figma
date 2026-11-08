@@ -48,7 +48,6 @@ var allowedMIMEs = map[string]bool{
 // MediaUseCase orchestrates S3 media upload, confirmation and retrieval.
 type MediaUseCase struct {
 	mediaRepo   repository.MediaRepository
-	masterRepo  repository.MasterRepository
 	orderRepo   repository.OrderRepository
 	s3          *s3client.S3Client
 	mediaWorker *worker.MediaWorker
@@ -66,7 +65,6 @@ func (uc *MediaUseCase) GetPublicFile(ctx context.Context, key string) (io.ReadC
 // NewMediaUseCase creates a MediaUseCase.
 func NewMediaUseCase(
 	mediaRepo repository.MediaRepository,
-	masterRepo repository.MasterRepository,
 	orderRepo repository.OrderRepository,
 	s3 *s3client.S3Client,
 	mediaWorker *worker.MediaWorker,
@@ -78,7 +76,6 @@ func NewMediaUseCase(
 	}
 	return &MediaUseCase{
 		mediaRepo:   mediaRepo,
-		masterRepo:  masterRepo,
 		orderRepo:   orderRepo,
 		s3:          s3,
 		mediaWorker: mediaWorker,
@@ -106,13 +103,13 @@ func (uc *MediaUseCase) CreateUploadIntent(
 	if req.EntityType == domain.MediaEntityAccount && req.EntityID != userID {
 		return nil, apperrors.New("FORBIDDEN", "Нельзя загружать медиа в чужой аккаунт", http.StatusForbidden)
 	}
-	if req.EntityType == domain.MediaEntityWork {
-		if req.Category != domain.MediaCategoryPhoto || uc.masterRepo == nil {
-			return nil, apperrors.New("FORBIDDEN", "Фото работ можно загружать только в профиль мастера", http.StatusForbidden)
+	if req.EntityType == domain.MediaEntityWork && req.EntityID != userID {
+		owned, err := uc.mediaRepo.IsProviderProfileOwnedByUser(ctx, req.EntityID, userID)
+		if err != nil {
+			return nil, apperrors.ErrInternalServer
 		}
-		master, err := uc.masterRepo.GetByID(ctx, req.EntityID)
-		if err != nil || master == nil || master.UserID != userID {
-			return nil, apperrors.New("FORBIDDEN", "Нельзя загружать фото в чужой профиль", http.StatusForbidden)
+		if !owned {
+			return nil, apperrors.New("FORBIDDEN", "Нельзя загружать медиа в чужой профиль", http.StatusForbidden)
 		}
 	}
 
@@ -415,6 +412,24 @@ func (uc *MediaUseCase) GetPublicAsset(ctx context.Context, assetID string) (*do
 	return uc.toAssetResponse(asset), nil
 }
 
+// GetPublicAssetsByEntity exposes ready account/work showcase media without requiring a JWT.
+func (uc *MediaUseCase) GetPublicAssetsByEntity(ctx context.Context, entityType, entityID string) (*domain.MediaAssetsResponse, error) {
+	if (entityType != string(domain.MediaEntityWork) && entityType != string(domain.MediaEntityAccount)) || entityID == "" {
+		return nil, apperrors.ErrNotFound
+	}
+	assets, err := uc.mediaRepo.GetAssetsByEntity(ctx, entityType, entityID)
+	if err != nil {
+		return nil, apperrors.ErrInternalServer
+	}
+	response := make([]*domain.MediaAssetResponse, 0, len(assets))
+	for _, asset := range assets {
+		if asset.Status == domain.MediaStatusReady {
+			response = append(response, uc.toAssetResponse(asset))
+		}
+	}
+	return &domain.MediaAssetsResponse{Assets: response}, nil
+}
+
 // ValidateOwnedStoryAsset checks that an uploaded image or video belongs to the
 // publisher and has finished processing before it is attached to a story.
 func (uc *MediaUseCase) ValidateOwnedStoryAsset(ctx context.Context, userID, assetID string) (*domain.MediaAssetResponse, error) {
@@ -491,26 +506,6 @@ func (uc *MediaUseCase) GetAssetsByEntity(
 	resp := make([]*domain.MediaAssetResponse, 0, len(assets))
 	for _, a := range assets {
 		resp = append(resp, uc.toAssetResponse(a))
-	}
-	return &domain.MediaAssetsResponse{Assets: resp}, nil
-}
-
-// GetPublicWorkPhotos returns only ready photo assets for a master's public gallery.
-func (uc *MediaUseCase) GetPublicWorkPhotos(
-	ctx context.Context,
-	masterID string,
-) (*domain.MediaAssetsResponse, error) {
-	assets, err := uc.mediaRepo.GetAssetsByEntity(ctx, string(domain.MediaEntityWork), masterID)
-	if err != nil {
-		return nil, apperrors.ErrInternalServer
-	}
-
-	resp := make([]*domain.MediaAssetResponse, 0, len(assets))
-	for _, asset := range assets {
-		if asset.Category != domain.MediaCategoryPhoto || asset.Status != domain.MediaStatusReady {
-			continue
-		}
-		resp = append(resp, uc.toAssetResponse(asset))
 	}
 	return &domain.MediaAssetsResponse{Assets: resp}, nil
 }

@@ -38,23 +38,6 @@ export function deriveUserCapabilities(input: {
 }): UserCapabilities {
     const accountType =
         input.accountType ?? deriveUserAccountType(input.role);
-
-    if (
-        input.role === UserRole.ADMIN ||
-        accountType === UserAccountType.ADMIN ||
-        input.role === UserRole.MODERATOR ||
-        accountType === UserAccountType.MODERATOR
-    ) {
-        return {
-            professionalCabinet: true,
-            crmMini: true,
-            businessCrm: true,
-            professionalChat: true,
-            applications: true,
-            calendar: true,
-        };
-    }
-
     const professionalCabinet = input.isProfessional === true;
     const crmMini =
         professionalCabinet &&

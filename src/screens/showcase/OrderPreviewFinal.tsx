@@ -649,7 +649,7 @@ export function OrderPreviewFinalScreen() {
                                             key={f}
                                             sx={{
                                                 fontSize: 11,
-                                                fontFamily: "ui-monospace, monospace",
+                                                fontFamily: "var(--default-font-family)",
                                                 color: "#3b82f6",
                                                 background: "#eff6ff",
                                                 px: 0.75,

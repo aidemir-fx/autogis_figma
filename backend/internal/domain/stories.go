@@ -108,9 +108,11 @@ type StoryReport struct {
 }
 
 type StoryAuthorResponse struct {
-	UserID      string   `json:"userId"`
-	DisplayName string   `json:"displayName"`
-	Role        UserRole `json:"role"`
+	UserID       string   `json:"userId"`
+	ProviderID   string   `json:"providerId,omitempty"`
+	ActivityType string   `json:"activityType,omitempty"`
+	DisplayName  string   `json:"displayName"`
+	Role         UserRole `json:"role"`
 	// IsPrivateMaster lets the story use the master's professional avatar.
 	// It is an internal flag and is intentionally not exposed to clients.
 	IsPrivateMaster bool `json:"-"`

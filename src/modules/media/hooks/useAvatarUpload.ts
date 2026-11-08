@@ -6,6 +6,7 @@ import {
     getAsset,
     getEntityMedia,
     type MediaAsset,
+    type MediaEntityType,
 } from "../api";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -40,7 +41,9 @@ export interface UseAvatarUploadReturn {
  *   validate → upload-intent → PUT to S3 → confirm-upload → poll until ready
  */
 export function useAvatarUpload(
-    entityId: string | null | undefined
+    entityId: string | null | undefined,
+    entityType: MediaEntityType = "account",
+    onUploaded?: (url: string) => void,
 ): UseAvatarUploadReturn {
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [phase, setPhase] = useState<UploadPhase>("idle");
@@ -50,7 +53,7 @@ export function useAvatarUpload(
     const refetch = useCallback(async () => {
         if (!entityId) return;
         try {
-            const { assets } = await getEntityMedia("account", entityId);
+            const { assets } = await getEntityMedia(entityType, entityId);
             const avatar = assets.find(
                 (a) => a.category === "avatar" && a.status === "ready"
             );
@@ -58,7 +61,7 @@ export function useAvatarUpload(
         } catch {
             // Silently ignore — avatar just won't show
         }
-    }, [entityId]);
+    }, [entityId, entityType]);
 
     const upload = useCallback(
         async (file: File) => {
@@ -83,7 +86,7 @@ export function useAvatarUpload(
             try {
                 // ── 2. Get pre-signed URL ──────────────────────────────────
                 const intent = await createUploadIntent({
-                    entityType: "account",
+                    entityType,
                     entityId,
                     category: "avatar",
                     mimeType: file.type,
@@ -110,6 +113,7 @@ export function useAvatarUpload(
                 setPhase("processing");
                 const url = await pollUntilReady(assetId);
                 setAvatarUrl(url);
+                onUploaded?.(url);
                 setPhase("done");
             } catch (err: any) {
                 const message =
@@ -120,7 +124,7 @@ export function useAvatarUpload(
                 setPhase("error");
             }
         },
-        [entityId]
+            [entityId, entityType, onUploaded]
     );
 
     return { avatarUrl, phase, uploadProgress, error, upload, refetch };

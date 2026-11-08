@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { http } from '@common/lib/http';
-import { useAuth } from '@common/hooks/useAuth';
 
 interface Notification {
     id: number;
@@ -11,7 +10,6 @@ interface Notification {
 }
 
 export const NotificationListener: React.FC<{ userRole?: string }> = ({ userRole = 'all' }) => {
-    const { isAuthenticated } = useAuth();
     // Read from localStorage to persist across reloads
     const [lastId, setLastId] = useState<number>(() => {
         const saved = localStorage.getItem('last_notification_id');
@@ -19,20 +17,12 @@ export const NotificationListener: React.FC<{ userRole?: string }> = ({ userRole
     });
 
     useEffect(() => {
-        if (!isAuthenticated) return;
-
         const fetchNotifications = async () => {
             try {
                 const { data } = await http.get<Notification[]>('/notifications', {
                     params: { role: userRole },
                 });
-                let clearedIds: number[] = [];
-                try {
-                    const savedCleared = localStorage.getItem('cleared_notification_ids');
-                    if (savedCleared) clearedIds = JSON.parse(savedCleared);
-                } catch {}
-
-                const newNotifications = data.filter(n => n.id > lastId && !clearedIds.includes(n.id));
+                const newNotifications = data.filter(n => n.id > lastId);
 
                 if (newNotifications.length > 0) {
                     const newMaxId = Math.max(...data.map(n => n.id));
@@ -54,7 +44,7 @@ export const NotificationListener: React.FC<{ userRole?: string }> = ({ userRole
         fetchNotifications();
         const intervalId = setInterval(fetchNotifications, 20000);
         return () => clearInterval(intervalId);
-    }, [userRole, lastId, isAuthenticated]);
+    }, [userRole, lastId]);
 
     return null;
 };

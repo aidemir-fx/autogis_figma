@@ -21,13 +21,15 @@ export const CardRoot = styled.article<{ $variant?: "master" | "organization"; $
     ${({ $variant }) =>
         $variant === "master" &&
         css`
-            min-height: 280px;
+            height: 300px;
+            min-height: 300px;
         `}
 
     ${({ $variant }) =>
         $variant === "organization" &&
         css`
-            min-height: 380px;
+            height: 420px;
+            min-height: 420px;
         `}
 `;
 
@@ -101,7 +103,7 @@ export const MetaRow = styled.div`
     gap: 7px;
     margin-top: 5px;
     color: #6b7280;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-family: var(--default-font-family);
     font-size: 11px;
     white-space: nowrap;
 `;
@@ -309,7 +311,7 @@ export const CoverBadge = styled.span`
     background: rgba(255, 255, 255, 0.95);
     color: #111827;
     backdrop-filter: blur(6px);
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-family: var(--default-font-family);
 
     svg {
         width: 9px;
@@ -361,7 +363,7 @@ export const OrgMeta = styled.div`
     gap: 8px;
     min-width: 0;
     color: #6b7280;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-family: var(--default-font-family);
     font-size: 11px;
 `;
 
@@ -378,6 +380,7 @@ export const Body = styled.div`
     flex-direction: column;
     gap: 10px;
     min-height: 0;
+    overflow: hidden;
     padding: 10px 12px 12px;
 `;
 
@@ -396,7 +399,7 @@ export const BlockTitle = styled.div<{ $compact?: boolean }>`
     gap: 6px;
     margin-bottom: 7px;
     color: #6b7280;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-family: var(--default-font-family);
     font-size: ${({ $compact }) => ($compact ? "10px" : "10.5px")};
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -501,7 +504,7 @@ export const Day = styled.span<{ $isActive: boolean; $compact?: boolean }>`
     border-radius: 6px;
     background: ${({ $isActive }) => ($isActive ? "#ecfdf5" : "#f1f5f9")};
     color: ${({ $isActive }) => ($isActive ? "#10b981" : "#9ca3af")};
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-family: var(--default-font-family);
     font-size: ${({ $compact }) => ($compact ? "9px" : "10.5px")};
     font-weight: 700;
     line-height: 1;

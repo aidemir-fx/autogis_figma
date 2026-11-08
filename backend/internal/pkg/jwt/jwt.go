@@ -1,58 +1,50 @@
 package jwt
 
 import (
-	"errors"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	jwtlib "github.com/golang-jwt/jwt/v5"
 )
 
 type Claims struct {
 	UserID string `json:"user_id"`
 	Phone  string `json:"phone"`
 	Role   string `json:"role"`
-	jwt.RegisteredClaims
+	jwtlib.RegisteredClaims
 }
 
 type JWTService struct {
-	secret []byte
+	secretKey string
 }
 
-func New(secret string) *JWTService {
+func New(secretKey string) *JWTService {
 	return &JWTService{
-		secret: []byte(secret),
+		secretKey: secretKey,
 	}
 }
 
-func (s *JWTService) GenerateToken(userID, phone, role string, expireDuration time.Duration) (string, error) {
-	now := time.Now()
-	claims := Claims{
+func (s *JWTService) GenerateToken(userID, phone, role string, expiresIn time.Duration) (string, error) {
+	claims := &Claims{
 		UserID: userID,
 		Phone:  phone,
 		Role:   role,
-		RegisteredClaims: jwt.RegisteredClaims{
-			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(expireDuration)),
+		RegisteredClaims: jwtlib.RegisteredClaims{
+			ExpiresAt: jwtlib.NewNumericDate(time.Now().Add(expiresIn)),
+			IssuedAt:  jwtlib.NewNumericDate(time.Now()),
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(s.secret)
+	token := jwtlib.NewWithClaims(jwtlib.SigningMethodHS256, claims)
+	return token.SignedString([]byte(s.secretKey))
 }
 
 func (s *JWTService) ValidateToken(tokenString string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return s.secret, nil
+	claims := &Claims{}
+	_, err := jwtlib.ParseWithClaims(tokenString, claims, func(token *jwtlib.Token) (interface{}, error) {
+		return []byte(s.secretKey), nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
-
-	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
-		return nil, errors.New("invalid token")
-	}
-
 	return claims, nil
 }

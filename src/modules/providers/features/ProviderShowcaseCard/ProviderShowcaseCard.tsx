@@ -80,13 +80,9 @@ function isMasterProvider(provider: Provider): boolean {
 function shouldShowBookingAction(provider: Provider): boolean {
     const type = getProviderType(provider);
 
-    return (
-        Boolean(provider.onlineBookingEnabled) &&
+    return Boolean(provider.onlineBookingEnabled) &&
         !provider.liveQueueEnabled &&
-		type !== ActivityType.auto_wash &&
-        (type === ActivityType.master ||
-            type === ActivityType.auto_service)
-    );
+        (type === ActivityType.master || type === ActivityType.auto_service);
 }
 
 function getDisplayName(provider: Provider): string {
@@ -109,7 +105,8 @@ function getInitials(name: string): string {
 }
 
 function getAvatarUrl(provider: Provider): string | undefined {
-    return provider.avatarUrl || provider.avatar || undefined;
+    // Do not use the personal account avatar in a professional card.
+    return provider.avatarUrl || undefined;
 }
 
 function getCoverUrl(provider: Provider): string | undefined {
@@ -351,55 +348,31 @@ const PAYMENT_LABELS: Record<string, string> = {
     google_pay: "Google Pay",
 };
 
-function CardPaymentIcons({ provider }: { provider: Provider }) {
+function PaymentBlock({ provider, compact = false }: { provider: Provider; compact?: boolean }) {
     const payments = Array.from(new Set(provider.payments ?? []));
     if (payments.length === 0) {
         return null;
     }
 
     return (
-        <div style={{ display: "flex", gap: 5, alignItems: "flex-start", marginTop: 4 }}>
-            {payments.map((p) => {
-                const shortLabel = p === "cash" ? "наличные" : p === "card" ? "карта" : p === "sbp" || p === "qr" ? "СБП" : p;
-                const fullLabel = PAYMENT_LABELS[p] ?? p;
-                const icon = p === "cash"
-                    ? <PaymentsRoundedIcon sx={{ fontSize: 13, color: "#475569" }} />
-                    : p === "card"
-                        ? <CreditCardRoundedIcon sx={{ fontSize: 13, color: "#475569" }} />
-                        : <QrCode2RoundedIcon sx={{ fontSize: 13, color: "#475569" }} />;
-                return (
-                    <div
-                        key={p}
-                        style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: 1,
-                        }}
-                    >
-                        <div
-                            title={fullLabel}
-                            aria-label={fullLabel}
-                            style={{
-                                width: 26,
-                                height: 22,
-                                borderRadius: 5,
-                                border: "1px solid #E2E8F0",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                backgroundColor: "#F8FAFC",
-                            }}
-                        >
-                            {icon}
-                        </div>
-                        <span style={{ fontSize: 8, fontWeight: 500, color: "#64748B", lineHeight: 1, whiteSpace: "nowrap" }}>
-                            {shortLabel}
-                        </span>
-                    </div>
-                );
-            })}
-        </div>
+        <Block>
+            <PaymentRow>
+                <BlockTitle $compact={compact}>Оплата</BlockTitle>
+                <PaymentIcons aria-label={`Способы оплаты: ${payments.map((payment) => PAYMENT_LABELS[payment] ?? payment).join(", ")}`}>
+                    {payments.slice(0, compact ? 3 : 5).map((payment) => {
+                        const label = PAYMENT_LABELS[payment] ?? payment;
+                        const icon = payment === "cash"
+                            ? <PaymentsRoundedIcon />
+                            : payment === "card"
+                                ? <CreditCardRoundedIcon />
+                                : payment === "sbp" || payment === "qr"
+                                    ? <QrCode2RoundedIcon />
+                                    : <PaymentsRoundedIcon />;
+                        return <PaymentIcon key={payment} title={label} aria-label={label}>{icon}</PaymentIcon>;
+                    })}
+                </PaymentIcons>
+            </PaymentRow>
+        </Block>
     );
 }
 
@@ -432,7 +405,6 @@ function MasterCard({
                             {formatDistanceFromUser(provider.distance)}
                         </Distance>
                     </MetaRow>
-                    <CardPaymentIcons provider={provider} />
                 </Identity>
                 {provider.liveQueueEnabled ? (
                     <OnlinePill>
@@ -453,6 +425,7 @@ function MasterCard({
                     Специализация
                 </BlockTitle>
                 <TagsBlock provider={provider} compact />
+                <PaymentBlock provider={provider} compact />
                 <CardActions provider={provider} isSelfProvider={isSelfProvider} />
             </Body>
         </>
@@ -504,7 +477,6 @@ function OrganizationCard({
                     <Dot />
                     <OrgAddress>{provider.address || "Адрес уточняется"}</OrgAddress>
                 </OrgMeta>
-                <CardPaymentIcons provider={provider} />
             </OrgIdentity>
             <Body>
                 <TagsBlock provider={provider} />
@@ -514,6 +486,7 @@ function OrganizationCard({
                         <WorkingDays provider={provider} compact />
                     </ScheduleRow>
                 </Block>
+                <PaymentBlock provider={provider} />
                 <CardActions provider={provider} isSelfProvider={isSelfProvider} />
             </Body>
         </>

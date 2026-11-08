@@ -16,7 +16,6 @@ import { User } from "./User";
 import { NotificationBell } from "../../../../../components/NotificationBell";
 import { useUserProfile } from "@common/hooks";
 import { COMPACT_LAYOUT_MEDIA_QUERY } from "../../layoutViewport";
-import { UserRole } from "@common/types";
 
 export const Header = () => {
     const navigate = useNavigate();
@@ -93,7 +92,7 @@ export const Header = () => {
                                             Проф чат
                                         </Button>
                                     )}
-                                    <NotificationBell isAdmin={profile?.role === UserRole.ADMIN} />
+                                    <NotificationBell isAdmin={profile?.role === "admin"} />
                                     <UserPartWrpapper onClick={handleUserMenuClick}>
                                         <User user={profile} />
                                     </UserPartWrpapper>

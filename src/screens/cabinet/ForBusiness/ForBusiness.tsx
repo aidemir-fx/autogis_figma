@@ -94,7 +94,6 @@ type FormValues = {
     businessName: string;
     applicantName: string;
     city: string;
-    address: string;
     phone: string;
     yandexMapsUrl: string;
     comment: string;
@@ -159,7 +158,6 @@ function getDefaultFormValues(): FormValues {
         businessName: "",
         applicantName: "",
         city: "",
-        address: "",
         phone: "+7",
         yandexMapsUrl: "",
         comment: "",
@@ -224,7 +222,6 @@ function buildFormValuesFromApplication(application: BusinessApplication): FormV
         businessName: application.businessName ?? "",
         applicantName: application.applicantName ?? "",
         city: application.city ?? "",
-        address: application.address ?? "",
         phone: application.phone ?? "+7",
         yandexMapsUrl: application.yandexMapsUrl ?? "",
         comment: application.comment ?? "",
@@ -263,7 +260,6 @@ export function ForBusiness() {
                 activityGroupCode: values.activityGroupCode as ActivityGroupCode,
                 activitySubtypeCode: values.activitySubtypeCode as ActivitySubtypeCode,
                 city: values.city.trim(),
-                address: trimToUndefined(values.address),
                 phone: values.phone.trim(),
                 comment: trimToUndefined(values.comment),
                 agreedToTerms: values.agreedToTerms,
@@ -1030,25 +1026,6 @@ function ScenarioFields({
                     )}
                 />
             )}
-
-            <Controller
-                name="address"
-                control={form.control}
-                render={({ field }) => (
-                    <FieldCell $wide>
-                        <FieldLabel>Адрес · необязательно</FieldLabel>
-                        <FieldInput
-                            {...field}
-                            $accent={accent}
-                            placeholder={
-                                isPrivate
-                                    ? "Район или ориентир (если есть свой бокс)"
-                                    : "проспект Абая, 150"
-                            }
-                        />
-                    </FieldCell>
-                )}
-            />
 
             <Controller
                 name="comment"

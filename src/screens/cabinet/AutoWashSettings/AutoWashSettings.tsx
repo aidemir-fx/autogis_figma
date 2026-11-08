@@ -29,7 +29,7 @@ import {
 import { autoWashSchema } from "../Settings/validation";
 import { PAYMENT_OPTIONS } from "../Settings/payment-options";
 import { CameraIcon, ClockIcon, DropsIcon, GearIcon, PlusIcon } from "@common/icons";
-import { Button, Checkbox, CoverPhotoUpload, SettingsSection, TextField } from "@common/components";
+import { AvatarUpload, Button, Checkbox, CoverPhotoUpload, SettingsSection, TextField } from "@common/components";
 import {
     AutoWashStatusToggle,
     AdditionalService,
@@ -80,6 +80,16 @@ export function AutoWashSettings() {
     const [coverUploadActive, setCoverUploadActive] = useState(false);
     const { autoWashProfile, isLoading, error, refetch } = useAutoWash();
     const autoWash = autoWashProfile?.profile;
+
+    const saveProfileAvatar = async (avatarUrl: string) => {
+        try {
+            await http.put("/auto_washes/profile/me", { avatarUrl });
+            await refetch();
+            toast.success("Аватар профиля обновлён");
+        } catch {
+            toast.error("Не удалось сохранить аватар профиля");
+        }
+    };
 
     const form = useForm<AutoWashFormValues>({
         resolver: yupResolver(autoWashSchema) as any,
@@ -262,6 +272,21 @@ export function AutoWashSettings() {
                 <AutoWashStatusToggle
                     currentStatus={autoWash?.status || AutoWashStatus.SCHEDULE}
                 />
+            </SettingsSection>
+
+            <SettingsSection icon={<GearIcon color="#1d4ed8" />} title="Аватар профиля">
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Фото будет показываться в поиске и публичном профиле автомойки.
+                    Личный аватар аккаунта не изменится.
+                </Typography>
+                {autoWash && (
+                    <AvatarUpload
+                        entityId={autoWash.id}
+                        entityType="work"
+                        fallbackText={autoWash.fullName ?? "А"}
+                        onUploaded={saveProfileAvatar}
+                    />
+                )}
             </SettingsSection>
 
             <form onSubmit={form.handleSubmit(onSubmit, () => {

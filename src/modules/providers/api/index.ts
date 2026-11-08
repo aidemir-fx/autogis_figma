@@ -4,7 +4,7 @@ import { AppActivityTypes } from "../features";
 import { AutoWash } from "@modules/auto-washes";
 import { AutoService } from "@modules/auto-service";
 import { AutoShop } from "@modules/auto-shops";
-import { Provider, ActivityType } from "../types";
+import { Provider } from "../types";
 
 type BackendPoint = {
     type?: string;
@@ -63,31 +63,17 @@ function mapWorkingDays(workingDays?: boolean[] | string[]) {
     );
 }
 
-function resolveActivityType(p: any): ActivityType {
-    const raw = String(p.activityType || p.providerType || p.activityTypeId || "");
-    if (raw === "auto_service" || raw === "1") return ActivityType.auto_service;
-    if (raw === "auto_wash" || raw === "3") return ActivityType.auto_wash;
-    if (raw === "auto_shop" || raw === "4") return ActivityType.auto_shop;
-    return ActivityType.master;
-}
-
 function mapProvider(provider: BackendProvider): Provider {
-	const avatarUrl = provider.avatarUrl ?? provider.avatar;
-
     return {
         ...provider,
-        activityType: resolveActivityType(provider),
         fullName: provider.fullName ?? provider.name ?? undefined,
         coordinates: mapPointToCoordinates(provider.coordinates),
         workingDays: mapWorkingDays(provider.workingDays),
         professions: provider.professions ?? [],
         autoMarks: provider.autoMarks ?? [],
         services: provider.services ?? [],
-        avatar: provider.avatar ?? avatarUrl,
-        avatarUrl,
         description: provider.description ?? "",
         address: provider.address ?? "",
-        payments: provider.payments && provider.payments.length > 0 ? provider.payments : ["cash", "card", "sbp"],
     };
 }
 

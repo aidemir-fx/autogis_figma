@@ -266,7 +266,9 @@ export const CardIcon = styled.div<{ $accent: AccentKey }>`
         width: 40px;
         height: 40px;
         object-fit: contain;
-        filter: brightness(0) invert(1);
+        display: block;
+        border-radius: 10px;
+        background: #fff;
     }
 
     @media (min-width: 900px) {

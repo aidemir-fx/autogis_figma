@@ -195,13 +195,9 @@ type ProviderSearchResult struct {
 	Services             []string               `json:"services,omitempty"`
 	AutoMarks            []string               `json:"autoMarks,omitempty"`
 	Payments             []string               `json:"payments,omitempty"`
+	Features             []string               `json:"features,omitempty"`
 	HasParking           *bool                  `json:"hasParking,omitempty"`
 	LiftCount            *int                   `json:"liftCount,omitempty"`
-	HasWifi              *bool                  `json:"hasWifi,omitempty"`
-	HasWaitingArea       *bool                  `json:"hasWaitingArea,omitempty"`
-	OffersCoffee         *bool                  `json:"offersCoffee,omitempty"`
-	HasEvacuation        *bool                  `json:"hasEvacuation,omitempty"`
-	HasPartsInStock      *bool                  `json:"hasPartsInStock,omitempty"`
 	Warranty             *bool                  `json:"warranty,omitempty"`
 	Hotline              *string                `json:"hotline,omitempty"`
 	BrandSupport         []string               `json:"brandSupport,omitempty"`
@@ -251,65 +247,57 @@ type ReviewResponse struct {
 
 // Master DTOs
 type MasterProfileResponse struct {
-	ID                   string                 `json:"id"`
-	UserID               string                 `json:"userId"`
-	User                 *UserResponse          `json:"user,omitempty"`
-	FullName             *string                `json:"fullName,omitempty"`
-	WorkingPhone         *string                `json:"workingPhone,omitempty"`
-	Description          *string                `json:"description,omitempty"`
-	Address              *string                `json:"address,omitempty"`
-	Coordinates          *Point                 `json:"coordinates,omitempty"`
-	CoverImageAssetID    *string                `json:"coverImageAssetId,omitempty"`
-	Status               string                 `json:"status"`
-	CurrentStatus        string                 `json:"currentStatus"`
-	OnlineBookingEnabled bool                   `json:"onlineBookingEnabled"`
-	LiveQueueEnabled     bool                   `json:"liveQueueEnabled"`
-	Rating               float32                `json:"rating"`
-	ReviewsCount         int                    `json:"reviewsCount"`
-	WorkFrom             *string                `json:"workFrom,omitempty"`
-	WorkTo               *string                `json:"workTo,omitempty"`
-	WorkingDays          []bool                 `json:"workingDays,omitempty"`
-	Professions          []string               `json:"professions,omitempty"`
-	Services             []string               `json:"services,omitempty"`
-	AutoMarks            []string               `json:"autoMarks,omitempty"`
-	Payments             []string               `json:"payments,omitempty"`
-	HasParking           bool                   `json:"hasParking"`
-	HasWifi              bool                   `json:"hasWifi"`
-	HasWaitingArea       bool                   `json:"hasWaitingArea"`
-	OffersCoffee         bool                   `json:"offersCoffee"`
-	HasEvacuation        bool                   `json:"hasEvacuation"`
-	HasPartsInStock      bool                   `json:"hasPartsInStock"`
-	LiftCount            int                    `json:"liftCount"`
-	ActivityTypes        []ActivityTypeResponse `json:"activityTypes,omitempty"`
-	ActivityGroup        *ActivityGroupRef      `json:"activityGroup,omitempty"`
-	ActivitySubtype      *ActivitySubtypeRef    `json:"activitySubtype,omitempty"`
-	CreatedAt            string                 `json:"createdAt"`
+	ID                    string                 `json:"id"`
+	UserID                string                 `json:"userId"`
+	User                  *UserResponse          `json:"user,omitempty"`
+	FullName              *string                `json:"fullName,omitempty"`
+	WorkingPhone          *string                `json:"workingPhone,omitempty"`
+	Description           *string                `json:"description,omitempty"`
+	Address               *string                `json:"address,omitempty"`
+	Coordinates           *Point                 `json:"coordinates,omitempty"`
+	AvatarURL             *string                `json:"avatarUrl,omitempty"`
+	Status                string                 `json:"status"`
+	CurrentStatus         string                 `json:"currentStatus"`
+	OnlineBookingEnabled  bool                   `json:"onlineBookingEnabled"`
+	LiveQueueEnabled      bool                   `json:"liveQueueEnabled"`
+	Rating                float32                `json:"rating"`
+	ReviewsCount          int                    `json:"reviewsCount"`
+	WorkFrom              *string                `json:"workFrom,omitempty"`
+	WorkTo                *string                `json:"workTo,omitempty"`
+	WorkingDays           []bool                 `json:"workingDays,omitempty"`
+	Professions           []string               `json:"professions,omitempty"`
+	Services              []string               `json:"services,omitempty"`
+	AutoMarks             []string               `json:"autoMarks,omitempty"`
+	Payments              []string               `json:"payments,omitempty"`
+	Features              []string               `json:"features,omitempty"`
+	WorkPhotoAssetIDs     []string               `json:"workPhotoAssetIds,omitempty"`
+	HeroWorkPhotoAssetIDs []string               `json:"heroWorkPhotoAssetIds,omitempty"`
+	ActivityTypes         []ActivityTypeResponse `json:"activityTypes,omitempty"`
+	ActivityGroup         *ActivityGroupRef      `json:"activityGroup,omitempty"`
+	ActivitySubtype       *ActivitySubtypeRef    `json:"activitySubtype,omitempty"`
+	CreatedAt             string                 `json:"createdAt"`
 }
 
 type UpdateMasterProfileRequest struct {
-	FullName             *string  `json:"fullName,omitempty"`
-	WorkingPhone         *string  `json:"workingPhone,omitempty"`
-	Description          *string  `json:"description,omitempty"`
-	Address              *string  `json:"address,omitempty"`
-	Coordinates          *Point   `json:"coordinates,omitempty"`
-	CoverImageAssetID    *string  `json:"coverImageAssetId,omitempty"`
-	Status               *string  `json:"status,omitempty"`
-	OnlineBookingEnabled *bool    `json:"onlineBookingEnabled,omitempty"`
-	LiveQueueEnabled     *bool    `json:"liveQueueEnabled,omitempty"`
-	WorkFrom             *string  `json:"workFrom,omitempty"`
-	WorkTo               *string  `json:"workTo,omitempty"`
-	WorkingDays          []bool   `json:"workingDays,omitempty"`
-	Professions          []string `json:"professions,omitempty"`
-	Services             []string `json:"services,omitempty"`
-	AutoMarks            []string `json:"autoMarks,omitempty"`
-	Payments             []string `json:"payments,omitempty" validate:"omitempty,dive,oneof=cash card qr sbp apple_pay google_pay"`
-	HasParking           *bool    `json:"hasParking,omitempty"`
-	HasWifi              *bool    `json:"hasWifi,omitempty"`
-	HasWaitingArea       *bool    `json:"hasWaitingArea,omitempty"`
-	OffersCoffee         *bool    `json:"offersCoffee,omitempty"`
-	HasEvacuation        *bool    `json:"hasEvacuation,omitempty"`
-	HasPartsInStock      *bool    `json:"hasPartsInStock,omitempty"`
-	LiftCount            *int     `json:"liftCount,omitempty" validate:"omitempty,gte=0,lte=500"`
+	FullName              *string  `json:"fullName,omitempty"`
+	WorkingPhone          *string  `json:"workingPhone,omitempty"`
+	Description           *string  `json:"description,omitempty"`
+	Address               *string  `json:"address,omitempty"`
+	Coordinates           *Point   `json:"coordinates,omitempty"`
+	AvatarURL             *string  `json:"avatarUrl,omitempty"`
+	Status                *string  `json:"status,omitempty"`
+	OnlineBookingEnabled  *bool    `json:"onlineBookingEnabled,omitempty"`
+	LiveQueueEnabled      *bool    `json:"liveQueueEnabled,omitempty"`
+	WorkFrom              *string  `json:"workFrom,omitempty"`
+	WorkTo                *string  `json:"workTo,omitempty"`
+	WorkingDays           []bool   `json:"workingDays,omitempty"`
+	Professions           []string `json:"professions,omitempty"`
+	Services              []string `json:"services,omitempty"`
+	AutoMarks             []string `json:"autoMarks,omitempty"`
+	Payments              []string `json:"payments,omitempty" validate:"omitempty,dive,oneof=cash card qr sbp apple_pay google_pay"`
+	Features              []string `json:"features,omitempty"`
+	WorkPhotoAssetIDs     []string `json:"workPhotoAssetIds,omitempty"`
+	HeroWorkPhotoAssetIDs []string `json:"heroWorkPhotoAssetIds,omitempty"`
 }
 
 // AutoWash DTOs
@@ -321,6 +309,7 @@ type AutoWashResponse struct {
 	Description          *string  `json:"description,omitempty"`
 	Address              *string  `json:"address,omitempty"`
 	Coordinates          *Point   `json:"coordinates,omitempty"`
+	AvatarURL            *string  `json:"avatarUrl,omitempty"`
 	CoverImageURL        *string  `json:"coverImageUrl,omitempty"`
 	CoverImageAssetID    *string  `json:"coverImageAssetId,omitempty"`
 	Status               string   `json:"status"`
@@ -349,6 +338,7 @@ type UpdateAutoWashRequest struct {
 	Description          *string  `json:"description,omitempty"`
 	Address              *string  `json:"address,omitempty"`
 	Coordinates          *Point   `json:"coordinates,omitempty"`
+	AvatarURL            *string  `json:"avatarUrl,omitempty"`
 	CoverImageURL        *string  `json:"coverImageUrl,omitempty"`
 	CoverImageAssetID    *string  `json:"coverImageAssetId,omitempty"`
 	Status               *string  `json:"status,omitempty"`
@@ -377,14 +367,13 @@ type AutoShopResponse struct {
 	Description          *string  `json:"description,omitempty"`
 	Address              *string  `json:"address,omitempty"`
 	Coordinates          *Point   `json:"coordinates,omitempty"`
+	AvatarURL            *string  `json:"avatarUrl,omitempty"`
 	CoverImageURL        *string  `json:"coverImageUrl,omitempty"`
 	CoverImageAssetID    *string  `json:"coverImageAssetId,omitempty"`
 	Status               string   `json:"status"`
 	OnlineBookingEnabled bool     `json:"onlineBookingEnabled"`
 	Services             []string `json:"services,omitempty"`
 	Payments             []string `json:"payments,omitempty"`
-	Brands               []string `json:"brands,omitempty"`
-	ProductCategories    []string `json:"productCategories,omitempty"`
 	WorkFrom             *string  `json:"workFrom,omitempty"`
 	WorkTo               *string  `json:"workTo,omitempty"`
 	WorkingDays          []bool   `json:"workingDays,omitempty"`
@@ -403,14 +392,13 @@ type UpdateAutoShopRequest struct {
 	Description          *string  `json:"description,omitempty"`
 	Address              *string  `json:"address,omitempty"`
 	Coordinates          *Point   `json:"coordinates,omitempty"`
+	AvatarURL            *string  `json:"avatarUrl,omitempty"`
 	CoverImageURL        *string  `json:"coverImageUrl,omitempty"`
 	CoverImageAssetID    *string  `json:"coverImageAssetId,omitempty"`
 	Status               *string  `json:"status,omitempty"`
 	OnlineBookingEnabled *bool    `json:"onlineBookingEnabled,omitempty"`
 	Services             []string `json:"services,omitempty"`
 	Payments             []string `json:"payments,omitempty" validate:"omitempty,dive,oneof=cash card qr sbp apple_pay google_pay"`
-	Brands               []string `json:"brands,omitempty"`
-	ProductCategories    []string `json:"productCategories,omitempty"`
 	WorkFrom             *string  `json:"workFrom,omitempty"`
 	WorkTo               *string  `json:"workTo,omitempty"`
 	WorkingDays          []bool   `json:"workingDays,omitempty"`
@@ -426,6 +414,7 @@ type AutoServiceResponse struct {
 	Description          *string             `json:"description,omitempty"`
 	Address              *string             `json:"address,omitempty"`
 	Coordinates          *Point              `json:"coordinates,omitempty"`
+	AvatarURL            *string             `json:"avatarUrl,omitempty"`
 	CoverImageURL        *string             `json:"coverImageUrl,omitempty"`
 	CoverImageAssetID    *string             `json:"coverImageAssetId,omitempty"`
 	Status               string              `json:"status"`
@@ -453,6 +442,7 @@ type UpdateAutoServiceRequest struct {
 	Description          *string  `json:"description,omitempty"`
 	Address              *string  `json:"address,omitempty"`
 	Coordinates          *Point   `json:"coordinates,omitempty"`
+	AvatarURL            *string  `json:"avatarUrl,omitempty"`
 	CoverImageURL        *string  `json:"coverImageUrl,omitempty"`
 	CoverImageAssetID    *string  `json:"coverImageAssetId,omitempty"`
 	Status               *string  `json:"status,omitempty"`

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import { Box } from "@mui/material";
-import type { StoryFrameKind, StoryImageLayout, StoryPromo } from "../api";
+import type { StoryFrameKind, StoryImageLayout } from "../api";
 
 export type StoryCanvasFrame = StoryImageLayout & {
     kind: StoryFrameKind;
@@ -11,11 +11,6 @@ export type StoryCanvasFrame = StoryImageLayout & {
     text?: string;
     background: string;
     fontSize: number;
-    textColor?: string;
-    textBg?: string;
-    textAlign?: "center" | "left" | "right";
-    textBadge?: boolean;
-    promo?: StoryPromo;
 };
 
 const WIDTH = 360;
@@ -24,23 +19,10 @@ const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(ma
 type Point = { x: number; y: number };
 
 /** One 9:16 composition for the editor, thumbnails and published viewer. */
-export function StoryCanvas({
-    frame,
-    onImageChange,
-    onTextChange,
-    onTextClick,
-    onCanvasClick,
-    onPromoClick,
-    onPromoActionClick,
-    sound = false,
-}: {
+export function StoryCanvas({ frame, onImageChange, onTextChange, sound = false }: {
     frame: StoryCanvasFrame;
     onImageChange?: (layout: StoryImageLayout) => void;
     onTextChange?: (layout: Pick<StoryImageLayout, "textX" | "textY">) => void;
-    onTextClick?: () => void;
-    onCanvasClick?: () => void;
-    onPromoClick?: () => void;
-    onPromoActionClick?: (actionType?: "book" | "call") => void;
     sound?: boolean;
 }) {
     const root = useRef<HTMLDivElement>(null);
@@ -153,18 +135,8 @@ export function StoryCanvas({
                             transform: `translate(${(frame.imageX ?? 0) * WIDTH}px, ${(frame.imageY ?? 0) * HEIGHT}px) scale(${frame.imageScale ?? 1})` }} />
                 )}
                 {imageFailed && <Box sx={{ p: 3, textAlign: "center" }}>Не удалось загрузить фото</Box>}
-                <Box
-                    sx={{ position: "absolute", inset: 0, pointerEvents: onCanvasClick ? "auto" : "none", boxSizing: "border-box" }}
-                    onClick={() => onCanvasClick?.()}
-                >
-                    <Box
-                        ref={text}
-                        onClick={(event) => {
-                            if (textEditable && onTextClick) {
-                                event.stopPropagation();
-                                onTextClick();
-                            }
-                        }}
+                <Box sx={{ position: "absolute", inset: 0, pointerEvents: "none", boxSizing: "border-box" }}>
+                    <Box ref={text}
                         onPointerDown={textEditable ? (event: PointerEvent<HTMLDivElement>) => {
                             if (event.pointerType === "mouse" && event.button !== 0) return;
                             event.stopPropagation();
@@ -181,156 +153,13 @@ export function StoryCanvas({
                         } : undefined}
                         onPointerUp={(event) => { event.stopPropagation(); if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }}
                         onPointerCancel={(event) => { event.stopPropagation(); if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }}
-                        sx={{
-                            position: "absolute",
-                            left: "50%",
-                            top: "50%",
-                            width: "calc(100% - 40px)",
-                            maxHeight: "calc(100% - 64px)",
-                            transform: `translate(calc(-50% + ${textX * WIDTH}px), calc(-50% + ${textY * HEIGHT}px))`,
-                            display: "flex",
-                            justifyContent: frame.textAlign === "left" ? "flex-start" : frame.textAlign === "right" ? "flex-end" : "center",
-                            textAlign: frame.textAlign || "center",
-                            pointerEvents: textEditable ? "auto" : "none",
-                            cursor: textEditable ? "pointer" : "default",
-                            touchAction: textEditable ? "none" : "auto",
-                            userSelect: "none",
-                        }}
-                    >
-                        <Box
-                            component="span"
-                            sx={{
-                                display: "inline-block",
-                                whiteSpace: "pre-wrap",
-                                overflowWrap: "anywhere",
-                                fontFamily: "Inter, system-ui, -apple-system, sans-serif",
-                                fontSize: frame.fontSize,
-                                fontWeight: 800,
-                                lineHeight: 1.25,
-                                color: frame.textColor || "#FFFFFF",
-                                backgroundColor: frame.textBadge
-                                    ? (frame.textBg || "rgba(0, 0, 0, 0.72)")
-                                    : "transparent",
-                                padding: frame.textBadge ? "6px 14px" : "2px 6px",
-                                borderRadius: frame.textBadge ? "12px" : "4px",
-                                boxShadow: frame.textBadge ? "0 4px 14px rgba(0,0,0,0.35)" : "none",
-                                textShadow: !frame.textBadge && frame.kind !== "text"
-                                    ? "0 2px 8px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.9)"
-                                    : "none",
-                                border: textEditable ? "1.5px dashed rgba(255, 255, 255, 0.45)" : "none",
-                                transition: "all 0.15s ease",
-                            }}
-                        >
-                            {frame.text}
-                        </Box>
+                        sx={{ position: "absolute", left: "50%", top: "50%", width: "calc(100% - 48px)", maxHeight: "calc(100% - 64px)",
+                        transform: `translate(calc(-50% + ${textX * WIDTH}px), calc(-50% + ${textY * HEIGHT}px))`, textAlign: "center", whiteSpace: "pre-wrap", overflowWrap: "anywhere",
+                        fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: frame.fontSize, fontWeight: 700, lineHeight: 1.2,
+                        textShadow: frame.kind !== "text" ? "0 2px 8px #000, 0 0 3px #000" : "none", pointerEvents: textEditable ? "auto" : "none",
+                        cursor: textEditable ? "grab" : "default", touchAction: textEditable ? "none" : "auto", userSelect: textEditable ? "none" : "auto" }}>
+                        {frame.text}
                     </Box>
-
-                    {frame.promo && (
-                        <Box
-                            onClick={(event) => {
-                                if (onPromoClick) {
-                                    event.stopPropagation();
-                                    onPromoClick();
-                                }
-                            }}
-                            sx={{
-                                position: "absolute",
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                                padding: "16px 14px 18px",
-                                zIndex: 12,
-                                background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.65) 65%, transparent 100%)",
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: "7px",
-                                boxSizing: "border-box",
-                                cursor: onPromoClick ? "pointer" : "default",
-                                pointerEvents: "auto",
-                                textAlign: "left",
-                                border: onPromoClick ? "1.5px dashed rgba(56, 189, 248, 0.5)" : "none",
-                                borderRadius: "0 0 16px 16px",
-                            }}
-                        >
-                            {frame.promo.tag && (
-                                <Box
-                                    sx={{
-                                        alignSelf: "flex-start",
-                                        backgroundColor: "#2563EB",
-                                        color: "#FFFFFF",
-                                        padding: "3px 9px",
-                                        borderRadius: "6px",
-                                        fontSize: 11,
-                                        fontWeight: 700,
-                                        letterSpacing: "0.02em",
-                                    }}
-                                >
-                                    {frame.promo.tag}
-                                </Box>
-                            )}
-
-                            <Box sx={{ fontSize: 16, fontWeight: 700, color: "#FFFFFF", lineHeight: 1.25 }}>
-                                {frame.promo.title}
-                            </Box>
-
-                            {frame.promo.description && (
-                                <Box sx={{ fontSize: 11, color: "rgba(255, 255, 255, 0.9)", lineHeight: 1.35 }}>
-                                    {frame.promo.description}
-                                </Box>
-                            )}
-
-                            {frame.promo.benefit && (
-                                <Box
-                                    sx={{
-                                        backgroundColor: "rgba(255, 255, 255, 0.15)",
-                                        border: "1px solid rgba(255, 255, 255, 0.25)",
-                                        backdropFilter: "blur(6px)",
-                                        borderRadius: "8px",
-                                        padding: "6px 10px",
-                                        fontSize: 12,
-                                        fontWeight: 600,
-                                        color: "#FEF08A",
-                                    }}
-                                >
-                                    ✨ {frame.promo.benefit}
-                                </Box>
-                            )}
-
-                            <Box
-                                component="button"
-                                type="button"
-                                onClick={(event) => {
-                                    if (onPromoActionClick) {
-                                        event.stopPropagation();
-                                        onPromoActionClick(frame.promo?.actionType);
-                                    } else if (onPromoClick) {
-                                        event.stopPropagation();
-                                        onPromoClick();
-                                    }
-                                }}
-                                sx={{
-                                    marginTop: "4px",
-                                    height: 38,
-                                    backgroundColor: "#4BA82E",
-                                    color: "#FFFFFF",
-                                    border: "none",
-                                    borderRadius: "10px",
-                                    fontSize: 13,
-                                    fontWeight: 700,
-                                    cursor: "pointer",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    gap: "6px",
-                                    boxShadow: "0 4px 12px rgba(75, 168, 46, 0.4)",
-                                    transition: "all 0.15s ease",
-                                    "&:active": { transform: "scale(0.98)" },
-                                }}
-                            >
-                                {frame.promo.actionType === "call" ? "Позвонить" : "Записаться онлайн"}
-                            </Box>
-                        </Box>
-                    )}
                 </Box>
             </Box>
         </Box>

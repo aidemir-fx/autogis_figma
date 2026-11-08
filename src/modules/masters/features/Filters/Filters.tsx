@@ -12,9 +12,10 @@ import { SearchIcon, UserIcon } from "@common/icons";
 type Props = {
     query: string[];
     onChange: (next: { query: string[] }) => void;
+    ariaLabel?: string;
 };
 
-export function Filters({ query, onChange }: Props) {
+export function Filters({ query, onChange, ariaLabel = "Поиск по профессиям, маркам и услугам" }: Props) {
     const professionsQuery = useQuery({
         queryKey: ["professions"],
         queryFn: fetchAllProfessions,
@@ -71,6 +72,7 @@ export function Filters({ query, onChange }: Props) {
                         <TextField
                             {...params}
                             inputRef={params.InputProps.ref}
+                            inputProps={{ ...params.inputProps, "aria-label": ariaLabel }}
                             icon={<SearchIcon />}
                             placeholder={
                                 isLoading

@@ -2,6 +2,14 @@ import { ActivityType } from "@modules/providers/types";
 
 export type Coordinates = { x: number; y: number };
 
+export type MasterFeature =
+    | "parking"
+    | "waiting_area"
+    | "coffee"
+    | "wifi"
+    | "towing"
+    | "spare_parts";
+
 export enum MasterStatus {
     AVAILABLE = "available",
     SCHEDULE = "schedule",
@@ -24,6 +32,9 @@ export type Master = {
     autoMarks: string[];
     services: string[];
     payments?: string[];
+    features?: MasterFeature[];
+    workPhotoAssetIds?: string[];
+    heroWorkPhotoAssetIds?: string[];
     workingDays: boolean[];
     workFrom?: string;
     workTo?: string;
@@ -40,11 +51,6 @@ export type Master = {
     coverImage?: string;
     coverImageUrl?: string;
     coverImageAssetId?: string;
-    hasWifi?: boolean;
-    hasWaitingArea?: boolean;
-    offersCoffee?: boolean;
-    hasEvacuation?: boolean;
-    hasPartsInStock?: boolean;
     onlineBookingEnabled?: boolean;
     liveQueueEnabled?: boolean;
     distance?: number; // Distance in meters from user location

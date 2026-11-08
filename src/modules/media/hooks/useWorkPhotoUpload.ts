@@ -10,25 +10,18 @@ import type { UploadPhase } from "./useAvatarUpload";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE_BYTES = 15 * 1024 * 1024;
-const POLL_INTERVAL_MS = 2_000;
-const POLL_TIMEOUT_MS = 30_000;
 
-export function useWorkPhotoUpload(masterId: string | null | undefined) {
+export function useWorkPhotoUpload(entityId: string | null | undefined) {
     const [phase, setPhase] = useState<UploadPhase>("idle");
     const [uploadProgress, setUploadProgress] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
-    const upload = useCallback(async (file: File): Promise<MediaAsset | null> => {
-        if (!masterId) {
+    const upload = useCallback(async (file: File) => {
+        if (!entityId) {
             setError("Профиль мастера ещё не создан");
             setPhase("error");
             return null;
         }
-
-        setError(null);
-        setUploadProgress(0);
-        setPhase("validating");
-
         if (!ALLOWED_TYPES.includes(file.type)) {
             setError("Допустимые форматы: JPEG, PNG, WebP");
             setPhase("error");
@@ -41,55 +34,40 @@ export function useWorkPhotoUpload(masterId: string | null | undefined) {
         }
 
         try {
+            setError(null);
+            setPhase("validating");
+            setUploadProgress(0);
             const intent = await createUploadIntent({
                 entityType: "work",
-                entityId: masterId,
+                entityId,
                 category: "photo",
                 mimeType: file.type,
                 sizeBytes: file.size,
             });
-
             setPhase("uploading");
             await uploadToS3(intent.uploadUrl, file, intent.headers, setUploadProgress);
-            setUploadProgress(100);
-
             const { assetId } = await confirmUpload(intent.intentId, intent.stagingKey);
             setPhase("processing");
             const asset = await pollUntilReady(assetId);
             setPhase("done");
             return asset;
         } catch (err: any) {
-            setError(
-                err?.response?.data?.message ||
-                    err?.response?.data?.error ||
-                    err?.message ||
-                    "Ошибка загрузки фото",
-            );
+            setError(err?.response?.data?.message || err?.message || "Ошибка загрузки фото");
             setPhase("error");
             return null;
         }
-    }, [masterId]);
+    }, [entityId]);
 
-    return {
-        phase,
-        uploadProgress,
-        error,
-        isUploading: phase === "validating" || phase === "uploading" || phase === "processing",
-        upload,
-    };
+    return { phase, uploadProgress, error, upload };
 }
 
 async function pollUntilReady(assetId: string): Promise<MediaAsset> {
-    const deadline = Date.now() + POLL_TIMEOUT_MS;
-
+    const deadline = Date.now() + 30_000;
     while (Date.now() < deadline) {
         const asset = await getAsset(assetId);
-        if (asset.status === "ready") return asset;
-        if (asset.status === "failed") {
-            throw new Error("Обработка изображения завершилась с ошибкой");
-        }
-        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+        if (asset.status === "ready" && (asset.urls?.large || asset.urls?.original)) return asset;
+        if (asset.status === "failed") throw new Error("Обработка изображения завершилась с ошибкой");
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
     }
-
-    throw new Error("Обработка занимает больше времени. Фото появится автоматически позже.");
+    throw new Error("Обработка занимает больше времени. Фото появится позже.");
 }
