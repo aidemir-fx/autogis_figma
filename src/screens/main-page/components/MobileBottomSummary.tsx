@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { styled } from "styled-components";
-import { Provider } from "@modules/providers";
+import { ActivityType, Provider } from "@modules/providers";
 import { MasterStatus } from "@modules/masters";
 import { formatDistanceFromUser } from "@common/lib/formatDistance";
 import { ClockIcon, CrossIcon, MapPinIcon, StarIcon } from "@common/icons";
@@ -579,9 +579,9 @@ export const MobileBottomSummary = ({
                             >
                                 <MiniCardHeader>
                                     <MiniAvatar>
-                                        {p.avatarUrl || p.coverImageUrl || p.coverImage ? (
+                                        {(p.activityType === ActivityType.master || !p.activityType ? p.avatarUrl : p.coverImageUrl || p.coverImage) ? (
                                             <img
-                                                src={p.avatarUrl || p.coverImageUrl || p.coverImage}
+                                                src={p.activityType === ActivityType.master || !p.activityType ? p.avatarUrl : p.coverImageUrl || p.coverImage}
                                                 alt={name}
                                             />
                                         ) : (

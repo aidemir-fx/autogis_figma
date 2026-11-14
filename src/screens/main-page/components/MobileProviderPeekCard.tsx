@@ -359,7 +359,9 @@ export const MobileProviderPeekCard = ({
         ...(provider.autoMarks || []),
     ].slice(0, 4);
     const isSelfProvider = Boolean(currentProfile?.id && currentProfile.id === provider.userId);
-    const professionalAvatarUrl = provider.avatarUrl || provider.coverImageUrl || provider.coverImage;
+    const professionalAvatarUrl = provider.activityType === ActivityType.master || !provider.activityType
+        ? provider.avatarUrl
+        : provider.coverImageUrl || provider.coverImage;
 
     return (
         <CardOverlay>

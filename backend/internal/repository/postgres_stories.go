@@ -246,7 +246,7 @@ func (r *storyRepositoryImpl) GetAuthor(ctx context.Context, userID string) (*do
 				NULLIF(ash.full_name, ''), NULLIF(asv.full_name, ''),
 				NULLIF(u.name, ''), u.phone) AS display_name,
 			u.role,
-			COALESCE(NULLIF(m.avatar_url, ''), NULLIF(aw.cover_image_url, ''),
+			COALESCE(NULLIF(aw.cover_image_url, ''),
 				NULLIF(ash.cover_image_url, ''),
 				NULLIF(asv.cover_image_url, '')) AS avatar_url,
 			m.user_id IS NOT NULL AS is_private_master

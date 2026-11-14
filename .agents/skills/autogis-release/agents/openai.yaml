@@ -1,0 +1,4 @@
+interface:
+  display_name: "AutoGIS Push & Deploy"
+  short_description: "Safely push AutoGIS changes and deploy to the configured server"
+  default_prompt: "Push the intended AutoGIS changes and deploy them to the configured server."

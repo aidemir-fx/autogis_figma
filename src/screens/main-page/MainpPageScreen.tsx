@@ -248,18 +248,12 @@ export const MainpPageScreen = () => {
     const { params, setParam } = useQueryParams();
 
     const [lat, lng] = userCoords ?? DEFAULT_CENTER;
-    const profileAvatarUrl = profile?.master?.avatar
-        ?? profile?.master?.avatarUrl
-        ?? profile?.autoService?.coverImageUrl
-        ?? profile?.autoService?.avatar
-        ?? profile?.autoService?.avatarUrl
-        ?? profile?.autoWash?.coverImageUrl
-        ?? profile?.autoWash?.avatar
-        ?? profile?.autoWash?.avatarUrl
-        ?? profile?.autoShop?.coverImageUrl
-        ?? profile?.autoShop?.avatar
-        ?? profile?.autoShop?.avatarUrl
-        ?? profileAvatars[profile?.id ?? ""];
+    const profileAvatarUrl = profile?.master
+        ? profileAvatars[profile.id]
+        : profile?.autoService?.coverImageUrl
+            ?? profile?.autoWash?.coverImageUrl
+            ?? profile?.autoShop?.coverImageUrl
+            ?? profileAvatars[profile?.id ?? ""];
     const radius = params.radius
         ? parseFloat(params.radius as string)
         : DEFAULT_SEARCH_RADIUS;
@@ -292,14 +286,32 @@ export const MainpPageScreen = () => {
         refetchOnWindowFocus: false,
     });
 
+    const personalAvatarIds = useMemo(
+        () => Array.from(new Set((data?.allProviders ?? [])
+            .filter((provider) => (provider.activityType || ActivityType.master) === ActivityType.master)
+            .map((provider) => provider.userId)
+            .filter(Boolean))),
+        [data?.allProviders]
+    );
+    const { data: personalProviderAvatars = {} } = useQuery({
+        queryKey: ["provider-account-avatars", personalAvatarIds],
+        queryFn: () => getAccountAvatars(personalAvatarIds),
+        enabled: personalAvatarIds.length > 0,
+        staleTime: 5 * 60_000,
+    });
+    const withPersonalMasterAvatars = useCallback((providers: Provider[]) => providers.map((provider) => {
+        if ((provider.activityType || ActivityType.master) !== ActivityType.master) return provider;
+        return { ...provider, avatarUrl: personalProviderAvatars[provider.userId] ?? undefined };
+    }), [personalProviderAvatars]);
+
     const nearbyAfterSearch = useMemo(
-        () => filterByQuery(data?.nearbyProviders ?? [], query),
-        [data?.nearbyProviders, query]
+        () => filterByQuery(withPersonalMasterAvatars(data?.nearbyProviders ?? []), query),
+        [data?.nearbyProviders, query, withPersonalMasterAvatars]
     );
 
     const allAfterSearch = useMemo(
-        () => filterByQuery(data?.allProviders ?? [], query),
-        [data?.allProviders, query]
+        () => filterByQuery(withPersonalMasterAvatars(data?.allProviders ?? []), query),
+        [data?.allProviders, query, withPersonalMasterAvatars]
     );
 
     const filteredNearbyProviders = useMemo(

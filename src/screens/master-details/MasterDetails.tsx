@@ -26,6 +26,7 @@ import { useCoords, useUserProfile } from "@common/hooks";
 import { getIconForStatus } from "@modules/providers/features/ProvidersMap/ProvidersMap";
 import { StoryHighlights } from "@modules/stories";
 import { MobileMasterProfile } from "./MobileMasterProfile";
+import { MobileAutoServiceProfile } from "./MobileAutoServiceProfile";
 
 const getDetailsTitle = (activityType: ActivityType) => {
     switch (activityType) {
@@ -123,6 +124,10 @@ export const MasterDetailsScreen = () => {
 
     if (isMobile && activityType === ActivityType.master) {
         return <MobileMasterProfile master={mobileMaster || provider} />;
+    }
+
+    if (isMobile && activityType === ActivityType.auto_service) {
+        return <MobileAutoServiceProfile provider={provider} />;
     }
 
     const icon = getIconForStatus(provider.activityType, provider.currentStatus);

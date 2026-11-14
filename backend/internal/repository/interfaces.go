@@ -36,6 +36,12 @@ type MasterFavoriteRepository interface {
 	Remove(ctx context.Context, userID, masterID string) error
 }
 
+type AutoServiceFavoriteRepository interface {
+	IsFavorite(ctx context.Context, userID, autoServiceID string) (bool, error)
+	Add(ctx context.Context, userID, autoServiceID string) error
+	Remove(ctx context.Context, userID, autoServiceID string) error
+}
+
 // OrderRepository defines methods for order persistence
 type OrderRepository interface {
 	Create(ctx context.Context, order *domain.Order) error

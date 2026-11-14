@@ -29,7 +29,8 @@ docker compose up -d --build
 
 ```bash
 cd /opt/AutoGis1
-git pull origin main
+git remote set-url origin https://github.com/aidemir-fx/autogis_figma.git
+git pull --ff-only origin main
 docker compose up -d --build
 docker compose ps
 ```

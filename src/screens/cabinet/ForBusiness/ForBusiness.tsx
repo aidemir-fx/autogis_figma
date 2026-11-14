@@ -95,7 +95,6 @@ type FormValues = {
     applicantName: string;
     city: string;
     phone: string;
-    yandexMapsUrl: string;
     comment: string;
     agreedToTerms: boolean;
 };
@@ -159,7 +158,6 @@ function getDefaultFormValues(): FormValues {
         applicantName: "",
         city: "",
         phone: "+7",
-        yandexMapsUrl: "",
         comment: "",
         agreedToTerms: false,
     };
@@ -168,28 +166,6 @@ function getDefaultFormValues(): FormValues {
 function trimToUndefined(value: string) {
     const trimmed = value.trim();
     return trimmed ? trimmed : undefined;
-}
-
-function isValidYandexMapsUrl(value: string) {
-    try {
-        const parsed = new URL(value.trim());
-        const hostname = parsed.hostname.toLowerCase().replace(/^www\./, "");
-        const allowedDomains = [
-            "yandex.ru",
-            "yandex.com",
-            "yandex.by",
-            "yandex.kz",
-            "yandex.uz",
-            "ya.ru",
-        ];
-
-        return allowedDomains.some(
-            (domainName) =>
-                hostname === domainName || hostname.endsWith(`.${domainName}`),
-        );
-    } catch {
-        return false;
-    }
 }
 
 function getSubmitErrorMessage(error: any) {
@@ -223,7 +199,6 @@ function buildFormValuesFromApplication(application: BusinessApplication): FormV
         applicantName: application.applicantName ?? "",
         city: application.city ?? "",
         phone: application.phone ?? "+7",
-        yandexMapsUrl: application.yandexMapsUrl ?? "",
         comment: application.comment ?? "",
         agreedToTerms: false,
     };
@@ -270,7 +245,6 @@ export function ForBusiness() {
                       }
                     : {
                           businessName: values.businessName.trim(),
-                          yandexMapsUrl: trimToUndefined(values.yandexMapsUrl),
                       }),
             };
 
@@ -442,12 +416,10 @@ const ActivationFlow = React.forwardRef<
                     "activitySubtypeCode",
                     "businessName",
                     "applicantName",
-                    "yandexMapsUrl",
                 ]);
 
                 if (nextGroupCode === PRIVATE_EXECUTOR_GROUP) {
                     form.setValue("businessName", "");
-                    form.setValue("yandexMapsUrl", "");
                 } else {
                     form.setValue("applicantName", "");
                 }
@@ -987,45 +959,6 @@ function ScenarioFields({
                     </FieldCell>
                 )}
             />
-
-            {!isPrivate && (
-                <Controller
-                    name="yandexMapsUrl"
-                    control={form.control}
-                    rules={{
-                        validate: (value) => {
-                            if (isPrivate) return true;
-                            const trimmed = value.trim();
-                            if (!trimmed) return true;
-                            return (
-                                isValidYandexMapsUrl(trimmed) ||
-                                "Укажите корректную ссылку на Яндекс.Карты"
-                            );
-                        },
-                    }}
-                    render={({ field, fieldState }) => (
-                        <FieldCell $wide>
-                            <FieldLabel>
-                                Ссылка на Яндекс.Карты · необязательно
-                            </FieldLabel>
-                            <FieldInput
-                                {...field}
-                                $accent={accent}
-                                $invalid={Boolean(fieldState.error)}
-                                placeholder="https://yandex.ru/maps/org/…"
-                            />
-                            {fieldState.error ? (
-                                <FieldError>{fieldState.error.message}</FieldError>
-                            ) : (
-                                <FieldHelper>
-                                    Ссылка помогает модератору быстрее подтвердить
-                                    существование точки, но её можно добавить позже.
-                                </FieldHelper>
-                            )}
-                        </FieldCell>
-                    )}
-                />
-            )}
 
             <Controller
                 name="comment"

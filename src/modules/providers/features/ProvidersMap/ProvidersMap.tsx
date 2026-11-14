@@ -67,6 +67,7 @@ type Props = {
     showZoomControl?: boolean;
     showGeolocationControl?: boolean;
     disableScrollZoom?: boolean;
+    initialZoom?: number;
 };
 
 type VisualStatus = "on" | "busy" | "off";
@@ -250,9 +251,10 @@ function getInitials(name: string): string {
 }
 
 function getAvatarUrl(provider: Provider): string | undefined {
-    // Keep personal account avatars out of professional map cards. Every
-    // provider type can now configure a separate public profile avatar.
-    return provider.avatarUrl || getCoverUrl(provider);
+    if (provider.activityType === ActivityType.master || !provider.activityType) {
+        return provider.avatarUrl;
+    }
+    return getCoverUrl(provider);
 }
 
 function getCoverUrl(provider: Provider): string | undefined {
@@ -488,6 +490,7 @@ export function ProvidersMap({
     showZoomControl = true,
     showGeolocationControl = true,
     disableScrollZoom = false,
+    initialZoom = DEFAULT_ZOOM,
 }: Props) {
     const { userCoords } = useCoords();
     const mapRef = useRef<any>(null);
@@ -618,12 +621,12 @@ export function ProvidersMap({
     useEffect(() => {
         if (mapRef.current && userCoords) {
             try {
-                mapRef.current.setCenter(userCoords, DEFAULT_ZOOM, {
+            mapRef.current.setCenter(userCoords, initialZoom, {
                     duration: 300,
                 });
             } catch (_) {}
         }
-    }, [userCoords, isInited]);
+    }, [userCoords, isInited, initialZoom]);
 
     const mapState = useMemo(
         () => ({
@@ -631,12 +634,12 @@ export function ProvidersMap({
                 number,
                 number
             ],
-            zoom: DEFAULT_ZOOM,
+            zoom: initialZoom,
             ...(disableScrollZoom
                 ? { behaviors: ["drag", "multiTouch", "dblClickZoom", "rightMouseButtonMagnifier"] }
                 : {}),
         }),
-        [userCoords, disableScrollZoom]
+        [userCoords, disableScrollZoom, initialZoom]
     );
 
     const setMapRef = (ref: ymaps.Map | null) => {

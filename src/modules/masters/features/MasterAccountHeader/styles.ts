@@ -1,9 +1,9 @@
 import { Button } from "@common/components";
 import { styled } from "styled-components";
 
-export const MasterInfo = styled.div`
+export const MasterInfo = styled.div<{ $hasAvatar?: boolean }>`
     display: grid;
-    grid-template-columns: 64px 1fr 0.5fr;
+    grid-template-columns: ${({ $hasAvatar }) => $hasAvatar ? "64px minmax(0, 1fr)" : "minmax(0, 1fr)"};
     gap: 12px;
 `;
 

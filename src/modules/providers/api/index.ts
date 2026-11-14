@@ -5,6 +5,7 @@ import { AutoWash } from "@modules/auto-washes";
 import { AutoService } from "@modules/auto-service";
 import { AutoShop } from "@modules/auto-shops";
 import { Provider } from "../types";
+export * from "./favorites";
 
 type BackendPoint = {
     type?: string;

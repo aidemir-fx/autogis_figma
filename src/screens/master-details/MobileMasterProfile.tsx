@@ -17,7 +17,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Master, MasterFeature, addMasterFavorite, getMasterFavorite, removeMasterFavorite } from "@modules/masters";
 import { useAuth, useCoords, useUserProfile } from "@common/hooks";
-import { getPublicEntityMedia, type MediaAsset } from "@modules/media/api";
+import { getAccountAvatarUrl, getPublicEntityMedia, type MediaAsset } from "@modules/media/api";
 import { getProviderReviews, type Review } from "@modules/reviews";
 import { StoryHighlights } from "@modules/stories";
 import { CreateOrderModal } from "@modules/masters/features/CreateOrderModal";
@@ -136,6 +136,12 @@ export function MobileMasterProfile({ master }: { master: Master }) {
         enabled: Boolean(master.userId),
         staleTime: 60_000,
     });
+    const accountAvatarQuery = useQuery({
+        queryKey: ["account-avatar", master.userId],
+        queryFn: () => getAccountAvatarUrl(master.userId),
+        enabled: Boolean(master.userId),
+        staleTime: 5 * 60_000,
+    });
     const reviewsQuery = useQuery({
         queryKey: ["providerReviews", master.userId],
         queryFn: () => getProviderReviews(master.userId),
@@ -157,7 +163,7 @@ export function MobileMasterProfile({ master }: { master: Master }) {
     const heroAssets = useMemo(() => getHeroAssets(master, assets), [master, assets]);
     const reviews = reviewsQuery.data ?? [];
     const averageRating = master.rating > 0 ? master.rating : reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
-    const avatarUrl = master.avatarUrl || master.avatar;
+    const avatarUrl = accountAvatarQuery.data ?? undefined;
     const featureKeys = (master.features ?? []) as MasterFeature[];
     const phone = master.workingPhone || master.user?.phone;
     const isSelfProfile = currentProfile?.id === master.userId;

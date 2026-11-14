@@ -27,7 +27,7 @@ export type StoryAuthor = {
     activityType?: "master" | "auto_wash" | "auto_service" | "auto_shop";
     displayName: string;
     role: string;
-    /** Professional profile image (business cover when configured). */
+    /** Personal account avatar for a master; cover photo for a business profile. */
     avatarUrl?: string;
 };
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button, Card } from "@common/components";
 import {
     CalendarIcon,
@@ -40,6 +41,7 @@ import { useAuth, useUserProfile } from "@common/hooks";
 import { useNavigate } from "react-router-dom";
 import { MasterStatus } from "@modules/masters/types";
 import { StoryRing, StorySubscriptionButton } from "@modules/stories";
+import { getAccountAvatarUrl } from "@modules/media/api";
 
 const statusConfig: Record<
     MasterStatus,
@@ -76,11 +78,18 @@ export const MasterAccountHeader = ({ master }: { master: Master }) => {
     const [avatarFailed, setAvatarFailed] = useState(false);
     const { isAuthenticated } = useAuth();
     const { profile: currentProfile } = useUserProfile({ enabled: isAuthenticated });
+    const accountAvatarQuery = useQuery({
+        queryKey: ["account-avatar", master.userId],
+        queryFn: () => getAccountAvatarUrl(master.userId),
+        enabled: Boolean(master.userId),
+        staleTime: 5 * 60_000,
+    });
     const navigate = useNavigate();
     const statusInfo = statusConfig[master.currentStatus || master.status];
     const coverUrl = master.coverImageUrl || master.coverImage;
-    const showCover = Boolean(coverUrl && master.activityType && master.activityType !== "master");
-    const professionalAvatarUrl = showCover ? coverUrl : undefined;
+    const isMasterProfile = (master.activityType ?? master.providerType ?? "master") === "master";
+    const showCover = Boolean(coverUrl && !isMasterProfile);
+    const profileAvatarUrl = isMasterProfile ? accountAvatarQuery.data ?? undefined : undefined;
     const isSelfProfile = Boolean(currentProfile?.id && currentProfile.id === master.userId);
 
     const specs = [
@@ -110,30 +119,32 @@ export const MasterAccountHeader = ({ master }: { master: Master }) => {
                     </CoverHero>
                 )}
                 <Card.Header>
-                    <MasterInfo>
-                        <StoryRing
-                            authorId={master.userId}
-                            size={64}
-                            interactive
-                            manage={Boolean(currentProfile?.id === master.userId)}
-                        >
-                            <Avatar>
-                                {professionalAvatarUrl && !avatarFailed ? (
-                                    <AvatarImage
-                                        src={professionalAvatarUrl}
-                                        alt={master.fullName}
-                                        onError={() => setAvatarFailed(true)}
-                                    />
-                                ) : (
-                                    <AvatarFallback>
-                                        {master.fullName
-                                            ?.split(" ")
-                                            .map((n: string) => n[0])
-                                            .join("")}
-                                    </AvatarFallback>
-                                )}
-                            </Avatar>
-                        </StoryRing>
+                    <MasterInfo $hasAvatar={isMasterProfile}>
+                        {isMasterProfile && (
+                            <StoryRing
+                                authorId={master.userId}
+                                size={64}
+                                interactive
+                                manage={Boolean(currentProfile?.id === master.userId)}
+                            >
+                                <Avatar>
+                                    {profileAvatarUrl && !avatarFailed ? (
+                                        <AvatarImage
+                                            src={profileAvatarUrl}
+                                            alt={master.fullName}
+                                            onError={() => setAvatarFailed(true)}
+                                        />
+                                    ) : (
+                                        <AvatarFallback>
+                                            {master.fullName
+                                                ?.split(" ")
+                                                .map((n: string) => n[0])
+                                                .join("")}
+                                        </AvatarFallback>
+                                    )}
+                                </Avatar>
+                            </StoryRing>
+                        )}
                         <MasterDetails>
                             <DetailsHeader>
                                 <MasterName>{master.fullName}</MasterName>

@@ -232,7 +232,7 @@ export async function getAccountAvatarUrl(
     }
 
     try {
-        const { assets } = await getEntityMedia("account", accountId);
+        const { assets } = await getPublicEntityMedia("account", accountId);
         const avatarUrl = pickReadyAvatarUrl(assets);
         accountAvatarCache.set(accountId, avatarUrl);
         return avatarUrl;

@@ -81,6 +81,7 @@ func main() {
 	professionalApplicationRepo := repository.NewProfessionalApplicationRepository(db)
 	mediaRepo := repository.NewMediaRepository(db)
 	favoriteRepo := repository.NewMasterFavoriteRepository(db)
+	autoServiceFavoriteRepo := repository.NewAutoServiceFavoriteRepository(db)
 	activityGroupRepo := repository.NewActivityGroupRepository(db)
 	activitySubtypeRepo := repository.NewActivitySubtypeRepository(db)
 	userActivityProfileRepo := repository.NewUserActivityProfileRepository(db)
@@ -150,6 +151,7 @@ func main() {
 	businessApplicationUseCase := usecase.NewBusinessApplicationUseCase(professionalApplicationUseCase, masterUseCase)
 	mediaUseCase := usecase.NewMediaUseCase(mediaRepo, orderRepo, s3Client, mediaWorker, storyLogger)
 	favoriteUseCase := usecase.NewMasterFavoriteUseCase(favoriteRepo, masterRepo)
+	autoServiceFavoriteUseCase := usecase.NewAutoServiceFavoriteUseCase(autoServiceFavoriteRepo, autoServiceRepo)
 	activityUseCase := usecase.NewActivityUseCase(activityGroupRepo, activitySubtypeRepo)
 	catalogUseCase := usecase.NewCatalogUseCase(catalogRepo)
 	storyUseCase := usecase.NewStoryUseCase(storyRepo, subscriptionRepo, mediaRepo, mediaUseCase, storyLogger)
@@ -165,6 +167,7 @@ func main() {
 	professionalApplicationHandler := handler.NewProfessionalApplicationHandler(professionalApplicationUseCase)
 	mediaHandler := handler.NewMediaHandler(mediaUseCase)
 	favoriteHandler := handler.NewMasterFavoriteHandler(favoriteUseCase)
+	autoServiceFavoriteHandler := handler.NewAutoServiceFavoriteHandler(autoServiceFavoriteUseCase)
 	activityHandler := handler.NewActivityHandler(activityUseCase)
 	catalogHandler := handler.NewCatalogHandler(catalogUseCase)
 	storyHandler := handler.NewStoryHandler(storyUseCase)
@@ -186,7 +189,7 @@ func main() {
 	router.Use(middleware.CORSMiddleware(cfg.FrontendURL))
 
 	// Setup routes
-	setupRoutes(router, authHandler, userHandler, orderHandler, searchHandler, reviewHandler, masterHandler, favoriteHandler, chatHandler, chatWSHandler, businessApplicationHandler, professionalApplicationHandler, mediaHandler, activityHandler, catalogHandler, storyHandler, notificationHandler, supportChatHandler, jwtService, professionalApplicationRepo, db)
+	setupRoutes(router, authHandler, userHandler, orderHandler, searchHandler, reviewHandler, masterHandler, favoriteHandler, autoServiceFavoriteHandler, chatHandler, chatWSHandler, businessApplicationHandler, professionalApplicationHandler, mediaHandler, activityHandler, catalogHandler, storyHandler, notificationHandler, supportChatHandler, jwtService, professionalApplicationRepo, db)
 
 	// Build the HTTP server explicitly (instead of router.Run) so we can hook
 	// into Shutdown() for graceful drain.
@@ -288,6 +291,7 @@ func runMigrations(db *gorm.DB, cfg *config.Config) error {
 		&domain.User{},
 		&domain.Master{},
 		&domain.MasterFavorite{},
+		&domain.AutoServiceFavorite{},
 		&domain.ActivityType{},
 		&domain.UserActivityType{},
 		&domain.Order{},
@@ -898,6 +902,7 @@ func setupRoutes(
 	reviewHandler *handler.ReviewHandler,
 	masterHandler *handler.MasterHandler,
 	favoriteHandler *handler.MasterFavoriteHandler,
+	autoServiceFavoriteHandler *handler.AutoServiceFavoriteHandler,
 	chatHandler *handler.ChatHandler,
 	chatWSHandler *realtime.ChatWSHandler,
 	businessApplicationHandler *handler.BusinessApplicationHandler,
@@ -1102,6 +1107,12 @@ func setupRoutes(
 			favoriteGroup.GET("/:masterId", favoriteHandler.Get)
 			favoriteGroup.PUT("/:masterId", favoriteHandler.Add)
 			favoriteGroup.DELETE("/:masterId", favoriteHandler.Remove)
+		}
+		autoServiceFavoriteGroup := apiGroup.Group("/favorites/auto-services")
+		{
+			autoServiceFavoriteGroup.GET("/:autoServiceId", autoServiceFavoriteHandler.Get)
+			autoServiceFavoriteGroup.PUT("/:autoServiceId", autoServiceFavoriteHandler.Add)
+			autoServiceFavoriteGroup.DELETE("/:autoServiceId", autoServiceFavoriteHandler.Remove)
 		}
 
 		autoServiceGroup := apiGroup.Group("/auto_services")

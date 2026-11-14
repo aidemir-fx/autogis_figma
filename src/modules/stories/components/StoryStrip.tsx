@@ -46,15 +46,14 @@ function groupStories(stories: Story[]): Story[][] {
     });
 }
 
-function getStoryThumbnail(story: Story) {
-    const firstFrame = [...story.frames].sort((left, right) => left.position - right.position)[0];
-    const imageFrame = story.frames.find((frame) => frame.kind === "image" && frame.imageUrl);
-
-    return {
-        frame: firstFrame,
-        imageUrl: imageFrame?.imageUrl,
-        videoUrl: firstFrame?.kind === "video" ? firstFrame.videoUrl : undefined,
-    };
+function getAuthorInitials(displayName: string) {
+    return displayName
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part[0] ?? "")
+        .join("")
+        .toUpperCase();
 }
 
 export function StoryStrip({
@@ -93,28 +92,24 @@ export function StoryStrip({
             <Stack direction="row" spacing={2} sx={{ overflowX: "auto", pb: 0.5, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
                 {groups.map((group, index) => {
                     const story = group[0];
-                    const thumbnail = getStoryThumbnail(story);
+                    const itemWidth = compact ? 60 : 68;
                     const singleStoryColor = group.length === 1
                         ? (story.isViewed ? "#8492a5" : "#4673d5")
                         : undefined;
                     return (
-                        <Box key={story.author.userId} component="button" onClick={() => setSelectedGroup(index)} sx={{ border: 0, background: "none", p: 0, minWidth: compact ? 60 : 68, cursor: "pointer" }}>
+                        <Box key={story.author.userId} component="button" onClick={() => setSelectedGroup(index)} sx={{ display: "block", boxSizing: "border-box", width: itemWidth, minWidth: itemWidth, maxWidth: itemWidth, flex: `0 0 ${itemWidth}px`, overflow: "hidden", whiteSpace: "nowrap", border: 0, background: "none", p: 0, cursor: "pointer" }}>
                             <Box sx={{ width: compact ? 54 : 62, height: compact ? 54 : 62, boxSizing: "border-box", position: "relative", mx: "auto", display: "grid", placeItems: "center", p: singleStoryColor ? 0 : "3px", border: singleStoryColor ? `3px solid ${singleStoryColor}` : 0, background: singleStoryColor ? "transparent" : getStoryRingBackground(group), borderRadius: compact ? "16px" : 2.5 }}>
-                                <Box sx={{ width: compact ? 48 : 56, height: compact ? 48 : 56, position: "relative", zIndex: 2, overflow: "hidden", display: "grid", placeItems: "center", border: "1px solid #fff", borderRadius: "13px", background: thumbnail.frame?.background || "linear-gradient(135deg, #dbeafe, #94a3b8)", color: "#ffffff" }}>
-                                    {thumbnail.imageUrl ? (
-                                        <Box component="img" src={thumbnail.imageUrl} alt="" sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                                    ) : thumbnail.videoUrl ? (
-                                        <Box component="video" src={thumbnail.videoUrl} muted playsInline autoPlay loop aria-label="Видео истории" sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                                    ) : thumbnail.frame?.text ? (
-                                        <Typography sx={{ px: 0.75, color: "inherit", fontSize: compact ? 9 : 10, lineHeight: 1.1, fontWeight: 800, textAlign: "center", display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                                            {thumbnail.frame.text}
-                                        </Typography>
+                                <Box sx={{ width: compact ? 48 : 56, height: compact ? 48 : 56, position: "relative", zIndex: 2, overflow: "hidden", display: "grid", placeItems: "center", border: "1px solid #fff", borderRadius: "13px", background: "linear-gradient(135deg, #dbe3ed, #9ba9bc)", color: "#ffffff" }}>
+                                    {story.author.avatarUrl ? (
+                                        <Box component="img" src={story.author.avatarUrl} alt="" sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                                     ) : (
-                                        <Typography sx={{ color: "inherit", fontSize: compact ? 15 : 18, fontWeight: 800 }}>История</Typography>
+                                        <Typography sx={{ color: "inherit", fontSize: compact ? 15 : 18, fontWeight: 800 }}>
+                                            {getAuthorInitials(story.author.displayName) || "А"}
+                                        </Typography>
                                     )}
                                 </Box>
                             </Box>
-                            <Typography sx={{ mt: 0.5, fontSize: compact ? 12 : 11, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#212c3f" }}>
+                            <Typography sx={{ display: "block", width: "100%", maxWidth: "100%", mt: 0.5, fontSize: compact ? 12 : 11, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#212c3f" }}>
                                 {story.author.displayName}
                             </Typography>
                         </Box>

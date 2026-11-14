@@ -140,8 +140,8 @@ function MobileProviderCard({
     const name = getProviderName(provider);
     const status = getStatus(provider);
     const tags = getTags(provider);
-    const avatarUrl = provider.avatarUrl;
     const coverUrl = provider.coverImageUrl || provider.coverImage;
+    const avatarUrl = isMaster ? provider.avatarUrl : undefined;
     const booking = shouldShowBooking(provider);
     const rating = typeof provider.rating === "number" ? provider.rating.toFixed(1) : "0.0";
     const reviews = provider.reviewsCount || 0;
@@ -178,16 +178,20 @@ function MobileProviderCard({
                             </MobileMetaRow>
                         </MobileIdentity>
                     </MobileMasterHeader>
-                    <MobileFieldTitle>График работы</MobileFieldTitle>
-                    <MobileTagRow>
-                        <MobileStatusTag $status={status}>{status === "open" ? "Открыто" : "Закрыто"}</MobileStatusTag>
-                        <MobileTag>Пн - Вс</MobileTag>
-                        <MobileTag>{provider.workFrom && provider.workTo ? `${provider.workFrom.slice(0, 5)} - ${provider.workTo.slice(0, 5)}` : "8:00 - 19:00"}</MobileTag>
-                    </MobileTagRow>
-                    <MobileFieldTitle>Специализация</MobileFieldTitle>
-                    <MobileTagRow $wrap>
-                        {(tags.length ? tags : ["Профиль заполняется"]).map((tag) => <MobileTag key={tag}>{tag}</MobileTag>)}
-                    </MobileTagRow>
+                    <MobileMasterFieldGroup $afterHeader>
+                        <MobileFieldTitle>График работы</MobileFieldTitle>
+                        <MobileTagRow $compact>
+                            <MobileStatusTag $status={status}>{status === "open" ? "Открыто" : "Закрыто"}</MobileStatusTag>
+                            <MobileTag>Пн - Вс</MobileTag>
+                            <MobileTag>{provider.workFrom && provider.workTo ? `${provider.workFrom.slice(0, 5)} - ${provider.workTo.slice(0, 5)}` : "8:00 - 19:00"}</MobileTag>
+                        </MobileTagRow>
+                    </MobileMasterFieldGroup>
+                    <MobileMasterFieldGroup>
+                        <MobileFieldTitle>Специализация</MobileFieldTitle>
+                        <MobileTagRow $wrap $compact>
+                            {(tags.length ? tags : ["Профиль заполняется"]).map((tag) => <MobileTag key={tag}>{tag}</MobileTag>)}
+                        </MobileTagRow>
+                    </MobileMasterFieldGroup>
                     <MobileActions>
                         <MobilePrimaryAction href={getPhoneHref(provider)} onClick={stopCardClick} $variant="blue">Позвонить</MobilePrimaryAction>
                         <MobileIconAction type="button" onClick={(event) => { stopCardClick(event); onOpenProfile(provider); }} aria-label="Открыть профиль"><ChatGlyph /></MobileIconAction>
@@ -201,19 +205,23 @@ function MobileProviderCard({
                     </MobileCover>
                     <MobileOrganizationBody>
                         <MobileProviderName><MobileProfileLink href={getProviderProfileHref(provider)} onClick={handleProfileLinkClick}>{name}</MobileProfileLink></MobileProviderName>
-                        <MobileScheduleLine>
-                            <span>График работы</span>
-                            <MobileDistance><MapPinIcon />{formatDistance(provider.distance)}</MobileDistance>
-                        </MobileScheduleLine>
-                        <MobileTagRow>
-                            <MobileStatusTag $status={status}>{status === "open" ? "Открыто" : "Закрыто"}</MobileStatusTag>
-                            <MobileTag>Пн - Вс</MobileTag>
-                            <MobileTag>{provider.workFrom && provider.workTo ? `${provider.workFrom.slice(0, 5)} - ${provider.workTo.slice(0, 5)}` : "8:00 - 19:00"}</MobileTag>
-                        </MobileTagRow>
-                        <MobileFieldTitle>{type === ActivityType.auto_shop ? "Товары" : "Услуги"}</MobileFieldTitle>
-                        <MobileTagRow $wrap>
-                            {(tags.length ? tags : ["Заполняется"]).map((tag) => <MobileTag key={tag}>{tag}</MobileTag>)}
-                        </MobileTagRow>
+                        <MobileOrganizationFieldGroup>
+                            <MobileScheduleLine>
+                                <span>График работы</span>
+                                <MobileDistance><MapPinIcon />{formatDistance(provider.distance)}</MobileDistance>
+                            </MobileScheduleLine>
+                            <MobileTagRow $compact>
+                                <MobileStatusTag $status={status}>{status === "open" ? "Открыто" : "Закрыто"}</MobileStatusTag>
+                                <MobileTag>Пн - Вс</MobileTag>
+                                <MobileTag>{provider.workFrom && provider.workTo ? `${provider.workFrom.slice(0, 5)} - ${provider.workTo.slice(0, 5)}` : "8:00 - 19:00"}</MobileTag>
+                            </MobileTagRow>
+                        </MobileOrganizationFieldGroup>
+                        <MobileOrganizationFieldGroup>
+                            <MobileFieldTitle>{type === ActivityType.auto_shop ? "Товары" : "Услуги"}</MobileFieldTitle>
+                            <MobileTagRow $wrap $compact>
+                                {(tags.length ? tags : ["Заполняется"]).map((tag) => <MobileTag key={tag}>{tag}</MobileTag>)}
+                            </MobileTagRow>
+                        </MobileOrganizationFieldGroup>
                         <MobileActions>
                             {booking ? (
                                 <MobilePrimaryAction href={`/provider?id=${encodeURIComponent(provider.id)}&type=${encodeURIComponent(type)}`} onClick={stopCardClick} $variant="green">Записаться</MobilePrimaryAction>
@@ -378,6 +386,11 @@ export function MobileSearchExperience({
                 }
             }
 
+            // iOS Safari may not start native scrolling when the overflow element
+            // has pointer-events:none. Clip its hit area to the visible sheet so
+            // gestures on the exposed map still reach the map underneath.
+            viewport.style.clipPath = `inset(${Math.max(0, snapTops[3] - viewport.scrollTop)}px 0 0)`;
+
             const showOnMap = viewport.scrollTop <= 1;
             if (filterOnMapRef.current !== showOnMap) {
                 filterOnMapRef.current = showOnMap;
@@ -447,6 +460,7 @@ export function MobileSearchExperience({
                     mastersRef={mastersRef}
                     mapInstanceRef={mapInstanceRef}
                     height="100%"
+                    initialZoom={13}
                     showZoomControl={false}
                     showGeolocationControl={false}
                     disableScrollZoom
@@ -480,18 +494,14 @@ export function MobileSearchExperience({
             <MobileSheetScroll
                 ref={sheetScrollRef}
                 onScroll={handleSheetScroll}
-                style={{ height: `${viewportHeight}px` }}
+                style={{
+                    height: `${viewportHeight}px`,
+                    clipPath: `inset(${snapTops[3]}px 0 0)`,
+                }}
                 role="region"
                 tabIndex={0}
                 aria-label="Каталог мастеров и организаций"
             >
-                <MobileFloatingFilters
-                    ref={floatingFiltersRef}
-                    aria-hidden={false}
-                    style={{ top: Math.max(160, snapTops[3] - 44) }}
-                >
-                    {filterRail}
-                </MobileFloatingFilters>
                 <MobileSheetSpacer style={{ height: `${snapTops[3]}px` }} aria-hidden="true">
                     {snapOffsets.map((offset, index) => (
                         <MobileSnapMarker
@@ -542,6 +552,14 @@ export function MobileSearchExperience({
                     </MobileSheetContent>
                 </MobileSheet>
             </MobileSheetScroll>
+
+            <MobileFloatingFilters
+                ref={floatingFiltersRef}
+                aria-hidden={false}
+                style={{ top: Math.max(160, snapTops[3] - 44) }}
+            >
+                {filterRail}
+            </MobileFloatingFilters>
 
             <RadiusPickerModal
                 open={isRadiusPickerOpen}
@@ -723,7 +741,8 @@ const MobileSheetScroll = styled.div`
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    pointer-events: none;
+    touch-action: pan-y;
+    pointer-events: auto;
     &::-webkit-scrollbar { display: none; }
 `;
 
@@ -967,7 +986,18 @@ const MobileAvatar = styled.div<{ $status: "open" | "closed" }>`
     color: var(--ds-color-blue-500);
     font-size: 14px;
     font-weight: 800;
-    img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--ds-radius-8); }
+    img {
+        position: absolute;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        min-width: 0;
+        min-height: 0;
+        object-fit: cover;
+        border-radius: var(--ds-radius-8);
+        clip-path: inset(0 round var(--ds-radius-8));
+    }
 `;
 
 const MobileStatusDot = styled.span<{ $status: "open" | "closed" }>`
@@ -1040,15 +1070,29 @@ const MobileFieldTitle = styled.div`
     color: var(--ds-color-gray-900);
     font-size: 12px;
     font-weight: 600;
+    line-height: 1.33;
 `;
 
-const MobileTagRow = styled.div<{ $wrap?: boolean }>`
+const MobileTagRow = styled.div<{ $wrap?: boolean; $compact?: boolean }>`
     display: flex;
     flex-wrap: ${({ $wrap }) => $wrap ? "wrap" : "nowrap"};
     gap: 4px;
-    margin-top: 8px;
+    margin-top: ${({ $compact }) => $compact ? "0" : "8px"};
     overflow: hidden;
     max-height: ${({ $wrap }) => $wrap ? "44px" : "none"};
+`;
+
+const MobileMasterFieldGroup = styled.div<{ $afterHeader?: boolean }>`
+    display: flex;
+    flex-direction: column;
+    margin-top: ${({ $afterHeader }) => $afterHeader ? "12px" : "0"};
+    & + & { margin-top: 8px; }
+`;
+
+const MobileOrganizationFieldGroup = styled.div`
+    display: flex;
+    flex-direction: column;
+    & + & { margin-top: 8px; }
 `;
 
 const MobileTag = styled.span`

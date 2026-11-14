@@ -14,7 +14,7 @@ import {
 } from "@modules/masters/domain/api";
 import { StatusToggle } from "@modules/masters/features/StatusToggle";
 import { toast } from "react-toastify";
-import { AvatarUpload, Button, TagSelector, SettingsSection, TextField } from "@common/components";
+import { Button, TagSelector, SettingsSection, TextField } from "@common/components";
 import { MapButton } from "../Settings/styles";
 import { Coordinates, MasterStatus } from "@modules/masters";
 import { DashboardLayout } from "@modules/layout";
@@ -259,19 +259,6 @@ export function MasterSettings() {
                     currentStatus={
                         profileQuery.data?.status ?? MasterStatus.SCHEDULE
                     }
-                />
-            </SettingsSection>
-
-            <SettingsSection icon={<GearIcon color="#1d4ed8" />} title="Аватар профиля">
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Это фото будет показываться в поиске, на карте и в публичном профиле.
-                    Оно не меняет аватар личного аккаунта.
-                </Typography>
-                <AvatarUpload
-                    entityId={profileQuery.data.id}
-                    entityType="work"
-                    fallbackText={profileQuery.data.fullName ?? profileQuery.data.user?.phone ?? "М"}
-                    onUploaded={(avatarUrl) => mutation.mutate({ avatarUrl })}
                 />
             </SettingsSection>
 

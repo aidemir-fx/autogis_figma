@@ -105,8 +105,7 @@ function getInitials(name: string): string {
 }
 
 function getAvatarUrl(provider: Provider): string | undefined {
-    // Do not use the personal account avatar in a professional card.
-    return provider.avatarUrl || undefined;
+    return isMasterProvider(provider) ? provider.avatarUrl || undefined : undefined;
 }
 
 function getCoverUrl(provider: Provider): string | undefined {

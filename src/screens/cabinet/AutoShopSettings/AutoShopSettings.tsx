@@ -10,7 +10,7 @@ import { DesktopTimePicker } from "@mui/x-date-pickers/DesktopTimePicker";
 import dayjs, { Dayjs } from "dayjs";
 import { mapCoordinatesToPoint } from "@modules/masters/domain/api";
 import { toast } from "react-toastify";
-import { AvatarUpload, Button, Checkbox, CoverPhotoUpload, SettingsSection, TagSelector, TextField } from "@common/components";
+import { Button, Checkbox, CoverPhotoUpload, SettingsSection, TagSelector, TextField } from "@common/components";
 import { MapButton } from "../Settings/styles";
 import { useAutoShop } from "@common/hooks";
 import { http } from "@common/lib/http";
@@ -82,16 +82,6 @@ export function AutoShopSettings() {
     const [coverUploadActive, setCoverUploadActive] = useState(false);
     const { autoShopProfile, isLoading, error, refetch } = useAutoShop();
     const autoShop = autoShopProfile?.profile;
-
-    const saveProfileAvatar = async (avatarUrl: string) => {
-        try {
-            await http.put("/auto_shops/profile/me", { avatarUrl });
-            await refetch();
-            toast.success("Аватар профиля обновлён");
-        } catch {
-            toast.error("Не удалось сохранить аватар профиля");
-        }
-    };
 
     const form = useForm<AutoShopFormValues>({
         resolver: yupResolver(autoShopSchema) as any,
@@ -278,21 +268,6 @@ export function AutoShopSettings() {
                 <AutoShopStatusToggle
                     currentStatus={autoShop?.status || AutoShopStatus.SCHEDULE}
                 />
-            </SettingsSection>
-
-            <SettingsSection icon={<GearIcon color="#1d4ed8" />} title="Аватар профиля">
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Фото будет показываться в поиске и публичном профиле автомагазина.
-                    Личный аватар аккаунта не изменится.
-                </Typography>
-                {autoShop && (
-                    <AvatarUpload
-                        entityId={autoShop.id}
-                        entityType="work"
-                        fallbackText={autoShop.fullName ?? "А"}
-                        onUploaded={saveProfileAvatar}
-                    />
-                )}
             </SettingsSection>
 
             <form onSubmit={form.handleSubmit(onSubmit, () => {
