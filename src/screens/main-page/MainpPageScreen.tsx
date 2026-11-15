@@ -74,9 +74,9 @@ type ProviderCategory = {
 const PROVIDER_CATEGORIES: ProviderCategory[] = [
     {
         type: ActivityType.master,
-        title: "Частные мастера",
-        chip: "Частные",
-        empty: "Пока нет частных мастеров в выбранном радиусе.",
+        title: "Частные исполнители",
+        chip: "Исполнители",
+        empty: "Пока нет частных исполнителей в выбранном радиусе.",
     },
     {
         type: ActivityType.auto_service,

@@ -6,7 +6,7 @@ import { MasterStatus } from "@modules/masters";
 import { MobileSearchExperience, type MobileProviderCategory } from "@screens/main-page/MobileSearchExperience";
 
 const categories: MobileProviderCategory[] = [
-    { type: ActivityType.master, title: "Частные мастера", empty: "Мастера не найдены. Попробуйте изменить фильтры." },
+    { type: ActivityType.master, title: "Частные исполнители", empty: "Исполнители не найдены. Попробуйте изменить фильтры." },
     { type: ActivityType.auto_service, title: "Автосервисы", empty: "Автосервисы не найдены. Попробуйте увеличить радиус." },
     { type: ActivityType.auto_shop, title: "Автомагазины", empty: "Автомагазины не найдены. Попробуйте увеличить радиус." },
     { type: ActivityType.auto_wash, title: "Автомойки", empty: "Автомойки не найдены. Попробуйте увеличить радиус." },

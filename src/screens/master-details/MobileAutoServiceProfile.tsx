@@ -21,6 +21,7 @@ import { MasterStatus } from "@modules/masters";
 import { CreateOrderModal } from "@modules/masters/features/CreateOrderModal";
 import { StoryHighlights } from "@modules/stories";
 import { useAuth, useUserProfile } from "@common/hooks";
+import { formatRegistrationDate } from "@common/lib/formatRegistrationDate";
 import { getProviderReviews, type Review } from "@modules/reviews";
 import { addAutoServiceFavorite, getAutoServiceFavorite, removeAutoServiceFavorite } from "@modules/providers";
 import {
@@ -48,6 +49,7 @@ import {
     ProfileName,
     ProfileSubtitle,
     RatingLine,
+    RegistrationDate,
     ReviewAuthor,
     ReviewAvatar,
     ReviewCard,
@@ -119,6 +121,7 @@ export function MobileAutoServiceProfile({ provider }: { provider: Provider }) {
     const rating = averageRating(provider, reviews);
     const name = provider.fullName || provider.name || "Автосервис";
     const coverUrl = provider.coverImageUrl || provider.coverImage;
+    const registrationDate = formatRegistrationDate(provider.createdAt);
     const phone = provider.workingPhone || provider.phone;
     const isOpen = provider.currentStatus === MasterStatus.AVAILABLE;
     const isSelfProfile = Boolean(profile?.id && profile.id === provider.userId);
@@ -186,6 +189,7 @@ export function MobileAutoServiceProfile({ provider }: { provider: Provider }) {
                     <ProfileName>{name}</ProfileName>
                     <ProfileSubtitle>{provider.professions?.join(", ") || "Автосервис"}</ProfileSubtitle>
                     <RatingLine><StarRoundedIcon sx={{ color: "var(--ds-color-yellow-500)", fontSize: 17 }} /><strong>{rating ? rating.toFixed(1) : "0.0"}</strong><span>({provider.reviewsCount ?? reviews.length})</span></RatingLine>
+                    {registrationDate && <RegistrationDate>На АвтоГис с {registrationDate}</RegistrationDate>}
                 </div>
                 <ActionIconButton type="button" aria-label={favoriteQuery.data ? "Убрать из избранного" : "Добавить в избранное"} onClick={handleFavorite} disabled={favoriteMutation.isPending} $active={Boolean(favoriteQuery.data)}>
                     {favoriteQuery.data ? <FavoriteRoundedIcon /> : <FavoriteBorderRoundedIcon />}

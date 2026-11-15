@@ -14,7 +14,7 @@ import { http } from "@common/lib/http";
 import { Coordinates } from "@modules/masters";
 import { fetchAdditionalServices } from "@modules/users/api";
 import { DashboardLayout } from "@modules/layout";
-import { mapCoordinatesToPoint } from "@modules/masters/domain/api";
+import { fetchAllServices, mapCoordinatesToPoint } from "@modules/masters/domain/api";
 import {
     FieldGrid,
     MapContainer,
@@ -29,7 +29,7 @@ import {
 import { autoWashSchema } from "../Settings/validation";
 import { PAYMENT_OPTIONS } from "../Settings/payment-options";
 import { CameraIcon, ClockIcon, DropsIcon, GearIcon, PlusIcon } from "@common/icons";
-import { Button, Checkbox, CoverPhotoUpload, SettingsSection, TextField } from "@common/components";
+import { Button, Checkbox, CoverPhotoUpload, SettingsSection, TagSelector, TextField } from "@common/components";
 import {
     AutoWashStatusToggle,
     AdditionalService,
@@ -63,11 +63,11 @@ export type AutoWashFormValues = {
     workFrom: Dayjs;
     workTo: Dayjs;
     additionalServices: string[];
+    services: string[];
     washType: WashType;
     boxCount: number;
     washerCount: number;
     hasWaitingArea: boolean;
-    onlineBookingEnabled: boolean;
     liveQueueEnabled: boolean;
     payments: string[];
     coverImageUrl: string;
@@ -94,11 +94,11 @@ export function AutoWashSettings() {
             workFrom: parseTimeValue("08:00"),
             workTo: parseTimeValue("18:00"),
             additionalServices: [],
+            services: [],
             washType: "classic",
             boxCount: 1,
             washerCount: 0,
             hasWaitingArea: false,
-            onlineBookingEnabled: false,
             liveQueueEnabled: false,
             payments: [],
             coverImageUrl: "",
@@ -125,6 +125,7 @@ export function AutoWashSettings() {
                     autoWash.additionalServices?.map(
                         (service) => service.name
                     ) ?? [],
+                services: autoWash.services ?? [],
                 washType:
                     autoWash.activitySubtype?.code === "self_service"
                         ? "self_service"
@@ -132,7 +133,6 @@ export function AutoWashSettings() {
                 boxCount: (autoWash as any).boxCount ?? 1,
                 washerCount: (autoWash as any).washerCount ?? 0,
                 hasWaitingArea: (autoWash as any).hasWaitingArea ?? false,
-                onlineBookingEnabled: autoWash.onlineBookingEnabled ?? false,
                 liveQueueEnabled: autoWash.liveQueueEnabled ?? false,
                 payments: (autoWash as any).payments ?? [],
                 coverImageUrl: autoWash.coverImageUrl ?? "",
@@ -144,6 +144,10 @@ export function AutoWashSettings() {
     const { data: availableServices } = useQuery({
         queryKey: ["additionalServices"],
         queryFn: fetchAdditionalServices,
+    });
+    const servicesQuery = useQuery({
+        queryKey: ["services"],
+        queryFn: fetchAllServices,
     });
 
     const mutation = useMutation({
@@ -167,6 +171,7 @@ export function AutoWashSettings() {
                 phone: values.phone,
                 workingPhone: values.workingPhone,
                 additionalServices: values.additionalServices,
+                services: values.services,
                 washType: values.washType,
                 boxCount: values.boxCount,
                 washerCount: values.washerCount,
@@ -462,9 +467,6 @@ export function AutoWashSettings() {
                                     checked={field.value}
                                     onChange={(_, checked) => {
                                         field.onChange(checked);
-                                        if (checked) {
-                                            form.setValue("onlineBookingEnabled", false);
-                                        }
                                     }}
                                     color="primary"
                                 />
@@ -505,6 +507,20 @@ export function AutoWashSettings() {
                         )}
                     />
                 </SettingsSection>
+
+                {form.watch("washType") === "classic" && (
+                    <SettingsSection icon={<GearIcon color="#1d4ed8" />} title="Услуги автомойки">
+                        <TagSelector
+                            name="services"
+                            control={form.control}
+                            options={servicesQuery.data || []}
+                            label="Добавить услугу"
+                            placeholder="Выберите услуги"
+                            helperText="Укажите услуги, по которым автомойку будут находить в поиске"
+                            emptyMessage="Услуги не указаны"
+                        />
+                    </SettingsSection>
+                )}
 
                 {/* 4. Дополнительные услуги */}
                 <SettingsSection icon={<PlusIcon color="#1d4ed8" />} title="Дополнительные услуги">

@@ -163,6 +163,12 @@ export const DetailsHeader = styled.div`
     flex-wrap: wrap;
     row-gap: 4px;
 `;
+export const RegistrationDate = styled.div`
+    margin-top: 4px;
+    color: #8492a6;
+    font-size: 11px;
+    line-height: 1.3;
+`;
 export const DescriptionWrapper = styled.div`
     margin-top: 16px;
     font-size: 14px;

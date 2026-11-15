@@ -46,6 +46,7 @@ const baseSettingsSchema = {
 
 export const autoWashSchema = yup.object({
     ...baseSettingsSchema,
+    services: yup.array().of(yup.string()).default([]),
     washType: yup.string().required("Выберите тип мойки"),
     boxCount: yup.number().integer().min(1, "Минимум 1 бокс").required("Обязательное поле").typeError("Введите число"),
     washerCount: yup.number().integer().min(0, "Не может быть отрицательным").required("Обязательное поле").typeError("Введите число"),

@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Master, MasterFeature, addMasterFavorite, getMasterFavorite, removeMasterFavorite } from "@modules/masters";
 import { useAuth, useCoords, useUserProfile } from "@common/hooks";
+import { formatRegistrationDate } from "@common/lib/formatRegistrationDate";
 import { getAccountAvatarUrl, getPublicEntityMedia, type MediaAsset } from "@modules/media/api";
 import { getProviderReviews, type Review } from "@modules/reviews";
 import { StoryHighlights } from "@modules/stories";
@@ -34,19 +35,17 @@ import {
     GalleryImage,
     GalleryGrid,
     HeroAvatar,
-    HeroAvatarWrap,
-    HeroCell,
-    HeroImage,
-    HeroPlaceholder,
-    HeroRow,
+    MasterAvatarWrap,
+    MasterProfileIdentity,
+    MasterIdentityDetails,
     MobileMasterPage,
     MobileSection,
     ProfileHeader,
     ProfileHeaderTitle,
-    ProfileIdentity,
     ProfileName,
     ProfileSubtitle,
     RatingLine,
+    RegistrationDate,
     SectionHeader,
     SectionTitle,
     ServiceChip,
@@ -101,13 +100,6 @@ function sortWorkAssets(master: Master, assets: MediaAsset[]) {
     return [...assets].sort((a, b) => (order.get(a.assetId) ?? 9999) - (order.get(b.assetId) ?? 9999));
 }
 
-function getHeroAssets(master: Master, assets: MediaAsset[]) {
-    const sorted = sortWorkAssets(master, assets);
-    const selected = new Set(master.heroWorkPhotoAssetIds ?? []);
-    const explicit = sorted.filter((asset) => selected.has(asset.assetId));
-    return (explicit.length ? explicit : sorted).slice(0, 2);
-}
-
 function ReviewStarsRow({ rating }: { rating: number }) {
     return (
         <ReviewStars aria-label={`Оценка ${rating} из 5`}>
@@ -160,10 +152,10 @@ export function MobileMasterProfile({ master }: { master: Master }) {
 
     const assets = mediaQuery.data?.assets ?? [];
     const sortedAssets = useMemo(() => sortWorkAssets(master, assets), [master, assets]);
-    const heroAssets = useMemo(() => getHeroAssets(master, assets), [master, assets]);
     const reviews = reviewsQuery.data ?? [];
     const averageRating = master.rating > 0 ? master.rating : reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
     const avatarUrl = accountAvatarQuery.data ?? undefined;
+    const registrationDate = formatRegistrationDate(master.createdAt);
     const featureKeys = (master.features ?? []) as MasterFeature[];
     const phone = master.workingPhone || master.user?.phone;
     const isSelfProfile = currentProfile?.id === master.userId;
@@ -220,26 +212,20 @@ export function MobileMasterProfile({ master }: { master: Master }) {
                 <ProfileHeaderTitle>Профиль мастера</ProfileHeaderTitle>
             </ProfileHeader>
 
-            <HeroRow $count={heroAssets.length}>
-                {heroAssets.length > 0 ? heroAssets.map((asset) => (
-                    <HeroCell key={asset.assetId}><HeroImage src={assetUrl(asset)} alt="Фото работы мастера" /></HeroCell>
-                )) : <HeroPlaceholder><span>{initials(master.fullName)}</span></HeroPlaceholder>}
-                {sortedAssets.length > 2 && <span className="photo-count">▣ {sortedAssets.length}</span>}
-                <HeroAvatarWrap>
+            <MasterProfileIdentity>
+                <MasterAvatarWrap>
                     <HeroAvatar>{avatarUrl ? <AvatarImage src={avatarUrl} alt={master.fullName || "Мастер"} /> : <AvatarFallback>{initials(master.fullName)}</AvatarFallback>}</HeroAvatar>
-                </HeroAvatarWrap>
-            </HeroRow>
-
-            <ProfileIdentity>
-                <div>
+                </MasterAvatarWrap>
+                <MasterIdentityDetails>
                     <ProfileName>{master.fullName || "Мастер"}</ProfileName>
                     <ProfileSubtitle>{master.professions?.join(", ") || "Автомастер"}</ProfileSubtitle>
                     <RatingLine><StarRoundedIcon sx={{ color: "var(--ds-color-yellow-500)", fontSize: 17 }} /><strong>{averageRating ? averageRating.toFixed(1) : "0.0"}</strong><span>({master.reviewsCount ?? reviews.length})</span></RatingLine>
-                </div>
+                    {registrationDate && <RegistrationDate>На АвтоГис с {registrationDate}</RegistrationDate>}
+                </MasterIdentityDetails>
                 <ActionIconButton type="button" aria-label="Добавить в избранное" onClick={handleFavorite} $active={Boolean(favoriteQuery.data)}>
                     {favoriteQuery.data ? <FavoriteRoundedIcon /> : <FavoriteBorderRoundedIcon />}
                 </ActionIconButton>
-            </ProfileIdentity>
+            </MasterProfileIdentity>
 
             <StatusText $open={isOpen}>{isOpen ? `Открыто${master.workTo ? ` до ${master.workTo}` : ""}` : "Закрыто"}</StatusText>
             <BottomActionRow>

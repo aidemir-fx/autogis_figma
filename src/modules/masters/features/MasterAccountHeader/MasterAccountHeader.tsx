@@ -9,6 +9,7 @@ import {
     WrenchIcon,
 } from "@common/icons";
 import { formatDistanceFromUser } from "@common/lib/formatDistance";
+import { formatRegistrationDate } from "@common/lib/formatRegistrationDate";
 import { Master } from "@modules/masters/types";
 import { MasterInfo, MasterName } from "./styles";
 import {
@@ -33,6 +34,7 @@ import {
     CoverHeroImage,
     DetailsHeader,
     DescriptionWrapper,
+    RegistrationDate,
 } from "./styles";
 import { toast } from "react-toastify";
 import { MakeAppointmentButton } from "./styles";
@@ -91,6 +93,7 @@ export const MasterAccountHeader = ({ master }: { master: Master }) => {
     const showCover = Boolean(coverUrl && !isMasterProfile);
     const profileAvatarUrl = isMasterProfile ? accountAvatarQuery.data ?? undefined : undefined;
     const isSelfProfile = Boolean(currentProfile?.id && currentProfile.id === master.userId);
+    const registrationDate = formatRegistrationDate(master.createdAt);
 
     const specs = [
         ...master.professions,
@@ -157,6 +160,7 @@ export const MasterAccountHeader = ({ master }: { master: Master }) => {
                                     <ReviewCount>({master.reviewsCount || 0})</ReviewCount>
                                 </RatingContainer>
                             </DetailsHeader>
+                            {registrationDate && <RegistrationDate>На АвтоГис с {registrationDate}</RegistrationDate>}
                             <DistanceContainer>
                                 <MapPinIcon color="#3b82f6" />
 

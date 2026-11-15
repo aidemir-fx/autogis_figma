@@ -19,6 +19,7 @@ export enum MasterStatus {
 export type Master = {
     id: string;
     userId: string;
+    createdAt?: string;
     activityType?: ActivityType;
     fullName?: string;
     address: string;

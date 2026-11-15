@@ -17,12 +17,16 @@ export const HeroImage = styled.img`width:100%;height:100%;object-fit:cover;disp
 export const HeroPlaceholder = styled.div`display:grid;place-items:center;background:linear-gradient(135deg,rgba(var(--ds-color-blue-500-rgb) / 0.12),var(--ds-color-gray-100));font-size:38px;font-weight:700;color:var(--ds-color-gray-500);`;
 export const HeroAvatarWrap = styled.div`position:absolute;left:16px;bottom:-20px;padding:3px;border-radius:var(--ds-radius-16);background:var(--ds-color-white);z-index:2;`;
 export const HeroAvatar = styled.div`width:58px;height:58px;border-radius:var(--ds-radius-16);overflow:hidden;border:2px solid var(--ds-color-gray-500);background:linear-gradient(135deg,var(--ds-color-gray-300),var(--ds-color-gray-100));display:grid;place-items:center;`;
+export const MasterProfileIdentity = styled.div`display:flex;align-items:center;gap:12px;padding:16px 16px 0;`;
+export const MasterAvatarWrap = styled.div`flex:0 0 auto;padding:3px;border-radius:var(--ds-radius-16);background:var(--ds-color-white);`;
+export const MasterIdentityDetails = styled.div`flex:1;min-width:0;& > h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}& > div:nth-child(2){max-width:100%;}`;
 export const AvatarImage = styled.img`width:100%;height:100%;object-fit:cover;display:block;`;
 export const AvatarFallback = styled.span`font-size:20px;font-weight:700;color:var(--ds-color-gray-500);`;
 export const ProfileIdentity = styled.div`display:flex;justify-content:space-between;gap:12px;padding:32px 16px 0;`;
 export const ProfileName = styled.h2`font-size:17px;margin:0 0 4px;font-weight:700;`;
 export const ProfileSubtitle = styled.div`font-size:12px;color:var(--ds-color-gray-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:290px;`;
 export const RatingLine = styled.div`display:flex;align-items:center;gap:4px;margin-top:7px;font-size:12px;color:var(--ds-color-gray-500);`;
+export const RegistrationDate = styled.div`margin-top:4px;font-size:10px;line-height:1.3;color:var(--ds-color-gray-500);`;
 export const ActionIconButton = styled.button<{ $active?: boolean }>`width:44px;height:38px;border:1px solid var(--ds-color-gray-300);border-radius:var(--ds-radius-8);background:var(--ds-color-white);color:${({ $active }) => $active ? "var(--ds-color-blue-500)" : "var(--ds-color-gray-500)"};display:grid;place-items:center;cursor:pointer;&:disabled{opacity:.5;}& svg{font-size:20px;}`;
 export const StatusText = styled.div<{ $open?: boolean }>`padding:10px 16px 0;color:${({ $open }) => $open ? "var(--ds-color-green-500)" : "var(--ds-color-red-500)"};font-size:12px;`;
 export const BottomActionRow = styled.div`display:flex;gap:8px;padding:12px 16px 4px;`;

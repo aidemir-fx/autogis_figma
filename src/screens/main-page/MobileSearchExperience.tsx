@@ -98,7 +98,8 @@ function formatDistance(distance?: number): string {
 }
 
 function getTags(provider: Provider): string[] {
-    const tags = isMasterProvider(provider)
+    const isMaster = isMasterProvider(provider);
+    const tags = isMaster
         ? [
               ...(provider.professions || []),
               ...(provider.services || []),
@@ -106,7 +107,7 @@ function getTags(provider: Provider): string[] {
           ]
         : [...(provider.services || []), ...(provider.professions || [])];
     const normalized = Array.from(new Set(tags.filter(Boolean)));
-    const visibleCount = 5;
+    const visibleCount = isMaster ? 3 : 5;
     return normalized.length > visibleCount
         ? [...normalized.slice(0, visibleCount), `+${normalized.length - visibleCount}`]
         : normalized;
@@ -290,7 +291,7 @@ function MobileFilterRail({
             <MobileRadiusChip type="button" onClick={onOpenRadius}>Радиус <strong>{radius} км</strong><ChevronGlyph /></MobileRadiusChip>
             {categories.map((category) => {
                 const active = !isAllTypesActive && activeTypes.includes(category.type);
-                return <MobileFilterChip key={category.type} $active={active} onClick={() => onActivityTypeClick(category.type)}>{category.title.replace(/^Частные мастера$/, "Частные").replace(/^Автомагазины$/, "Автомагазины")} <span>{countsByType[category.type] || 0}</span></MobileFilterChip>;
+                return <MobileFilterChip key={category.type} $active={active} onClick={() => onActivityTypeClick(category.type)}>{category.title} <span>{countsByType[category.type] || 0}</span></MobileFilterChip>;
             })}
         </MobileFilterRailRoot>
     );
