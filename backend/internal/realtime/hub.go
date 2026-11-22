@@ -68,6 +68,19 @@ func (h *Hub) Register(client *wsClient) {
 	h.clientsByUser[client.userID][client] = struct{}{}
 }
 
+func (h *Hub) DisconnectUser(userID string) {
+	h.mu.RLock()
+	clients := make([]*wsClient, 0, len(h.clientsByUser[userID]))
+	for client := range h.clientsByUser[userID] {
+		clients = append(clients, client)
+	}
+	h.mu.RUnlock()
+
+	for _, client := range clients {
+		_ = client.conn.Close()
+	}
+}
+
 func (h *Hub) Unregister(client *wsClient) {
 	h.mu.Lock()
 	defer h.mu.Unlock()

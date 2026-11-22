@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -33,6 +34,13 @@ type Config struct {
 
 	// Frontend URL for CORS
 	FrontendURL string
+
+	// Phone verification and approved legal copy
+	MobileIDEnabled      bool
+	MobileIDClientID     string
+	MobileIDClientSecret string
+	PrivacyText          string
+	TermsText            string
 
 	// Feature flags
 	RequirePostGIS          bool
@@ -68,6 +76,11 @@ func Load() (*Config, error) {
 		JWTRefreshExpire:        parseInt(os.Getenv("JWT_REFRESH_EXPIRE"), 24),
 		Environment:             getOrDefault(os.Getenv("ENVIRONMENT"), "development"),
 		FrontendURL:             os.Getenv("FRONTEND_URL"),
+		MobileIDEnabled:         parseBool(os.Getenv("MOBILE_ID_ENABLED"), false),
+		MobileIDClientID:        os.Getenv("MOBILE_ID_CLIENT_ID"),
+		MobileIDClientSecret:    os.Getenv("MOBILE_ID_CLIENT_SECRET"),
+		PrivacyText:             strings.TrimSpace(os.Getenv("AUTOGIS_PRIVACY_TEXT")),
+		TermsText:               strings.TrimSpace(os.Getenv("AUTOGIS_TERMS_TEXT")),
 		RequirePostGIS:          parseBool(os.Getenv("REQUIRE_POSTGIS"), false),
 		EnableRuntimeMigrations: parseBool(os.Getenv("ENABLE_RUNTIME_MIGRATIONS"), false),
 
@@ -82,6 +95,10 @@ func Load() (*Config, error) {
 		S3KMSKeyID:        os.Getenv("S3_KMS_KEY_ID"),
 		CDNBaseURL:        getOrDefault(os.Getenv("CDN_BASE_URL"), "http://localhost:9000/autogis-media-dev"),
 		StoryLogPath:      getOrDefault(os.Getenv("STORIES_LOG_PATH"), "runtime-logs/stories.log"),
+	}
+
+	if cfg.MobileIDEnabled && (cfg.MobileIDClientID == "" || cfg.MobileIDClientSecret == "" || cfg.PrivacyText == "" || cfg.TermsText == "") {
+		return nil, fmt.Errorf("Mobile ID requires credentials and approved privacy and terms text")
 	}
 
 	if cfg.JWTSecret == "" {

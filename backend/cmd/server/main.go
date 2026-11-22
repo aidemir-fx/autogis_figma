@@ -17,6 +17,7 @@ import (
 	"github.com/gmt061/autogis-backend/internal/handler"
 	"github.com/gmt061/autogis-backend/internal/middleware"
 	"github.com/gmt061/autogis-backend/internal/pkg/jwt"
+	"github.com/gmt061/autogis-backend/internal/pkg/mobileid"
 	"github.com/gmt061/autogis-backend/internal/pkg/ratelimit"
 	"github.com/gmt061/autogis-backend/internal/pkg/s3client"
 	"github.com/gmt061/autogis-backend/internal/pkg/storylog"
@@ -150,6 +151,7 @@ func main() {
 	)
 	businessApplicationUseCase := usecase.NewBusinessApplicationUseCase(professionalApplicationUseCase, masterUseCase)
 	mediaUseCase := usecase.NewMediaUseCase(mediaRepo, orderRepo, s3Client, mediaWorker, storyLogger)
+	reviewUseCase.SetMedia(mediaUseCase)
 	favoriteUseCase := usecase.NewMasterFavoriteUseCase(favoriteRepo, masterRepo)
 	autoServiceFavoriteUseCase := usecase.NewAutoServiceFavoriteUseCase(autoServiceFavoriteRepo, autoServiceRepo)
 	activityUseCase := usecase.NewActivityUseCase(activityGroupRepo, activitySubtypeRepo)
@@ -158,6 +160,11 @@ func main() {
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(authUseCase)
+	var phoneVerification *usecase.PhoneVerification
+	if cfg.MobileIDEnabled {
+		phoneVerification = usecase.NewPhoneVerification(db, mobileid.New(cfg.MobileIDClientID, cfg.MobileIDClientSecret))
+		authUseCase.SetPhoneVerification(phoneVerification)
+	}
 	userHandler := handler.NewUserHandler(userUseCase)
 	orderHandler := handler.NewOrderHandler(orderUseCase)
 	searchHandler := handler.NewSearchHandler(searchUseCase, activityTypeUseCase, reviewUseCase)
@@ -173,7 +180,8 @@ func main() {
 	storyHandler := handler.NewStoryHandler(storyUseCase)
 	notificationHandler := handler.NewNotificationHandler(db)
 	chatHub := realtime.NewHub()
-	chatWSHandler := realtime.NewChatWSHandler(chatHub, chatUseCase, jwtService, cfg.FrontendURL)
+	authHandler.ConfigurePhoneVerification(phoneVerification, cfg.PrivacyText, cfg.TermsText, chatHub.DisconnectUser)
+	chatWSHandler := realtime.NewChatWSHandler(chatHub, chatUseCase, jwtService, cfg.FrontendURL, professionalApplicationRepo)
 	chatHandler := handler.NewChatHandler(chatUseCase, chatHub)
 	supportChatHandler := handler.NewSupportChatHandler(db, chatHub)
 	orderHandler.SetHub(chatHub)
@@ -181,6 +189,7 @@ func main() {
 	// Start background maintenance jobs. They honour rootCtx and exit when it's
 	// cancelled, so a signal doesn't leak goroutines.
 	startMaintenanceJobs(rootCtx, mediaUseCase, professionalApplicationUseCase, storyUseCase)
+	startBookingMaintenance(rootCtx, db, cfg.MobileIDEnabled)
 
 	// Create Gin router
 	router := gin.Default()
@@ -309,6 +318,7 @@ func runMigrations(db *gorm.DB, cfg *config.Config) error {
 		&domain.ModerationCaseEvent{},
 		&domain.ProfessionalApplicationSchema{},
 		&domain.TokenInvalidation{},
+		&usecase.PhoneVerificationAttempt{},
 		// Activity hierarchy tables (see spec §3).
 		&domain.ActivityGroup{},
 		&domain.ActivitySubtype{},
@@ -966,8 +976,16 @@ func setupRoutes(
 	// refresh:        60 attempts / 1 minute  per client IP (legitimate clients may refresh bursty).
 	authAttemptLimiter := ratelimit.New(10, 5*time.Minute)
 	authRefreshLimiter := ratelimit.New(60, time.Minute)
+	phoneStartLimiter := ratelimit.New(5, 10*time.Minute)
+	phoneStatusLimiter := ratelimit.New(120, time.Minute)
 	authGroup := router.Group("/api/auth")
 	{
+		authGroup.GET("/legal/:kind", authHandler.LegalDocument)
+		authGroup.GET("/phone-verification", authHandler.PhoneVerificationConfig)
+		authGroup.POST("/phone-verification", middleware.RateLimit(phoneStartLimiter, middleware.ClientIPKey), authHandler.StartPhoneVerification)
+		authGroup.POST("/phone-verification/status", middleware.RateLimit(phoneStatusLimiter, middleware.ClientIPKey), authHandler.PhoneVerificationStatus)
+		authGroup.POST("/phone-verification/code", middleware.RateLimit(authAttemptLimiter, middleware.ClientIPKey), authHandler.PhoneVerificationCode)
+		authGroup.POST("/password-reset", middleware.RateLimit(authAttemptLimiter, middleware.ClientIPKey), authHandler.ResetPassword)
 		authGroup.POST("/register",
 			middleware.RateLimit(authAttemptLimiter, middleware.ClientIPKey),
 			authHandler.Register,

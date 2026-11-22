@@ -770,6 +770,7 @@ func (uc *ActivityTypeUseCase) activityTypeToResponse(at *domain.ActivityType) *
 // ReviewUseCase handles review business logic
 type ReviewUseCase struct {
 	reviewRepo      repository.ReviewRepository
+	media           *MediaUseCase
 	userRepo        repository.UserRepository
 	orderRepo       repository.OrderRepository
 	masterRepo      repository.MasterRepository
@@ -796,6 +797,24 @@ func NewReviewUseCase(
 		autoShopRepo:    autoShopRepo,
 		autoServiceRepo: autoServiceRepo,
 	}
+}
+
+func (uc *ReviewUseCase) SetMedia(media *MediaUseCase) {
+	uc.media = media
+}
+
+func (uc *ReviewUseCase) validateReviewPhotos(ctx context.Context, userID string, assets []string) error {
+	if len(assets) > 10 {
+		return apperrors.New("TOO_MANY_PHOTOS", "Можно добавить до 10 фотографий", 400)
+	}
+	seen := make(map[string]bool, len(assets))
+	for _, id := range assets {
+		if seen[id] || uc.media == nil || !uc.media.isOwnReviewPhoto(ctx, userID, id) {
+			return apperrors.New("INVALID_REVIEW_PHOTO", "Не удалось добавить фотографию к отзыву", 400)
+		}
+		seen[id] = true
+	}
+	return nil
 }
 
 func (uc *ReviewUseCase) CreateReview(
@@ -834,6 +853,9 @@ func (uc *ReviewUseCase) CreateReviewForOrder(
 		return nil, apperrors.New("REVIEW_COMMENT_TOO_LONG", "Comment must be 2000 characters or fewer", http.StatusBadRequest)
 	}
 	tags := normalizeReviewTags(req.Tags)
+	if err := uc.validateReviewPhotos(ctx, fromID, req.PhotoAssetIDs); err != nil {
+		return nil, err
+	}
 
 	existing, err := uc.reviewRepo.GetByOrderAndFromID(ctx, orderID, fromID)
 	if err != nil {
@@ -856,12 +878,13 @@ func (uc *ReviewUseCase) CreateReviewForOrder(
 
 	orderIDCopy := orderID
 	review := &domain.Review{
-		FromID:  fromID,
-		ToID:    providerID,
-		OrderID: &orderIDCopy,
-		Rating:  req.Rating,
-		Comment: comment,
-		Tags:    tags,
+		FromID:        fromID,
+		ToID:          providerID,
+		OrderID:       &orderIDCopy,
+		PhotoAssetIDs: req.PhotoAssetIDs,
+		Rating:        req.Rating,
+		Comment:       comment,
+		Tags:          tags,
 	}
 
 	if err := uc.reviewRepo.Create(ctx, review); err != nil {
@@ -870,17 +893,18 @@ func (uc *ReviewUseCase) CreateReviewForOrder(
 
 	uc.updateProviderRating(ctx, providerID, to.Role)
 
-	return uc.reviewToResponse(&domain.Review{
-		ID:        review.ID,
-		FromID:    review.FromID,
-		From:      from,
-		ToID:      review.ToID,
-		To:        to,
-		OrderID:   review.OrderID,
-		Rating:    review.Rating,
-		Comment:   review.Comment,
-		Tags:      []string(review.Tags),
-		CreatedAt: review.CreatedAt,
+	return uc.reviewToResponse(ctx, &domain.Review{
+		ID:            review.ID,
+		FromID:        review.FromID,
+		From:          from,
+		ToID:          review.ToID,
+		To:            to,
+		OrderID:       review.OrderID,
+		Rating:        review.Rating,
+		Comment:       review.Comment,
+		Tags:          []string(review.Tags),
+		PhotoAssetIDs: review.PhotoAssetIDs,
+		CreatedAt:     review.CreatedAt,
 	}), nil
 }
 
@@ -905,7 +929,7 @@ func (uc *ReviewUseCase) GetReviewForOrder(ctx context.Context, fromID, orderID 
 	if review == nil {
 		return nil, nil
 	}
-	return uc.reviewToResponse(review), nil
+	return uc.reviewToResponse(ctx, review), nil
 }
 
 func (uc *ReviewUseCase) DeleteReviewForOrder(ctx context.Context, fromID, orderID string) error {
@@ -973,6 +997,12 @@ func (uc *ReviewUseCase) UpdateReviewForOrder(
 	review.Rating = req.Rating
 	review.Comment = comment
 	review.Tags = normalizeReviewTags(req.Tags)
+	if req.PhotoAssetIDs != nil {
+		if err := uc.validateReviewPhotos(ctx, fromID, req.PhotoAssetIDs); err != nil {
+			return nil, err
+		}
+		review.PhotoAssetIDs = req.PhotoAssetIDs
+	}
 	if err := uc.reviewRepo.Update(ctx, review); err != nil {
 		return nil, apperrors.ErrInternalServer
 	}
@@ -983,7 +1013,7 @@ func (uc *ReviewUseCase) UpdateReviewForOrder(
 	}
 	uc.updateProviderRating(ctx, provider.ID, provider.Role)
 
-	return uc.reviewToResponse(review), nil
+	return uc.reviewToResponse(ctx, review), nil
 }
 
 func (uc *ReviewUseCase) GetReviewsByToID(ctx context.Context, toID string) ([]*domain.ReviewResponse, error) {
@@ -994,7 +1024,7 @@ func (uc *ReviewUseCase) GetReviewsByToID(ctx context.Context, toID string) ([]*
 
 	responses := make([]*domain.ReviewResponse, len(reviews))
 	for i, review := range reviews {
-		responses[i] = uc.reviewToResponse(review)
+		responses[i] = uc.reviewToResponse(ctx, review)
 	}
 	return responses, nil
 }
@@ -1066,7 +1096,7 @@ func normalizeReviewTags(tags []string) []string {
 	return result
 }
 
-func (uc *ReviewUseCase) reviewToResponse(review *domain.Review) *domain.ReviewResponse {
+func (uc *ReviewUseCase) reviewToResponse(ctx context.Context, review *domain.Review) *domain.ReviewResponse {
 	var fromResp, toResp *domain.UserResponse
 
 	if review.From != nil {
@@ -1077,16 +1107,27 @@ func (uc *ReviewUseCase) reviewToResponse(review *domain.Review) *domain.ReviewR
 		toResp = buildUserResponse(review.To)
 	}
 
+	var photoURLs []string
+	if uc.media != nil {
+		for _, id := range review.PhotoAssetIDs {
+			if url := uc.media.reviewPhotoURL(ctx, review.FromID, id); url != "" {
+				photoURLs = append(photoURLs, url)
+			}
+		}
+	}
+
 	return &domain.ReviewResponse{
-		ID:        review.ID,
-		FromID:    review.FromID,
-		From:      fromResp,
-		ToID:      review.ToID,
-		To:        toResp,
-		Rating:    review.Rating,
-		Comment:   review.Comment,
-		Tags:      []string(review.Tags),
-		OrderID:   review.OrderID,
-		CreatedAt: review.CreatedAt.Format(time.RFC3339),
+		ID:            review.ID,
+		FromID:        review.FromID,
+		From:          fromResp,
+		ToID:          review.ToID,
+		To:            toResp,
+		Rating:        review.Rating,
+		Comment:       review.Comment,
+		Tags:          []string(review.Tags),
+		OrderID:       review.OrderID,
+		CreatedAt:     review.CreatedAt.Format(time.RFC3339),
+		PhotoAssetIDs: review.PhotoAssetIDs,
+		PhotoURLs:     photoURLs,
 	}
 }

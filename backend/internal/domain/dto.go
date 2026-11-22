@@ -2,6 +2,7 @@ package domain
 
 // Auth DTOs
 type RegisterRequest struct {
+	VerificationID  string `json:"verificationId,omitempty"`
 	Phone           string `json:"phone" validate:"required,min=10"`
 	Password        string `json:"password" validate:"required,min=6"`
 	AgreedToPrivacy bool   `json:"agreedToPrivacy" validate:"required,eq=true"`
@@ -87,15 +88,17 @@ type ActivateProfessionalResponse struct {
 
 // Order DTOs
 type CreateOrderRequest struct {
-	ProviderIDs    []string             `json:"providerIds" validate:"required,min=1"`
-	ActivityTypeID string               `json:"activityTypeId" validate:"required,uuid"`
-	Name           string               `json:"name" validate:"required"`
-	Phone          string               `json:"phone" validate:"required"`
-	CarBrand       string               `json:"carBrand" validate:"required"`
-	Description    string               `json:"description" validate:"required"`
-	TimePreference *OrderTimePreference `json:"timePreference" validate:"required"`
-	PhotoAssetIDs  []string             `json:"photoAssetIds,omitempty"`
-	Price          *float32             `json:"price,omitempty"`
+	ProviderIDs     []string             `json:"providerIds" validate:"required,min=1"`
+	ActivityTypeID  string               `json:"activityTypeId" validate:"required,uuid"`
+	Name            string               `json:"name" validate:"required"`
+	Phone           string               `json:"phone" validate:"required"`
+	CarBrand        string               `json:"carBrand" validate:"required"`
+	Description     string               `json:"description" validate:"required"`
+	TimePreference  *OrderTimePreference `json:"timePreference" validate:"required"`
+	PhotoAssetIDs   []string             `json:"photoAssetIds,omitempty"`
+	Price           *float32             `json:"price,omitempty"`
+	VehicleYear     *int                 `json:"vehicleYear,omitempty"`
+	DesiredDateTime *string              `json:"desiredDateTime,omitempty"`
 }
 
 type UpdateOrderStatusRequest struct {
@@ -126,6 +129,9 @@ type OrderResponse struct {
 	ActivityType      *ActivityTypeResponse `json:"activityType,omitempty"`
 	CreatedAt         string                `json:"createdAt"`
 	UpdatedAt         string                `json:"updatedAt"`
+	VehicleYear       *int                  `json:"vehicleYear,omitempty"`
+	DesiredDateTime   *string               `json:"desiredDateTime,omitempty"`
+	ResponseDeadline  *string               `json:"responseDeadline,omitempty"`
 }
 
 type SendOrderMessageRequest struct {
@@ -225,24 +231,27 @@ type CreateActivityTypeRequest struct {
 
 // Review DTOs
 type CreateReviewRequest struct {
-	ToID    string   `json:"toId,omitempty"`
-	OrderID *string  `json:"orderId,omitempty"`
-	Rating  int      `json:"rating" validate:"required,min=1,max=5"`
-	Comment string   `json:"comment"`
-	Tags    []string `json:"tags,omitempty"`
+	ToID          string   `json:"toId,omitempty"`
+	OrderID       *string  `json:"orderId,omitempty"`
+	Rating        int      `json:"rating" validate:"required,min=1,max=5"`
+	Comment       string   `json:"comment"`
+	Tags          []string `json:"tags,omitempty"`
+	PhotoAssetIDs []string `json:"photoAssetIds,omitempty"`
 }
 
 type ReviewResponse struct {
-	ID        string        `json:"id"`
-	FromID    string        `json:"fromId"`
-	From      *UserResponse `json:"from,omitempty"`
-	ToID      string        `json:"toId"`
-	To        *UserResponse `json:"to,omitempty"`
-	Rating    int           `json:"rating"`
-	Comment   string        `json:"comment"`
-	Tags      []string      `json:"tags,omitempty"`
-	OrderID   *string       `json:"orderId,omitempty"`
-	CreatedAt string        `json:"createdAt"`
+	ID            string        `json:"id"`
+	FromID        string        `json:"fromId"`
+	From          *UserResponse `json:"from,omitempty"`
+	ToID          string        `json:"toId"`
+	To            *UserResponse `json:"to,omitempty"`
+	Rating        int           `json:"rating"`
+	Comment       string        `json:"comment"`
+	Tags          []string      `json:"tags,omitempty"`
+	OrderID       *string       `json:"orderId,omitempty"`
+	CreatedAt     string        `json:"createdAt"`
+	PhotoAssetIDs []string      `json:"photoAssetIds,omitempty"`
+	PhotoURLs     []string      `json:"photoUrls,omitempty"`
 }
 
 // Master DTOs

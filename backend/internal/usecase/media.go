@@ -399,6 +399,35 @@ func (uc *MediaUseCase) GetAsset(ctx context.Context, userID, assetID string) (*
 	return uc.toAssetResponse(asset), nil
 }
 
+func (uc *MediaUseCase) reviewPhoto(ctx context.Context, userID, assetID string) *domain.MediaAsset {
+	asset, err := uc.mediaRepo.GetAssetByID(ctx, assetID)
+	if err != nil || asset == nil || asset.CreatedBy != userID || asset.EntityType != domain.MediaEntityObject ||
+		asset.Category != domain.MediaCategoryPhoto || !strings.HasPrefix(asset.EntityID, "review-") {
+		return nil
+	}
+	return asset
+}
+
+func (uc *MediaUseCase) isOwnReviewPhoto(ctx context.Context, userID, assetID string) bool {
+	asset := uc.reviewPhoto(ctx, userID, assetID)
+	return asset != nil && (asset.Status == domain.MediaStatusReady || asset.Status == domain.MediaStatusProcessing)
+}
+
+func (uc *MediaUseCase) reviewPhotoURL(ctx context.Context, userID, assetID string) string {
+	asset := uc.reviewPhoto(ctx, userID, assetID)
+	if asset == nil || asset.Status != domain.MediaStatusReady {
+		return ""
+	}
+	urls := uc.toAssetResponse(asset).URLs
+	if urls == nil {
+		return ""
+	}
+	if urls.Medium != nil && urls.Medium.JPEG != "" {
+		return urls.Medium.JPEG
+	}
+	return urls.Original
+}
+
 // GetPublicAsset is used by public story responses. Story assets are safe to
 // expose because the story itself is public while it is active.
 func (uc *MediaUseCase) GetPublicAsset(ctx context.Context, assetID string) (*domain.MediaAssetResponse, error) {

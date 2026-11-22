@@ -133,26 +133,29 @@ type Master struct {
 
 // Order represents an order/request
 type Order struct {
-	ID             string               `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
-	CustomerID     string               `gorm:"not null;index" json:"customerId"`
-	Customer       *User                `gorm:"foreignKey:CustomerID;constraint:OnDelete:CASCADE" json:"customer,omitempty"`
-	ProviderID     *string              `gorm:"index" json:"providerId,omitempty"`
-	Provider       *User                `gorm:"foreignKey:ProviderID;constraint:OnDelete:SET NULL" json:"provider,omitempty"`
-	ActivityTypeID string               `gorm:"not null" json:"activityTypeId"`
-	ActivityType   *ActivityType        `gorm:"foreignKey:ActivityTypeID;constraint:OnDelete:CASCADE" json:"activityType,omitempty"`
-	Name           string               `gorm:"type:varchar(255);not null;default:''" json:"name"`
-	CarBrand       string               `gorm:"type:varchar(255);not null;default:''" json:"carBrand"`
-	Description    string               `gorm:"type:text" json:"description"`
-	TimePreference *OrderTimePreference `gorm:"type:varchar(32)" json:"timePreference,omitempty"`
-	Phone          string               `gorm:"type:varchar(20);not null;default:''" json:"phone"`
-	PhotoAssetIDs  pq.StringArray       `gorm:"type:text[]" json:"photoAssetIds,omitempty"`
-	Price          *float32             `gorm:"type:decimal(10,2)" json:"price,omitempty"`
-	ConfirmedAt    *time.Time           `gorm:"type:timestamptz" json:"confirmedDateTime,omitempty"`
-	CancelReason   *string              `gorm:"type:text" json:"cancelReason,omitempty"`
-	ChatID         *string              `gorm:"type:uuid;index" json:"chatId,omitempty"`
-	Status         OrderStatus          `gorm:"type:varchar(20);default:'pending'" json:"status"`
-	CreatedAt      time.Time            `gorm:"autoCreateTime:milli" json:"createdAt"`
-	UpdatedAt      time.Time            `gorm:"autoUpdateTime:milli" json:"updatedAt"`
+	ID                 string               `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
+	CustomerID         string               `gorm:"not null;index" json:"customerId"`
+	Customer           *User                `gorm:"foreignKey:CustomerID;constraint:OnDelete:CASCADE" json:"customer,omitempty"`
+	ProviderID         *string              `gorm:"index" json:"providerId,omitempty"`
+	Provider           *User                `gorm:"foreignKey:ProviderID;constraint:OnDelete:SET NULL" json:"provider,omitempty"`
+	ActivityTypeID     string               `gorm:"not null" json:"activityTypeId"`
+	ActivityType       *ActivityType        `gorm:"foreignKey:ActivityTypeID;constraint:OnDelete:CASCADE" json:"activityType,omitempty"`
+	Name               string               `gorm:"type:varchar(255);not null;default:''" json:"name"`
+	VehicleYear        *int                 `json:"vehicleYear,omitempty"`
+	DesiredVisitAt     *time.Time           `gorm:"type:timestamptz" json:"desiredVisitAt,omitempty"`
+	ResponseDeadlineAt *time.Time           `gorm:"type:timestamptz;index" json:"responseDeadlineAt,omitempty"`
+	CarBrand           string               `gorm:"type:varchar(255);not null;default:''" json:"carBrand"`
+	Description        string               `gorm:"type:text" json:"description"`
+	TimePreference     *OrderTimePreference `gorm:"type:varchar(32)" json:"timePreference,omitempty"`
+	Phone              string               `gorm:"type:varchar(20);not null;default:''" json:"phone"`
+	PhotoAssetIDs      pq.StringArray       `gorm:"type:text[]" json:"photoAssetIds,omitempty"`
+	Price              *float32             `gorm:"type:decimal(10,2)" json:"price,omitempty"`
+	ConfirmedAt        *time.Time           `gorm:"type:timestamptz" json:"confirmedDateTime,omitempty"`
+	CancelReason       *string              `gorm:"type:text" json:"cancelReason,omitempty"`
+	ChatID             *string              `gorm:"type:uuid;index" json:"chatId,omitempty"`
+	Status             OrderStatus          `gorm:"type:varchar(20);default:'pending'" json:"status"`
+	CreatedAt          time.Time            `gorm:"autoCreateTime:milli" json:"createdAt"`
+	UpdatedAt          time.Time            `gorm:"autoUpdateTime:milli" json:"updatedAt"`
 }
 
 type OrderTimePreference string
@@ -169,6 +172,8 @@ const (
 	OrderStatusScheduled OrderStatus = "scheduled"
 	OrderStatusCompleted OrderStatus = "completed"
 	OrderStatusCancelled OrderStatus = "cancelled"
+	OrderStatusRejected  OrderStatus = "rejected"
+	OrderStatusExpired   OrderStatus = "expired"
 )
 
 type ChatMessageStatus string
@@ -212,18 +217,19 @@ type UserActivityType struct {
 
 // Review represents a review/rating
 type Review struct {
-	ID        string         `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
-	FromID    string         `gorm:"not null;index" json:"fromId"`
-	From      *User          `gorm:"foreignKey:FromID;constraint:OnDelete:CASCADE" json:"from,omitempty"`
-	ToID      string         `gorm:"not null;index" json:"toId"`
-	To        *User          `gorm:"foreignKey:ToID;constraint:OnDelete:CASCADE" json:"to,omitempty"`
-	OrderID   *string        `gorm:"type:uuid;index" json:"orderId,omitempty"`
-	Order     *Order         `gorm:"foreignKey:OrderID;constraint:OnDelete:CASCADE" json:"order,omitempty"`
-	Rating    int            `gorm:"not null;check:rating >= 1 AND rating <= 5" json:"rating"`
-	Comment   string         `gorm:"type:text" json:"comment"`
-	Tags      pq.StringArray `gorm:"type:text[]" json:"tags,omitempty"`
-	CreatedAt time.Time      `gorm:"autoCreateTime:milli" json:"createdAt"`
-	UpdatedAt time.Time      `gorm:"autoUpdateTime:milli" json:"updatedAt"`
+	ID            string         `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
+	FromID        string         `gorm:"not null;index" json:"fromId"`
+	From          *User          `gorm:"foreignKey:FromID;constraint:OnDelete:CASCADE" json:"from,omitempty"`
+	ToID          string         `gorm:"not null;index" json:"toId"`
+	To            *User          `gorm:"foreignKey:ToID;constraint:OnDelete:CASCADE" json:"to,omitempty"`
+	OrderID       *string        `gorm:"type:uuid;index" json:"orderId,omitempty"`
+	Order         *Order         `gorm:"foreignKey:OrderID;constraint:OnDelete:CASCADE" json:"order,omitempty"`
+	Rating        int            `gorm:"not null;check:rating >= 1 AND rating <= 5" json:"rating"`
+	Comment       string         `gorm:"type:text" json:"comment"`
+	Tags          pq.StringArray `gorm:"type:text[]" json:"tags,omitempty"`
+	CreatedAt     time.Time      `gorm:"autoCreateTime:milli" json:"createdAt"`
+	UpdatedAt     time.Time      `gorm:"autoUpdateTime:milli" json:"updatedAt"`
+	PhotoAssetIDs pq.StringArray `gorm:"type:text[]" json:"photoAssetIds,omitempty"`
 }
 
 // AutoWash represents an auto wash service provider

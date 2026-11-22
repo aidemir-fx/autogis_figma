@@ -173,6 +173,16 @@ func (r *OrderRepositoryImpl) Update(ctx context.Context, order *domain.Order) e
 	return r.db.WithContext(ctx).Save(order).Error
 }
 
+func (r *OrderRepositoryImpl) UpdateStatusIfCurrent(ctx context.Context, order *domain.Order, previous domain.OrderStatus, updatedAt, now time.Time) (bool, error) {
+	query := r.db.WithContext(ctx).Model(&domain.Order{}).
+		Where("id = ? AND status = ? AND updated_at = ?", order.ID, previous, updatedAt)
+	if previous == domain.OrderStatusPending {
+		query = query.Where("response_deadline_at IS NULL OR response_deadline_at > ?", now)
+	}
+	result := query.Updates(map[string]any{"status": order.Status, "confirmed_at": order.ConfirmedAt, "cancel_reason": order.CancelReason})
+	return result.RowsAffected == 1, result.Error
+}
+
 func (r *OrderRepositoryImpl) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&domain.Order{}, "id = ?", id).Error
 }
@@ -399,6 +409,7 @@ func (r *OrderRepositoryImpl) GetOrderInvitations(ctx context.Context, providerI
 		Preload("Order.Provider").
 		Preload("Order.ActivityType").
 		Where("provider_id = ? AND status = ?", providerID, domain.InvitationStatusPending).
+		Where("order_id IN (?)", r.db.Model(&domain.Order{}).Select("id").Where("status = ? AND (response_deadline_at IS NULL OR response_deadline_at > ?)", domain.OrderStatusPending, time.Now())).
 		Find(&invitations).Error
 	return invitations, err
 }

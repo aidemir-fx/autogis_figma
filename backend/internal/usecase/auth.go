@@ -32,6 +32,7 @@ type AuthUseCase struct {
 	userRepo                    repository.UserRepository
 	professionalApplicationRepo repository.ProfessionalApplicationRepository
 	jwtService                  *jwt.JWTService
+	verification                *PhoneVerification
 	accessExp                   int
 	refreshExp                  int
 }
@@ -50,6 +51,10 @@ func NewAuthUseCase(
 		accessExp:                   accessExp,
 		refreshExp:                  refreshExp,
 	}
+}
+
+func (uc *AuthUseCase) SetPhoneVerification(service *PhoneVerification) {
+	uc.verification = service
 }
 
 func (uc *AuthUseCase) Register(ctx context.Context, req *domain.RegisterRequest) (*domain.LoginResponse, error) {
@@ -81,7 +86,11 @@ func (uc *AuthUseCase) Register(ctx context.Context, req *domain.RegisterRequest
 		PrivacyAgreedAt: &now,
 	}
 
-	if err := uc.userRepo.Create(ctx, user); err != nil {
+	if uc.verification != nil {
+		if err := uc.verification.Register(ctx, req.VerificationID, user); err != nil {
+			return nil, err
+		}
+	} else if err := uc.userRepo.Create(ctx, user); err != nil {
 		return nil, apperrors.ErrInternalServer
 	}
 

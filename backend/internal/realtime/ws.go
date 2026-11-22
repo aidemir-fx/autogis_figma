@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gmt061/autogis-backend/internal/domain"
 	"github.com/gmt061/autogis-backend/internal/pkg/jwt"
+	"github.com/gmt061/autogis-backend/internal/repository"
 	"github.com/gmt061/autogis-backend/internal/usecase"
 	"github.com/gorilla/websocket"
 )
@@ -21,18 +22,20 @@ type chatWSRequest struct {
 }
 
 type ChatWSHandler struct {
-	hub      *Hub
-	chatUse  *usecase.ChatUseCase
-	jwtSvc   *jwt.JWTService
-	upgrader websocket.Upgrader
+	hub           *Hub
+	chatUse       *usecase.ChatUseCase
+	jwtSvc        *jwt.JWTService
+	upgrader      websocket.Upgrader
+	invalidations repository.ProfessionalApplicationRepository
 }
 
-func NewChatWSHandler(hub *Hub, chatUse *usecase.ChatUseCase, jwtSvc *jwt.JWTService, frontendURL string) *ChatWSHandler {
+func NewChatWSHandler(hub *Hub, chatUse *usecase.ChatUseCase, jwtSvc *jwt.JWTService, frontendURL string, invalidations repository.ProfessionalApplicationRepository) *ChatWSHandler {
 	allowedOrigins := buildAllowedOrigins(frontendURL)
 	return &ChatWSHandler{
-		hub:     hub,
-		chatUse: chatUse,
-		jwtSvc:  jwtSvc,
+		hub:           hub,
+		chatUse:       chatUse,
+		jwtSvc:        jwtSvc,
+		invalidations: invalidations,
 		upgrader: websocket.Upgrader{
 			// "bearer" is used as WS subprotocol when token is sent via
 			// Sec-WebSocket-Protocol: bearer, <jwt>.
@@ -60,6 +63,14 @@ func (h *ChatWSHandler) Serve(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 		return
+	}
+
+	if h.invalidations != nil {
+		invalidation, err := h.invalidations.GetTokenInvalidation(c.Request.Context(), claims.UserID)
+		if err != nil || (invalidation != nil && (claims.IssuedAt == nil || claims.IssuedAt.Time.Before(invalidation.InvalidatedAt))) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			return
+		}
 	}
 
 	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)

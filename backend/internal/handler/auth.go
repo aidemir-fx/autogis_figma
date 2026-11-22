@@ -76,8 +76,12 @@ func ensureModeratorOrAdmin(c *gin.Context) bool {
 }
 
 type AuthHandler struct {
-	authUseCase *usecase.AuthUseCase
-	validator   *validator.Validate
+	authUseCase       *usecase.AuthUseCase
+	validator         *validator.Validate
+	phoneVerification *usecase.PhoneVerification
+	privacyText       string
+	termsText         string
+	disconnectUser    func(string)
 }
 
 func NewAuthHandler(authUseCase *usecase.AuthUseCase) *AuthHandler {

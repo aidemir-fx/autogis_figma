@@ -56,6 +56,7 @@ type OrderRepository interface {
 	HasPhotoAssetForParticipant(ctx context.Context, assetID, userID string) (bool, error)
 	HasProviderScheduleConflict(ctx context.Context, providerID string, start, end time.Time, excludeOrderID string) (bool, error)
 	Update(ctx context.Context, order *domain.Order) error
+	UpdateStatusIfCurrent(ctx context.Context, order *domain.Order, previous domain.OrderStatus, updatedAt time.Time, now time.Time) (bool, error)
 	Delete(ctx context.Context, id string) error
 }
 

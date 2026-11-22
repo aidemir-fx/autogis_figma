@@ -143,20 +143,43 @@ func (uc *OrderUseCase) CreateOrder(ctx context.Context, customerID string, req 
 		return nil, apperrors.ErrInternalServer
 	}
 
+	now := time.Now()
+	responseDeadline := now.Add(24 * time.Hour)
+	var desiredVisitAt *time.Time
+	if req.VehicleYear != nil && (*req.VehicleYear < 1886 || *req.VehicleYear > now.Year()+1) {
+		return nil, apperrors.New("INVALID_VEHICLE_YEAR", "Укажите год выпуска автомобиля", 400)
+	}
+	if req.DesiredDateTime != nil {
+		desired, parseErr := parseRFC3339Flexible(*req.DesiredDateTime)
+		if parseErr != nil || !desired.After(now) {
+			return nil, apperrors.New("INVALID_VISIT_TIME", "Укажите будущее время визита", 400)
+		}
+		desiredVisitAt = &desired
+		if desired.Before(responseDeadline) {
+			responseDeadline = desired
+		}
+	}
+	if len(req.PhotoAssetIDs) > 10 {
+		return nil, apperrors.New("TOO_MANY_PHOTOS", "Можно добавить до 10 фотографий", 400)
+	}
+
 	// Create order
 	order := &domain.Order{
-		CustomerID:     customerID,
-		ProviderID:     &providerID,
-		ActivityTypeID: req.ActivityTypeID,
-		Name:           req.Name,
-		CarBrand:       req.CarBrand,
-		Description:    req.Description,
-		TimePreference: req.TimePreference,
-		Phone:          req.Phone,
-		PhotoAssetIDs:  req.PhotoAssetIDs,
-		Price:          req.Price,
-		ChatID:         chatID,
-		Status:         domain.OrderStatusPending,
+		CustomerID:         customerID,
+		ProviderID:         &providerID,
+		ActivityTypeID:     req.ActivityTypeID,
+		Name:               req.Name,
+		CarBrand:           req.CarBrand,
+		VehicleYear:        req.VehicleYear,
+		DesiredVisitAt:     desiredVisitAt,
+		ResponseDeadlineAt: &responseDeadline,
+		Description:        req.Description,
+		TimePreference:     req.TimePreference,
+		Phone:              req.Phone,
+		PhotoAssetIDs:      req.PhotoAssetIDs,
+		Price:              req.Price,
+		ChatID:             chatID,
+		Status:             domain.OrderStatusPending,
 	}
 
 	if err := uc.orderRepo.CreateWithInvitations(ctx, order, req.ProviderIDs); err != nil {
@@ -287,6 +310,10 @@ func (uc *OrderUseCase) UpdateOrderStatus(ctx context.Context, id string, actorI
 		}
 	}
 
+	if req.Status == domain.OrderStatusExpired {
+		return nil, apperrors.ErrInvalidOrderStatus
+	}
+
 	if order.Status == req.Status {
 		return uc.orderToResponse(order), nil
 	}
@@ -326,14 +353,23 @@ func (uc *OrderUseCase) UpdateOrderStatus(ctx context.Context, id string, actorI
 			return nil, apperrors.New("VALIDATION_FAILED", "cancelReason is required for cancelled status", 400)
 		}
 		order.CancelReason = &reason
+	case domain.OrderStatusRejected:
+		if req.CancelReason != nil && strings.TrimSpace(*req.CancelReason) != "" {
+			reason := strings.TrimSpace(*req.CancelReason)
+			order.CancelReason = &reason
+		}
 	case domain.OrderStatusCompleted:
 		order.CancelReason = nil
 	}
 
+	previous := order.Status
 	order.Status = req.Status
-
-	if err := uc.orderRepo.Update(ctx, order); err != nil {
+	saved, writeErr := uc.orderRepo.UpdateStatusIfCurrent(ctx, order, previous, order.UpdatedAt, time.Now())
+	if writeErr != nil {
 		return nil, apperrors.ErrInternalServer
+	}
+	if !saved {
+		return nil, apperrors.New("ORDER_CONFLICT", "Order has been changed, reload and retry", 409)
 	}
 
 	statusMessage := buildStatusChatMessage(order, req.Status, actorID)
@@ -425,6 +461,9 @@ func (uc *OrderUseCase) orderToResponse(order *domain.Order) *domain.OrderRespon
 		PhotoAssetIDs:     append([]string(nil), order.PhotoAssetIDs...),
 		Price:             order.Price,
 		ConfirmedDateTime: formatNullableTime(order.ConfirmedAt),
+		VehicleYear:       order.VehicleYear,
+		DesiredDateTime:   formatNullableTime(order.DesiredVisitAt),
+		ResponseDeadline:  formatNullableTime(order.ResponseDeadlineAt),
 		CancelReason:      order.CancelReason,
 		ChatID:            order.ChatID,
 		Status:            order.Status,
@@ -451,6 +490,7 @@ func isValidStatusTransition(from, to domain.OrderStatus) bool {
 		domain.OrderStatusPending: {
 			domain.OrderStatusScheduled,
 			domain.OrderStatusCancelled,
+			domain.OrderStatusRejected,
 		},
 		domain.OrderStatusScheduled: {
 			domain.OrderStatusCompleted,
@@ -458,6 +498,8 @@ func isValidStatusTransition(from, to domain.OrderStatus) bool {
 		},
 		domain.OrderStatusCompleted: {},
 		domain.OrderStatusCancelled: {},
+		domain.OrderStatusRejected:  {},
+		domain.OrderStatusExpired:   {},
 	}
 
 	transitions, exists := validTransitions[from]
@@ -516,6 +558,8 @@ func buildStatusChatMessage(order *domain.Order, status domain.OrderStatus, acto
 			return "Клиент отменил заявку."
 		}
 		return "Мастер отменил заявку."
+	case domain.OrderStatusRejected:
+		return "Исполнитель отклонил заявку."
 	case domain.OrderStatusCompleted:
 		return "Мастер отметил заявку как выполненную."
 	default:
