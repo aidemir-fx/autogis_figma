@@ -9,7 +9,7 @@ export const MobileMasterPage = styled.main`
     font-family: var(--default-font-family);
     @media (max-width: 1024px) { display: block; }
 `;
-export const ProfileHeader = styled.header`display:flex;align-items:center;gap:8px;height:54px;padding:0 12px;border-bottom:1px solid var(--ds-color-gray-300);background:var(--ds-color-white);`;
+export const ProfileHeader = styled.header`display:flex;align-items:center;gap:8px;height:54px;padding:0 12px;background:var(--ds-color-gray-100);`;
 export const ProfileHeaderTitle = styled.h1`font-size:15px;font-weight:600;margin:0;`;
 export const HeroRow = styled.div<{ $count: number }>`position:relative;display:grid;grid-template-columns:${({ $count }) => $count > 1 ? "2fr 1fr" : "1fr"};height:180px;gap:4px;background:var(--ds-color-gray-100);overflow:visible;z-index:1;`;
 export const HeroCell = styled.div`overflow:hidden;background:var(--ds-color-gray-300);`;
@@ -22,14 +22,14 @@ export const MasterAvatarWrap = styled.div`flex:0 0 auto;padding:3px;border-radi
 export const MasterIdentityDetails = styled.div`flex:1;min-width:0;& > h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}& > div:nth-child(2){max-width:100%;}`;
 export const AvatarImage = styled.img`width:100%;height:100%;object-fit:cover;display:block;`;
 export const AvatarFallback = styled.span`font-size:20px;font-weight:700;color:var(--ds-color-gray-500);`;
-export const ProfileIdentity = styled.div`display:flex;justify-content:space-between;gap:12px;padding:32px 16px 0;`;
-export const ProfileName = styled.h2`font-size:17px;margin:0 0 4px;font-weight:700;`;
+export const ProfileIdentity = styled.div`display:flex;justify-content:space-between;gap:12px;padding:16px 16px 0;`;
+export const ProfileName = styled.h2`font-size:16px;margin:0 0 4px;font-weight:650;`;
 export const ProfileSubtitle = styled.div`font-size:12px;color:var(--ds-color-gray-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:290px;`;
 export const RatingLine = styled.div`display:flex;align-items:center;gap:4px;margin-top:7px;font-size:12px;color:var(--ds-color-gray-500);`;
 export const RegistrationDate = styled.div`margin-top:4px;font-size:10px;line-height:1.3;color:var(--ds-color-gray-500);`;
 export const ActionIconButton = styled.button<{ $active?: boolean }>`width:44px;height:38px;border:1px solid var(--ds-color-gray-300);border-radius:var(--ds-radius-8);background:var(--ds-color-white);color:${({ $active }) => $active ? "var(--ds-color-blue-500)" : "var(--ds-color-gray-500)"};display:grid;place-items:center;cursor:pointer;&:disabled{opacity:.5;}& svg{font-size:20px;}`;
 export const StatusText = styled.div<{ $open?: boolean }>`padding:10px 16px 0;color:${({ $open }) => $open ? "var(--ds-color-green-500)" : "var(--ds-color-red-500)"};font-size:12px;`;
-export const BottomActionRow = styled.div`display:flex;gap:8px;padding:12px 16px 4px;`;
+export const BottomActionRow = styled.div`display:flex;gap:8px;padding:12px 16px 12px;`;
 export const ActionButton = styled.button`flex:1;height:38px;border:0;border-radius:var(--ds-radius-8);background:var(--ds-color-green-500);color:var(--ds-color-white);font:600 14px var(--default-font-family);display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;&:disabled{opacity:.55;cursor:not-allowed;}`;
 export const MobileSection = styled.section`padding:16px;border-bottom:1px solid var(--ds-color-gray-300);font-size:13px;`;
 export const SectionHeader = styled.button`display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:24px;width:100%;border:0;background:transparent;padding:0;text-align:left;color:inherit;cursor:pointer;`;

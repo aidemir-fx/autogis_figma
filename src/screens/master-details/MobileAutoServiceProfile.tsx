@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Drawer, IconButton } from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
@@ -23,6 +22,7 @@ import { StoryHighlights } from "@modules/stories";
 import { useAuth, useUserProfile } from "@common/hooks";
 import { formatRegistrationDate } from "@common/lib/formatRegistrationDate";
 import { getProviderReviews, type Review } from "@modules/reviews";
+import { ProviderReviewAction, ReviewPhotos } from "@modules/reviews/components/ProviderReviewAction";
 import { addAutoServiceFavorite, getAutoServiceFavorite, removeAutoServiceFavorite } from "@modules/providers";
 import {
     ActionButton,
@@ -133,7 +133,7 @@ export function MobileAutoServiceProfile({ provider }: { provider: Provider }) {
 
     const handleFavorite = () => {
         if (!isAuthenticated) {
-            navigate("/login", { state: { from: `/provider?id=${provider.id}&type=auto_service` } });
+            navigate(`/login?returnTo=${encodeURIComponent(`/provider?id=${provider.id}&type=auto_service`)}`);
             return;
         }
         favoriteMutation.mutate(!favoriteQuery.data);
@@ -141,7 +141,7 @@ export function MobileAutoServiceProfile({ provider }: { provider: Provider }) {
 
     const handleBooking = () => {
         if (!isAuthenticated) {
-            navigate("/login", { state: { from: `/provider?id=${provider.id}&type=auto_service` } });
+            navigate(`/login?returnTo=${encodeURIComponent(`/provider?id=${provider.id}&type=auto_service`)}`);
             return;
         }
         if (canBookOnline) setBookingOpen(true);
@@ -169,6 +169,7 @@ export function MobileAutoServiceProfile({ provider }: { provider: Provider }) {
                     </ReviewStars>
                 </ReviewHeader>
                 {review.comment && <ReviewText>{review.comment}</ReviewText>}
+                <ReviewPhotos urls={review.photoUrls} />
             </ReviewCard>
         );
     };
@@ -200,7 +201,7 @@ export function MobileAutoServiceProfile({ provider }: { provider: Provider }) {
             {provider.description && <p style={{ margin: "10px 16px 0", color: "var(--ds-color-gray-700)", fontSize: 13, lineHeight: 1.45 }}>{provider.description}</p>}
             {provider.liveQueueEnabled && <div style={{ padding: "6px 16px 0" }}><ServiceChip>Живая очередь</ServiceChip></div>}
             <BottomActionRow>
-                <ActionButton type="button" onClick={handleBooking} disabled={!canBookOnline} style={!canBookOnline ? { backgroundColor: "var(--ds-color-gray-300)", color: "var(--ds-color-gray-500)", opacity: 1 } : undefined}><CalendarMonthRoundedIcon />Записаться онлайн</ActionButton>
+                <ActionButton type="button" onClick={handleBooking} disabled={!canBookOnline} style={!canBookOnline ? { backgroundColor: "var(--ds-color-gray-300)", color: "var(--ds-color-gray-500)", opacity: 1 } : undefined}>Записаться онлайн</ActionButton>
                 {phone && <ActionIconButton as="a" href={`tel:${phone}`} aria-label="Позвонить"><PhoneRoundedIcon /></ActionIconButton>}
             </BottomActionRow>
 
@@ -256,7 +257,8 @@ export function MobileAutoServiceProfile({ provider }: { provider: Provider }) {
             <MobileSection>
                 <SectionHeader><SectionTitle>Отзывы</SectionTitle>{reviews.length > 3 && <ReviewsLink type="button" onClick={() => setReviewsOpen(true)}>Все {reviews.length}</ReviewsLink>}</SectionHeader>
                 {reviews.length > 0 ? <>
-                    <ReviewsSummary><ReviewsScore>{rating ? rating.toFixed(1) : "0.0"}</ReviewsScore><ReviewStars>{[1, 2, 3, 4, 5].map((star) => <StarRoundedIcon key={star} sx={{ color: star <= Math.round(rating) ? "var(--ds-color-yellow-500)" : "var(--ds-color-gray-300)", fontSize: 15 }} />)}</ReviewStars><span>{reviews.length} отзывов</span></ReviewsSummary>
+                    <ProviderReviewAction providerId={provider.userId} reviews={reviews} />
+                <ReviewsSummary><ReviewsScore>{rating ? rating.toFixed(1) : "0.0"}</ReviewsScore><ReviewStars>{[1, 2, 3, 4, 5].map((star) => <StarRoundedIcon key={star} sx={{ color: star <= Math.round(rating) ? "var(--ds-color-yellow-500)" : "var(--ds-color-gray-300)", fontSize: 15 }} />)}</ReviewStars><span>{reviews.length} отзывов</span></ReviewsSummary>
                     <div>{reviews.slice(0, 3).map(renderReview)}</div>
                 </> : <EmptyState>Пока нет отзывов</EmptyState>}
             </MobileSection>

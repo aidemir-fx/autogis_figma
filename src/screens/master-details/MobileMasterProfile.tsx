@@ -5,7 +5,6 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
-import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
@@ -20,6 +19,7 @@ import { useAuth, useCoords, useUserProfile } from "@common/hooks";
 import { formatRegistrationDate } from "@common/lib/formatRegistrationDate";
 import { getAccountAvatarUrl, getPublicEntityMedia, type MediaAsset } from "@modules/media/api";
 import { getProviderReviews, type Review } from "@modules/reviews";
+import { ProviderReviewAction, ReviewPhotos } from "@modules/reviews/components/ProviderReviewAction";
 import { StoryHighlights } from "@modules/stories";
 import { CreateOrderModal } from "@modules/masters/features/CreateOrderModal";
 import { Map as YandexMap, Placemark, YMaps } from "@pbe/react-yandex-maps";
@@ -120,6 +120,7 @@ export function MobileMasterProfile({ master }: { master: Master }) {
     const [expanded, setExpanded] = useState<Record<string, boolean>>({ services: true, schedule: false, address: true });
     const [reviewsOpen, setReviewsOpen] = useState(false);
     const [showAllPhotos, setShowAllPhotos] = useState(false);
+    const [showAllServices, setShowAllServices] = useState(false);
     const [bookingOpen, setBookingOpen] = useState(false);
 
     const mediaQuery = useQuery({
@@ -167,14 +168,14 @@ export function MobileMasterProfile({ master }: { master: Master }) {
     const toggle = (key: string) => setExpanded((state) => ({ ...state, [key]: !state[key] }));
     const handleFavorite = () => {
         if (!isAuthenticated) {
-            navigate("/login", { state: { from: `/provider?id=${master.id}&type=master` } });
+            navigate(`/login?returnTo=${encodeURIComponent(`/provider?id=${master.id}&type=master`)}`);
             return;
         }
         favoriteMutation.mutate(!favoriteQuery.data);
     };
     const handleBooking = () => {
         if (!isAuthenticated) {
-            navigate("/login", { state: { from: `/provider?id=${master.id}&type=master` } });
+            navigate(`/login?returnTo=${encodeURIComponent(`/provider?id=${master.id}&type=master`)}`);
             return;
         }
         if (canBook) setBookingOpen(true);
@@ -201,6 +202,7 @@ export function MobileMasterProfile({ master }: { master: Master }) {
                     <ReviewStarsRow rating={review.rating} />
                 </ReviewHeader>
                 {review.comment && <ReviewText>{review.comment}</ReviewText>}
+                <ReviewPhotos urls={review.photoUrls} />
             </ReviewCard>
         );
     };
@@ -222,14 +224,14 @@ export function MobileMasterProfile({ master }: { master: Master }) {
                     <RatingLine><StarRoundedIcon sx={{ color: "var(--ds-color-yellow-500)", fontSize: 17 }} /><strong>{averageRating ? averageRating.toFixed(1) : "0.0"}</strong><span>({master.reviewsCount ?? reviews.length})</span></RatingLine>
                     {registrationDate && <RegistrationDate>На АвтоГис с {registrationDate}</RegistrationDate>}
                 </MasterIdentityDetails>
-                <ActionIconButton type="button" aria-label="Добавить в избранное" onClick={handleFavorite} $active={Boolean(favoriteQuery.data)}>
+                <ActionIconButton type="button" aria-label={favoriteQuery.data ? "Убрать из избранного" : "Добавить в избранное"} onClick={handleFavorite} $active={Boolean(favoriteQuery.data)}>
                     {favoriteQuery.data ? <FavoriteRoundedIcon /> : <FavoriteBorderRoundedIcon />}
                 </ActionIconButton>
             </MasterProfileIdentity>
 
             <StatusText $open={isOpen}>{isOpen ? `Открыто${master.workTo ? ` до ${master.workTo}` : ""}` : "Закрыто"}</StatusText>
             <BottomActionRow>
-                <ActionButton type="button" onClick={handleBooking} disabled={!canBook}><CalendarMonthRoundedIcon />Записаться онлайн</ActionButton>
+                <ActionButton type="button" onClick={handleBooking} disabled={!canBook}>Записаться онлайн</ActionButton>
                 {phone && <ActionIconButton as="a" href={`tel:${phone}`} aria-label="Позвонить"><PhoneRoundedIcon /></ActionIconButton>}
             </BottomActionRow>
 
@@ -237,7 +239,7 @@ export function MobileMasterProfile({ master }: { master: Master }) {
 
             <MobileSection>
                 <SectionHeader onClick={() => toggle("services")}><SectionTitle>Услуги</SectionTitle>{expanded.services ? <KeyboardArrowUpRoundedIcon /> : <KeyboardArrowDownRoundedIcon />}</SectionHeader>
-                {expanded.services && <ServicesWrap>{(master.services ?? []).slice(0, 5).map((service) => <ServiceChip key={service}>{service}</ServiceChip>)}{(master.services?.length ?? 0) > 5 && <ServiceChip>+{(master.services?.length ?? 0) - 5}</ServiceChip>}</ServicesWrap>}
+                {expanded.services && <ServicesWrap>{(master.services ?? []).slice(0, showAllServices ? master.services?.length : 3).map((service) => <ServiceChip key={service}>{service}</ServiceChip>)}{(master.services?.length ?? 0) > 3 && <ServiceChip as="button" type="button" onClick={() => setShowAllServices(!showAllServices)} style={{ border: 0, font: "inherit", cursor: "pointer" }}>{showAllServices ? "Свернуть" : `+${(master.services?.length ?? 0) - 3}`}</ServiceChip>}</ServicesWrap>}
             </MobileSection>
 
             <MobileSection>
@@ -267,6 +269,7 @@ export function MobileMasterProfile({ master }: { master: Master }) {
 
             <MobileSection>
                 <SectionHeader><SectionTitle>Отзывы</SectionTitle>{reviews.length > 3 && <ReviewsLink type="button" onClick={() => setReviewsOpen(true)}>Все {reviews.length}</ReviewsLink>}</SectionHeader>
+                <ProviderReviewAction providerId={master.userId} reviews={reviews} />
                 <ReviewsSummary><ReviewsScore>{averageRating ? averageRating.toFixed(1) : "0.0"}</ReviewsScore><ReviewStarsRow rating={Math.round(averageRating)} /><span>{reviews.length} отзывов</span></ReviewsSummary>
                 <div>{reviews.slice(0, 3).map(renderReview)}</div>
             </MobileSection>

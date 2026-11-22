@@ -1,6 +1,8 @@
 import { useState } from "react";
 import {
+    Alert,
     Box,
+    useMediaQuery,
     Button,
     Chip,
     Dialog,
@@ -15,6 +17,8 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { theme } from "@common/theme";
+import { usePhotoUpload } from "@modules/masters/features/CreateOrderModal/usePhotoUpload";
+import { COMPACT_LAYOUT_MEDIA_QUERY } from "@modules/layout/features/layoutViewport";
 import {
     createOrderReview,
     deleteOrderReview,
@@ -41,7 +45,7 @@ const REVIEW_LABELS: Record<number, string> = {
 
 type OrderReviewPromptProps = {
     orderId: string;
-    variant?: "booking" | "chat";
+    variant?: "booking" | "chat" | "profile";
 };
 
 export function OrderReviewPrompt({
@@ -49,6 +53,11 @@ export function OrderReviewPrompt({
     variant = "booking",
 }: OrderReviewPromptProps) {
     const queryClient = useQueryClient();
+    const compact = useMediaQuery(COMPACT_LAYOUT_MEDIA_QUERY);
+    const photoUpload = usePhotoUpload("review");
+    const [retainedPhotos, setRetainedPhotos] = useState<string[]>([]);
+    const [formError, setFormError] = useState("");
+    const [sent, setSent] = useState(false);
     const [open, setOpen] = useState(false);
     const [rating, setRating] = useState<number | null>(null);
     const [comment, setComment] = useState("");
@@ -65,25 +74,23 @@ export function OrderReviewPrompt({
                 rating: rating as number,
                 comment: comment.trim(),
                 tags,
+                photoAssetIds: [...retainedPhotos, ...photoUpload.uploadedAssetIds],
             };
             return review
                 ? updateOrderReview(orderId, data)
                 : createOrderReview(orderId, data);
         },
         onSuccess: (createdReview) => {
+            queryClient.invalidateQueries({ queryKey: ["providerReviews", createdReview.toId] });
             queryClient.setQueryData(["orderReview", orderId], createdReview);
-            setOpen(false);
+            if (compact) setSent(true);
+            else setOpen(false);
+            photoUpload.clearPhotos();
             setRating(null);
             setComment("");
             setTags([]);
         },
-        onError: (error: any) => {
-            toast.error(
-                error?.response?.data?.message ||
-                    error?.response?.data?.error ||
-                    (review ? "Не удалось сохранить отзыв" : "Не удалось отправить отзыв"),
-            );
-        },
+        onError: () => setFormError("Не удалось сохранить отзыв. Попробуйте ещё раз."),
     });
 
     const deleteMutation = useMutation({
@@ -106,7 +113,18 @@ export function OrderReviewPrompt({
 
     if (isLoading) return null;
 
+    const closeEditor = () => {
+        if (mutation.isPending) return;
+        setOpen(false);
+        setSent(false);
+        setFormError("");
+        photoUpload.clearPhotos();
+    };
     const openEditor = () => {
+        photoUpload.clearPhotos();
+        setRetainedPhotos(review?.photoAssetIds ?? []);
+        setFormError("");
+        setSent(false);
         setRating(review?.rating ?? null);
         setComment(review?.comment ?? "");
         setTags(review?.tags ?? []);
@@ -183,12 +201,7 @@ export function OrderReviewPrompt({
     const button = (
         <Button
             variant="outlined"
-            onClick={() => {
-                setRating(null);
-                setComment("");
-                setTags([]);
-                setOpen(true);
-            }}
+            onClick={openEditor}
             fullWidth={variant === "chat"}
             sx={{
                 mt: variant === "booking" ? 0.25 : 0,
@@ -235,13 +248,20 @@ export function OrderReviewPrompt({
 
             <Dialog
                 open={open}
-                onClose={() => !mutation.isPending && setOpen(false)}
+                onClose={closeEditor}
                 fullWidth
                 maxWidth="xs"
+                PaperProps={{ sx: compact ? { m: 2, width: "calc(100% - 32px)", borderRadius: "12px" } : undefined }}
             >
-                <DialogTitle>{review ? "Изменить отзыв" : "Как прошёл заказ?"}</DialogTitle>
+                {sent ? <>
+                    <DialogTitle>Отзыв отправлен</DialogTitle>
+                    <DialogContent>Спасибо, что поделились впечатлениями.</DialogContent>
+                    <DialogActions><Button onClick={closeEditor}>Готово</Button></DialogActions>
+                </> : <>
+                <DialogTitle>{review ? "Изменить отзыв" : "Оставить отзыв"}</DialogTitle>
                 <DialogContent>
-                    <Stack spacing={2} alignItems="center" sx={{ pt: 1 }}>
+                    <Stack spacing={2} alignItems={compact ? "stretch" : "center"} sx={{ pt: 1 }}>
+                        {compact && <Typography sx={{ fontSize: 12 }}>Ваша оценка</Typography>}
                         <Rating
                             value={rating}
                             onChange={(_, value) => setRating(value)}
@@ -250,7 +270,7 @@ export function OrderReviewPrompt({
                         <Typography sx={{ fontSize: 13, color: theme.palette.text.secondary }}>
                             {rating ? REVIEW_LABELS[rating] : "Выберите оценку"}
                         </Typography>
-                        <Stack direction="row" flexWrap="wrap" gap={0.75} justifyContent="center">
+                        {!compact && <Stack direction="row" flexWrap="wrap" gap={0.75} justifyContent="center">
                             {REVIEW_TAGS.map((tag) => (
                                 <Chip
                                     key={tag}
@@ -268,31 +288,62 @@ export function OrderReviewPrompt({
                                     }
                                 />
                             ))}
-                        </Stack>
+                        </Stack>}
                         <TextField
                             value={comment}
                             onChange={(event) => setComment(event.target.value)}
-                            label="Комментарий"
+                            label={compact ? "Ваш отзыв (необязательно)" : "Комментарий"}
                             placeholder="Расскажите о результате — это поможет другим клиентам"
                             multiline
                             minRows={3}
                             fullWidth
                             inputProps={{ maxLength: 2000 }}
                         />
+                        <Typography sx={{ fontSize: 12 }}>Фотографии (необязательно, до 10 фото)</Typography>
+                        <Stack direction="row" flexWrap="wrap" gap={1}>
+                            {retainedPhotos.map((id, index) => <Box key={id} sx={{ position: "relative" }}>
+                                {review?.photoUrls?.[index] && <Box component="img" sx={{ width: 72, height: 72, objectFit: "cover", borderRadius: 2 }} src={review.photoUrls[index]} alt="" />}
+                                <Button size="small" onClick={() => setRetainedPhotos((current) => current.filter((value) => value !== id))}>Убрать фото</Button>
+                            </Box>)}
+                            {photoUpload.photos.map((photo) => <Box key={photo.id}>
+                                <Box component="img" sx={{ width: 72, height: 72, objectFit: "cover", borderRadius: 2 }} src={photo.previewUrl} alt="" />
+                                <Button size="small" onClick={() => photoUpload.removePhoto(photo.id)}>{photo.error ? "Убрать фото с ошибкой" : "Убрать фото"}</Button>
+                            </Box>)}
+                            {retainedPhotos.length + photoUpload.photos.length < 10 && <Button component="label" variant="outlined" sx={{ width: 72, minHeight: 72, borderStyle: "dashed", textTransform: "none" }}>
+                                + Фото
+                                <input hidden type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => {
+                                    const files = Array.from(event.target.files ?? []);
+                                    if (files.length + retainedPhotos.length + photoUpload.photos.length > 10) {
+                                        setFormError("Можно добавить до 10 фотографий.");
+                                    } else {
+                                        setFormError("");
+                                        photoUpload.addPhotos(files);
+                                    }
+                                    event.target.value = "";
+                                }} />
+                            </Button>}
+                        </Stack>
+                        {formError && <Alert severity="error">{formError}</Alert>}
                     </Stack>
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button onClick={() => setOpen(false)} disabled={mutation.isPending}>
-                        Позже
+                    <Button onClick={closeEditor} disabled={mutation.isPending}>
+                        Отмена
                     </Button>
                     <Button
                         variant="contained"
-                        onClick={() => mutation.mutate()}
-                        disabled={!rating || mutation.isPending}
+                        onClick={() => {
+                            if (!rating) { setFormError("Выберите оценку."); return; }
+                            if (photoUpload.photos.some((photo) => photo.error)) { setFormError("Уберите фото, которые не загрузились."); return; }
+                            setFormError("");
+                            mutation.mutate();
+                        }}
+                        disabled={photoUpload.isUploading || mutation.isPending}
                     >
-                        {review ? "Сохранить изменения" : "Отправить отзыв"}
+                        {mutation.isPending ? "Отправляем…" : review ? "Сохранить изменения" : "Отправить отзыв"}
                     </Button>
                 </DialogActions>
+                </>}
             </Dialog>
 
             <Dialog

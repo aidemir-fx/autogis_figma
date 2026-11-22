@@ -2,11 +2,16 @@ import {
     Dialog,
     DialogTitle,
     DialogActions,
+    Alert,
     MenuItem,
+    useMediaQuery,
+    Stack,
     Typography,
     CircularProgress,
 } from "@mui/material";
 
+import { COMPACT_LAYOUT_MEDIA_QUERY } from "@modules/layout/features/layoutViewport";
+import { ORDER_TIME_PREFERENCE_LABELS } from "@modules/orders/api";
 import { CalendarIcon } from "@common/icons";
 import {
     DialogHeaderWrapper,
@@ -27,7 +32,7 @@ import { Button, TextField } from "@common/components";
 import { useLogic } from "./useLogic";
 import { Controller } from "react-hook-form";
 import { CreateOrderModalProps } from "./types";
-import { ORDER_TIME_PREFERENCE_LABELS } from "@modules/orders/api";
+
 
 // ─── Inline SVG icons (no extra deps) ─────────────────────────────────────────
 
@@ -60,6 +65,7 @@ function ClockIcon() {
 
 export function CreateOrderModal(props: CreateOrderModalProps) {
     const { providers, open } = props;
+    const compact = useMediaQuery(COMPACT_LAYOUT_MEDIA_QUERY);
     const {
         form,
         isLoading,
@@ -67,7 +73,9 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         photoUpload,
         handleSubmit,
         handleClose,
-    } = useLogic(props);
+        finish,
+        submitState,
+    } = useLogic({ ...props, compact });
 
     const {
         control,
@@ -80,16 +88,30 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     return (
         <Dialog
             open={open}
-            onClose={handleClose}
+            onClose={submitState === "success" ? finish : handleClose}
             maxWidth="sm"
             fullWidth
             PaperProps={{
                 sx: {
-                    borderRadius: "14px",
+                    borderRadius: compact ? "12px" : "14px",
+                    ...(compact && {
+                        width: "calc(100% - 32px)",
+                        m: 2,
+                        "& .MuiDialogTitle-root, & .MuiDialogContent-root, & .MuiDialogActions-root": { px: 2 },
+                        "& .MuiDialogActions-root button": { minHeight: 38, borderRadius: "8px" },
+                        "& .MuiDialogActions-root button:last-of-type": { bgcolor: "var(--ds-color-blue-600)", color: "white" },
+                        "& .MuiInputBase-root": { bgcolor: "var(--ds-color-gray-100)", minHeight: 44 },
+                        "& .MuiDialogTitle-root svg": { color: "var(--ds-color-blue-500)" },
+                    }),
                     boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
                 },
             }}
         >
+            {submitState === "success" ? <>
+                <DialogTitle>Заявка отправлена</DialogTitle>
+                <StyledDialogContent>Исполнитель увидит заявку и подтвердит время или предложит другое.</StyledDialogContent>
+                <DialogActions><Button variant="contained" onClick={finish}>Готово</Button></DialogActions>
+            </> : <>
             <DialogTitle sx={{ pb: 0, pt: 3, px: 3 }}>
                 <DialogHeaderWrapper>
                     <CalendarIcon />
@@ -168,39 +190,31 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                     )}
                 />
 
-                {/* Предпочтение по времени */}
-                <div>
-                    <Controller
-                        name="timePreference"
-                        control={control}
-                        rules={{ required: "Выберите удобный вариант по времени" }}
-                        render={({ field }) => (
-                            <TextField
-                                {...field}
-                                select
-                                fullWidth
-                                label="Когда вам удобно?"
-                                error={!!errors.timePreference}
-                                helperText={errors.timePreference?.message}
-                            >
-                                <MenuItem value="" disabled>
-                                    Выберите вариант
-                                </MenuItem>
-                                {Object.entries(ORDER_TIME_PREFERENCE_LABELS).map(
-                                    ([value, label]) => (
-                                        <MenuItem key={value} value={value}>
-                                            {label}
-                                        </MenuItem>
-                                    )
-                                )}
-                            </TextField>
-                        )}
-                    />
-                    <TimeHint>
-                        <ClockIcon />
-                        Точные дату и время записи укажет мастер после принятия заявки
-                    </TimeHint>
-                </div>
+                {compact ? <>
+                <Controller name="vehicleYear" control={control} rules={{
+                    required: "Укажите год автомобиля",
+                    validate: (value) => /^\d{4}$/.test(value) && Number(value) >= 1886 && Number(value) <= new Date().getFullYear() + 1
+                        || "Укажите корректный год",
+                }} render={({ field }) => <TextField {...field} fullWidth label="Год автомобиля"
+                    placeholder="Например: 2018" inputProps={{ inputMode: "numeric", maxLength: 4 }}
+                    error={!!errors.vehicleYear} helperText={errors.vehicleYear?.message} />} />
+
+                <Stack spacing={1}>
+                    <Controller name="desiredDate" control={control} rules={{ required: "Выберите дату" }}
+                        render={({ field }) => <TextField {...field} fullWidth type="date" label="Желаемая дата"
+                            InputLabelProps={{ shrink: true }} error={!!errors.desiredDate} helperText={errors.desiredDate?.message} />} />
+                    <Controller name="desiredTime" control={control} rules={{ required: "Введите время" }}
+                        render={({ field }) => <TextField {...field} fullWidth type="time" label="Желаемое время (МСК)"
+                            InputLabelProps={{ shrink: true }} error={!!errors.desiredTime} helperText={errors.desiredTime?.message} />} />
+                    <TimeHint><ClockIcon />Исполнитель подтвердит время или предложит свободное.</TimeHint>
+                </Stack>
+                </> : <Controller name="timePreference" control={control}
+                    rules={{ required: "Выберите удобный вариант по времени" }}
+                    render={({ field }) => <TextField {...field} fullWidth select label="Когда вам удобно?"
+                        error={!!errors.timePreference} helperText={errors.timePreference?.message}>
+                        <MenuItem value="" disabled>Выберите вариант</MenuItem>
+                        {Object.entries(ORDER_TIME_PREFERENCE_LABELS).map(([key, label]) => <MenuItem key={key} value={key}>{label}</MenuItem>)}
+                    </TextField>} />}
 
                 {/* Описание проблемы */}
                 <Controller
@@ -288,6 +302,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         )}
                     </PhotoGrid>
                 </PhotoSection>
+                {submitState === "error" && <Alert severity="error">Не удалось отправить заявку. Попробуйте ещё раз.</Alert>}
             </StyledDialogContent>
 
             <DialogActions
@@ -312,11 +327,12 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                     onClick={handleSubmit}
                     disabled={isSubmitDisabled}
                     isLoading={isLoading}
-                    style={{ flex: 2 }}
+                    style={{ flex: compact ? 1 : 2 }}
                 >
                     {isLoading ? "Отправка..." : "Отправить заявку"}
                 </Button>
             </DialogActions>
+            </>}
         </Dialog>
     );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useForm, UseFormReturn } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "@common/hooks/useAuth";
 import { useUserProfile } from "@common/hooks/useUserProfile";
@@ -16,28 +16,35 @@ export interface OrderFormData {
     name: string;
     phone: string;
     carBrand: string;
+    vehicleYear: string;
+    desiredDate: string;
+    desiredTime: string;
     description: string;
     timePreference: OrderTimePreference | "";
 }
 
-export type UseLogicParams = CreateOrderModalProps;
+export type UseLogicParams = CreateOrderModalProps & { compact: boolean };
 
 export interface UseLogicReturn {
     form: UseFormReturn<OrderFormData>;
     isLoading: boolean;
     activityTypeId: string;
+    submitState: "idle" | "success" | "error";
     isSubmitDisabled: boolean;
     photoUpload: UsePhotoUploadReturn;
     handleSubmit: () => void;
     handleClose: () => void;
+    finish: () => void;
 }
 
 export function useLogic(props: UseLogicParams): UseLogicReturn {
-    const { onClose, onSuccess, providers } = props;
+    const { onClose, onSuccess, providers, open, compact } = props;
     const primaryProvider = providers?.[0];
     const { isAuthenticated } = useAuth();
     const { profile, phone } = useUserProfile();
     const navigate = useNavigate();
+    const location = useLocation();
+    const [submitState, setSubmitState] = useState<"idle" | "success" | "error">("idle");
     const [isLoading, setIsLoading] = useState(false);
     const [activityTypeId, setActivityTypeId] = useState<string>("");
     const photoUpload = usePhotoUpload();
@@ -51,6 +58,9 @@ export function useLogic(props: UseLogicParams): UseLogicReturn {
             name: "",
             phone: "",
             carBrand: "",
+            vehicleYear: "",
+            desiredDate: "",
+            desiredTime: "",
             description: "",
             timePreference: "",
         },
@@ -59,6 +69,7 @@ export function useLogic(props: UseLogicParams): UseLogicReturn {
     const { handleSubmit: formHandleSubmit, reset } = form;
 
     useEffect(() => {
+        if (!open) return;
         const fetchActivityType = async () => {
             try {
                 const providerActivityType = primaryProvider?.activityType || "master";
@@ -73,38 +84,36 @@ export function useLogic(props: UseLogicParams): UseLogicReturn {
         };
 
         fetchActivityType();
-    }, [primaryProvider?.activityType]);
+    }, [open, primaryProvider?.activityType]);
 
     useEffect(() => {
-        if (profile) {
+        if (open && profile) {
             reset({
                 name: profile.name || "",
                 phone: phone || "",
                 carBrand: "",
+            vehicleYear: "",
+            desiredDate: "",
+            desiredTime: "",
                 description: "",
                 timePreference: "",
             });
         }
-    }, [profile, phone, reset]);
+    }, [open, profile?.id, phone, reset]);
 
-    const watchedValues = form.watch();
-
-    const isSubmitDisabled =
-        isLoading ||
-        !activityTypeId ||
-        !watchedValues.name?.trim() ||
-        !watchedValues.phone?.trim() ||
-        !watchedValues.carBrand?.trim() ||
-        !watchedValues.description?.trim() ||
-        !watchedValues.timePreference ||
-        isSelfBooking ||
-        photoUpload.isUploading;
+    const isSubmitDisabled = isLoading || !activityTypeId || isSelfBooking || photoUpload.isUploading;
 
     const handleClose = () => {
+        if (isLoading) return;
+        photoUpload.clearPhotos();
+        setSubmitState("idle");
         reset({
             name: profile?.name || "",
             phone: phone || "",
             carBrand: "",
+            vehicleYear: "",
+            desiredDate: "",
+            desiredTime: "",
             description: "",
             timePreference: "",
         });
@@ -113,7 +122,7 @@ export function useLogic(props: UseLogicParams): UseLogicReturn {
 
     const onSubmit = async (data: OrderFormData) => {
         if (!isAuthenticated) {
-            navigate("/login");
+            navigate(`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`);
             return;
         }
 
@@ -127,11 +136,16 @@ export function useLogic(props: UseLogicParams): UseLogicReturn {
             return;
         }
 
-        if (!data.timePreference) {
-            toast.error("Выберите удобный вариант по времени");
+        const desiredDateTime = compact ? `${data.desiredDate}T${data.desiredTime}:00+03:00` : undefined;
+        if (desiredDateTime && (!Number.isFinite(Date.parse(desiredDateTime)) || Date.parse(desiredDateTime) <= Date.now())) {
+            form.setError("desiredDate", { message: "Укажите будущее время визита по Москве" });
             return;
         }
-
+        if (photoUpload.photos.some((photo) => photo.error)) {
+            toast.error("Уберите фото, которые не загрузились.");
+            return;
+        }
+        setSubmitState("idle");
         setIsLoading(true);
 
         try {
@@ -146,16 +160,22 @@ export function useLogic(props: UseLogicParams): UseLogicReturn {
                 phone: data.phone,
                 carBrand: data.carBrand,
                 description: data.description,
-                timePreference: data.timePreference,
+                timePreference: data.timePreference || "not_urgent",
+                vehicleYear: compact ? Number(data.vehicleYear) : undefined,
+                desiredDateTime,
                 photoAssetIds: photoUpload.uploadedAssetIds,
             });
 
-            toast.success("Заявка успешно отправлена!");
-            onSuccess?.();
-            handleClose();
+            photoUpload.clearPhotos();
+            if (compact) {
+                setSubmitState("success");
+            } else {
+                toast.success("Заявка успешно отправлена!");
+                onClose();
+                onSuccess?.();
+            }
         } catch (error) {
-            console.error("Ошибка при создании заявки:", error);
-            toast.error("Ошибка при отправке заявки");
+            setSubmitState("error");
         } finally {
             setIsLoading(false);
         }
@@ -165,9 +185,11 @@ export function useLogic(props: UseLogicParams): UseLogicReturn {
         form,
         isLoading,
         activityTypeId,
+        submitState,
         isSubmitDisabled,
         photoUpload,
         handleSubmit: () => formHandleSubmit(onSubmit)(),
         handleClose,
+        finish: () => { handleClose(); onSuccess?.(); },
     };
 }

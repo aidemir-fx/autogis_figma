@@ -23,11 +23,12 @@ export interface UsePhotoUploadReturn {
     photos: PhotoItem[];
     addPhotos: (files: FileList | File[]) => void;
     removePhoto: (id: string) => void;
+    clearPhotos: () => void;
     uploadedAssetIds: string[];
     isUploading: boolean;
 }
 
-export function usePhotoUpload(): UsePhotoUploadReturn {
+export function usePhotoUpload(purpose: "order" | "review" = "order"): UsePhotoUploadReturn {
     const [photos, setPhotos] = useState<PhotoItem[]>([]);
 
     const addPhotos = useCallback(
@@ -71,14 +72,14 @@ export function usePhotoUpload(): UsePhotoUploadReturn {
                 uploadPhoto(item.id, item.file);
             });
         },
-        [photos.length]
+        [photos.length, purpose]
     );
 
     const uploadPhoto = useCallback(async (localId: string, file: File) => {
         try {
             const intent = await createUploadIntent({
                 entityType: "object",
-                entityId: localId,
+                entityId: purpose === "review" ? `review-${localId}` : localId,
                 category: "photo",
                 mimeType: file.type,
                 sizeBytes: file.size,
@@ -101,7 +102,7 @@ export function usePhotoUpload(): UsePhotoUploadReturn {
 
             if (isMediaApiUnavailable) {
                 toast.warning(
-                    "Сервис фото временно недоступен. Заявка будет отправлена без фото."
+                    "Сервис фотографий временно недоступен."
                 );
             } else {
                 toast.error("Не удалось загрузить фотографию. Попробуйте ещё раз");
@@ -115,7 +116,7 @@ export function usePhotoUpload(): UsePhotoUploadReturn {
                 )
             );
         }
-    }, []);
+    }, [purpose]);
 
     const removePhoto = useCallback((id: string) => {
         setPhotos((prev) => {
@@ -127,6 +128,11 @@ export function usePhotoUpload(): UsePhotoUploadReturn {
         });
     }, []);
 
+    const clearPhotos = () => {
+        for (const photo of photos) URL.revokeObjectURL(photo.previewUrl);
+        setPhotos([]);
+    };
+
     const uploadedAssetIds = photos
         .filter((p) => p.assetId !== null && !p.error)
         .map((p) => p.assetId as string);
@@ -137,6 +143,7 @@ export function usePhotoUpload(): UsePhotoUploadReturn {
         photos,
         addPhotos,
         removePhoto,
+        clearPhotos,
         uploadedAssetIds,
         isUploading,
     };

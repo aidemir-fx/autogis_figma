@@ -17,6 +17,8 @@ export type Review = {
     rating: number;
     comment: string;
     tags?: string[];
+    photoAssetIds?: string[];
+    photoUrls?: string[];
     createdAt: string;
 };
 
@@ -24,6 +26,7 @@ export type CreateReviewData = {
     rating: number;
     comment?: string;
     tags?: string[];
+    photoAssetIds?: string[];
 };
 
 export async function getOrderReview(orderId: string): Promise<Review | null> {

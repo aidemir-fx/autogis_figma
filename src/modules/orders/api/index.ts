@@ -13,6 +13,8 @@ export interface CreateOrderData {
     name: string;
     phone: string;
     carBrand: string;
+    vehicleYear?: number;
+    desiredDateTime?: string;
     description: string;
     timePreference: OrderTimePreference;
     photoAssetIds?: string[];
@@ -27,6 +29,8 @@ export interface Order {
     name: string;
     phone: string;
     carBrand: string;
+    vehicleYear?: number;
+    desiredDateTime?: string;
     description: string;
     timePreference?: OrderTimePreference;
     photoAssetIds?: string[];
