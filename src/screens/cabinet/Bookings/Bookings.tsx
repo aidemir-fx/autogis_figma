@@ -897,7 +897,7 @@ export function Bookings() {
                 </Dialog>
     );
     if (compact) {
-        return <CompactBookings orders={sortedOrders} loading={!profile || isLoading} error={isError}
+        return <CompactBookings orders={sortedOrders} loading={!profile || isLoading} error={isError && !orders}
             reload={() => void refetch()} tab={compactTab} history={historyFilter}
             changeTab={(next) => { setNotice(null); setSearchParams({ tab: next }); }}
             changeHistory={(next) => setSearchParams({ tab: "history", status: next })}

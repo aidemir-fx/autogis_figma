@@ -75,6 +75,11 @@ function BookingItem({ order, selected, onChat, onCancel }: {
         ["Описание", order.description],
         ["Причина", order.cancelReason],
         ["Заявка истекла", order.status === "expired" ? format(order.responseDeadline) : undefined],
+        ["Причина истечения", order.status === "expired" && order.responseDeadline
+            ? order.desiredDateTime && Date.parse(order.desiredDateTime) === Date.parse(order.responseDeadline)
+                ? "Наступило желаемое время визита"
+                : "Исполнитель не ответил за 24 часа"
+            : undefined],
     ].filter(([, value]) => Boolean(value));
     const routeURL = route(order);
     return <article className="compact-booking">
@@ -120,26 +125,32 @@ export function CompactBookings({
     const records = orders.filter((order) => order.status !== "pending" && order.status !== "scheduled");
     const current = tab === "pending" ? pending : tab === "confirmed" ? confirmed :
         records.filter((order) => history === "all" || order.status === history);
-    const next = [...confirmed].filter((order) => order.confirmedDateTime && Date.parse(order.confirmedDateTime) + 3_600_000 > Date.now())
-        .sort((a, b) => Date.parse(a.confirmedDateTime!) - Date.parse(b.confirmedDateTime!))[0];
-    const nextRoute = next ? route(next) : null;
-    const nextPhone = next ? tel(next) : null;
+    const now = Date.now();
+    const next = confirmed
+        .flatMap((order) => {
+            const start = order.confirmedDateTime ? Date.parse(order.confirmedDateTime) : NaN;
+            return start + 3_600_000 > now ? [{ order, start }] : [];
+        })
+        .sort((a, b) => a.start - b.start)[0];
+    const nextBooking = next?.order;
+    const nextRoute = nextBooking ? route(nextBooking) : null;
+    const nextPhone = nextBooking ? tel(nextBooking) : null;
 
     return <div className="compact-bookings">
         <CompactCustomerHeader />
         <main className="compact-bookings-content">
             <h1>Мои записи</h1>
-            {next && <section className="compact-booking-next">
-                <div className="compact-booking-next-label"><img alt="" src={calendar} /> Ближайшая запись</div>
-                <strong>{format(next.confirmedDateTime)}</strong>
+            {next && nextBooking && <section className="compact-booking-next">
+                <div className="compact-booking-next-label"><img alt="" src={calendar} /> {next.start <= now ? "Запись идёт сейчас" : "Ближайшая запись"}</div>
+                <strong>{format(nextBooking.confirmedDateTime)}</strong>
                 <div className="compact-booking-next-person">
-                    {next.provider?.avatarUrl && <img src={next.provider.avatarUrl} alt="" />}
-                    <div>{name(next)}<small>{service(next)}</small></div>
+                    {nextBooking.provider?.avatarUrl && <img src={nextBooking.provider.avatarUrl} alt="" />}
+                    <div>{name(nextBooking)}<small>{service(nextBooking)}</small></div>
                 </div>
-                {next.bookingProvider?.address && <small className="compact-booking-address">{next.bookingProvider.address}</small>}
+                {nextBooking.bookingProvider?.address && <small className="compact-booking-address">{nextBooking.bookingProvider.address}</small>}
                 <div className="compact-booking-actions">
                     {nextRoute ? <a href={nextRoute} target="_blank" rel="noreferrer"><Location />Маршрут</a>
-                        : <button type="button" onClick={() => openChat(next.id)}>Открыть чат</button>}
+                        : <button type="button" onClick={() => openChat(nextBooking.id)}>Открыть чат</button>}
                     {nextPhone && <a href={nextPhone} aria-label="Позвонить"><Phone /></a>}
                 </div>
             </section>}
