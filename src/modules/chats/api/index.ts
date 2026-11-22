@@ -7,13 +7,16 @@ export type NormalizedOrderStatus =
     | "pending"
     | "scheduled"
     | "completed"
-    | "cancelled";
+    | "cancelled"
+    | "rejected"
+    | "expired";
 
 export interface ChatUser {
     id: string;
     name?: string;
     phone: string;
     avatarUrl?: string | null;
+    coordinates?: { type: string; coordinates: [number, number] } | null;
 }
 
 export interface ActivityTypeInfo {
@@ -27,6 +30,9 @@ export interface ChatOrder {
     status: NormalizedOrderStatus;
     name: string;
     carBrand: string;
+    vehicleYear?: number;
+    desiredDateTime?: string;
+    responseDeadline?: string;
     description: string;
     timePreference?: OrderTimePreference;
     phone: string;
@@ -61,7 +67,7 @@ function normalizeOrderStatus(status: string): NormalizedOrderStatus {
     if (status === "scheduled") return "scheduled";
     if (status === "new") return "pending";
     if (status === "in_progress") return "scheduled";
-    if (status === "completed" || status === "cancelled") return status;
+    if (status === "completed" || status === "cancelled" || status === "rejected" || status === "expired") return status;
     return "pending";
 }
 

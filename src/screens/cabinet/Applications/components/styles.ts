@@ -28,5 +28,7 @@ export const STATUS_META: Record<
     pending: { label: "Ожидает", color: palette.primary, soft: palette.primarySoft },
     scheduled: { label: "В работе", color: palette.warning, soft: palette.warningSoft },
     completed: { label: "Готово", color: palette.success, soft: palette.successSoft },
+    rejected: { label: "Отклонена", color: palette.neutral, soft: palette.neutralSoft },
+    expired: { label: "Истекла", color: palette.neutral, soft: palette.neutralSoft },
     cancelled: { label: "Отмена", color: palette.neutral, soft: palette.neutralSoft },
 };

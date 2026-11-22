@@ -14,7 +14,8 @@ export function ProtectedRoute({ children, requiredCapability }: ProtectedRouteP
     const { profile, isLoading } = useUserProfile({ enabled: !!accessToken && !!requiredCapability });
 
     if (!accessToken) {
-        return <Navigate to="/login" replace state={{ from: location }} />;
+        const returnTo = location.pathname + location.search + location.hash;
+        return <Navigate to={`/login?returnTo=${encodeURIComponent(returnTo)}`} replace />;
     }
 
     if (requiredCapability) {

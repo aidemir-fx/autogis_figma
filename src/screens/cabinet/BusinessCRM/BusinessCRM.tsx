@@ -30,6 +30,8 @@ const FILTERS: Array<{ value: Filter; label: string }> = [
     { value: "pending", label: "Новые" },
     { value: "scheduled", label: "Запланированы" },
     { value: "completed", label: "Завершены" },
+    { value: "rejected", label: "Отклонены" },
+    { value: "expired", label: "Истекли" },
     { value: "cancelled", label: "Отменены" },
 ];
 
@@ -37,6 +39,8 @@ const STATUS_META: Record<NormalizedOrderStatus, { label: string; color: "primar
     pending: { label: "Новая", color: "primary" },
     scheduled: { label: "Запланирована", color: "warning" },
     completed: { label: "Завершена", color: "success" },
+    rejected: { label: "Отклонена", color: "default" },
+    expired: { label: "Истекла", color: "default" },
     cancelled: { label: "Отменена", color: "default" },
 };
 

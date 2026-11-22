@@ -10,6 +10,8 @@ const STATUS_ICONS: Record<NormalizedOrderStatus, React.ReactNode> = {
     pending: <HourglassTopRoundedIcon sx={{ fontSize: 14 }} />,
     scheduled: <EventAvailableRoundedIcon sx={{ fontSize: 14 }} />,
     completed: <TaskAltRoundedIcon sx={{ fontSize: 14 }} />,
+    rejected: <BlockRoundedIcon sx={{ fontSize: 14 }} />,
+    expired: <BlockRoundedIcon sx={{ fontSize: 14 }} />,
     cancelled: <BlockRoundedIcon sx={{ fontSize: 14 }} />,
 };
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Badge, IconButton, Menu, MenuItem, Typography, Box, Divider, Button } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { toast } from 'react-toastify';
 import { http } from '@common/lib/http';
@@ -12,7 +13,7 @@ interface Notification {
     created_at: string;
 }
 
-export const NotificationBell: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
+export const NotificationBell: React.FC<{ isAdmin?: boolean; compact?: boolean }> = ({ isAdmin = false, compact = false }) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const open = Boolean(anchorEl);
@@ -71,10 +72,10 @@ export const NotificationBell: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = fa
                 color="inherit"
                 onClick={handleClick}
                 aria-label="Уведомления"
-                sx={{ mr: 0, width: 40, height: 40, color: "#334155" }}
+                sx={{ mr: 0, width: 40, height: 40, color: compact ? "#8492a5" : "#334155", ...(compact && { bgcolor: "#f4f4f4", borderRadius: "8px" }) }}
             >
-                <Badge badgeContent={notifications.length} color="error">
-                    <NotificationsIcon />
+                <Badge badgeContent={notifications.length} color="error" variant={compact ? "dot" : "standard"}>
+                    {compact ? <NotificationsNoneRoundedIcon fontSize="small" /> : <NotificationsIcon />}
                 </Badge>
             </IconButton>
             <Menu
@@ -83,7 +84,7 @@ export const NotificationBell: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = fa
                 onClose={handleClose}
                 disableScrollLock
                 PaperProps={{
-                    sx: { width: 350, maxHeight: 400 }
+                    sx: { width: 350, maxWidth: "calc(100vw - 32px)", maxHeight: 400 }
                 }}
             >
                 <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -37,6 +37,8 @@ const STATUS_FILTERS: StatusFilter[] = [
     "scheduled",
     "completed",
     "cancelled",
+    "rejected",
+    "expired",
 ];
 
 export function Applications() {
@@ -172,7 +174,7 @@ export function Applications() {
         pendingCancelRef.current = { order: cancelDialogOrder, reason: cancelReason.trim() };
         updateStatusMutation.mutate({
             orderId: cancelDialogOrder.id,
-            status: "cancelled",
+            status: cancelDialogOrder.status === "pending" ? "rejected" : "cancelled",
             cancelReason: cancelReason.trim(),
             expectedUpdatedAt: cancelDialogOrder.updatedAt,
         });
@@ -196,6 +198,8 @@ export function Applications() {
             scheduled: 0,
             completed: 0,
             cancelled: 0,
+            rejected: 0,
+            expired: 0,
         };
         for (const order of orders ?? []) {
             initial[order.status] = (initial[order.status] ?? 0) + 1;
@@ -211,6 +215,8 @@ export function Applications() {
             scheduled: 1,
             completed: 2,
             cancelled: 3,
+            rejected: 4,
+            expired: 5,
         };
         list.sort((a, b) => {
             if (rank[a.status] !== rank[b.status]) {

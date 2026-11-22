@@ -13,6 +13,7 @@ import {
     Stack,
     TextField,
     Typography,
+    useMediaQuery,
 } from "@mui/material";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
@@ -31,6 +32,8 @@ import { ChatOrder, getCustomerOrders, updateOrderStatus } from "@modules/chats/
 import { MediaAssetGallery } from "@modules/media/components/MediaAssetGallery";
 import { DashboardLayout } from "@modules/layout";
 import { OrderRatingBadge, OrderReviewPrompt } from "@modules/reviews";
+import { COMPACT_LAYOUT_MEDIA_QUERY } from "@modules/layout/features/layoutViewport";
+import { CompactBookings, type CompactTab, type HistoryFilter } from "./CompactBookings";
 
 type BookingTab = "pending" | "confirmed" | "completed" | "cancelled";
 
@@ -75,6 +78,8 @@ const STATUS_META: Record<
         color: theme.palette.info.heavy,
         border: "rgba(48, 114, 179, 0.18)",
     },
+    rejected: { label: "Отклонена", background: theme.palette.error.light, color: theme.palette.error.heavy, border: "transparent" },
+    expired: { label: "Истекла", background: theme.palette.background[3], color: theme.palette.text.secondary, border: "transparent" },
     cancelled: {
         label: "Отменено",
         background: theme.palette.error.light,
@@ -751,6 +756,7 @@ function EmptyState(props: { tab: BookingTab }) {
 
 export function Bookings() {
     const navigate = useNavigate();
+    const compact = useMediaQuery(COMPACT_LAYOUT_MEDIA_QUERY);
     const { profile } = useUserProfile();
     const queryClient = useQueryClient();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -765,15 +771,27 @@ export function Bookings() {
     const [tab, setTab] = useState<BookingTab>("pending");
     const [cancelDialogOrder, setCancelDialogOrder] = useState<ChatOrder | null>(null);
     const [cancelReason, setCancelReason] = useState("");
+    const [notice, setNotice] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+    const compactTab: CompactTab = tabParam === "history" || tabParam === "completed" || tabParam === "cancelled"
+        ? "history" : tabParam === "confirmed" ? "confirmed" : "pending";
+    const historyParam = searchParams.get("status") ?? tabParam;
+    const historyFilter: HistoryFilter = historyParam === "completed" || historyParam === "cancelled" ||
+        historyParam === "rejected" || historyParam === "expired" ? historyParam : "all";
+    const openCancel = (order: ChatOrder) => {
+        setCancelReason("");
+        setNotice(null);
+        setCancelDialogOrder(order);
+    };
 
     useEffect(() => {
         setTab(initialTab);
     }, [initialTab]);
 
-    const { data: orders, isLoading } = useQuery({
+    const { data: orders, isLoading, isError, refetch } = useQuery({
         queryKey: ["customerBookings", profile?.id],
         queryFn: getCustomerOrders,
         enabled: !!profile?.id,
+        refetchInterval: 30_000,
     });
 
     const sortedOrders = useMemo(() => {
@@ -793,7 +811,7 @@ export function Bookings() {
                 (order) => order.status === "completed"
             ),
             cancelled: sortedOrders.filter(
-                (order) => order.status === "cancelled"
+                (order) => order.status === "cancelled" || order.status === "rejected" || order.status === "expired"
             ),
         };
     }, [sortedOrders]);
@@ -819,14 +837,76 @@ export function Bookings() {
                 cancelReason: cancelReason.trim() || "Отменено клиентом",
                 expectedUpdatedAt: order.updatedAt,
             }),
-        onSuccess: () => {
+        onSuccess: (_result, order) => {
+            setNotice({ kind: "success", text: order.status === "scheduled" ? "Запись отменена" : "Заявка отменена" });
             setCancelDialogOrder(null);
             setCancelReason("");
             queryClient.invalidateQueries({ queryKey: ["customerBookings", profile?.id] });
             queryClient.invalidateQueries({ queryKey: ["customerOrdersForChat", profile?.id] });
             queryClient.invalidateQueries({ queryKey: ["orderChat"] });
         },
+        onError: () => {
+            setCancelDialogOrder(null);
+            setNotice({ kind: "error", text: "Не удалось отменить. Обновите запись и попробуйте снова." });
+            void refetch();
+        },
     });
+
+    const cancelDialog = (
+                <Dialog
+                    open={Boolean(cancelDialogOrder)}
+                    onClose={() => {
+                        if (!cancelMutation.isPending) setCancelDialogOrder(null);
+                    }}
+                    fullWidth
+                    maxWidth="xs"
+                >
+                    <DialogTitle>{cancelDialogOrder?.status === "scheduled" ? "Отменить запись?" : "Отменить заявку?"}</DialogTitle>
+                    <DialogContent>
+                        <Typography sx={{ mb: 1.5, color: theme.palette.text.secondary }}>
+                            {cancelDialogOrder?.confirmedDateTime &&
+                                Date.parse(cancelDialogOrder.confirmedDateTime) - Date.now() < 3_600_000
+                                ? "До визита осталось меньше часа. Исполнитель получит уведомление об отмене."
+                                : "Исполнитель получит уведомление об отмене."}
+                        </Typography>
+                        <TextField
+                            fullWidth
+                            multiline
+                            minRows={2}
+                            label="Причина (необязательно)"
+                            value={cancelReason}
+                            onChange={(event) => setCancelReason(event.target.value)}
+                        />
+                    </DialogContent>
+                    <DialogActions sx={{ px: 3, pb: 2 }}>
+                        <Button
+                            onClick={() => setCancelDialogOrder(null)}
+                            disabled={cancelMutation.isPending}
+                        >
+                            Назад
+                        </Button>
+                        <Button
+                            color="error"
+                            variant="contained"
+                            onClick={() => cancelDialogOrder && cancelMutation.mutate(cancelDialogOrder)}
+                            disabled={cancelMutation.isPending}
+                        >
+                            {cancelMutation.isPending ? "Отменяем…" : cancelDialogOrder?.status === "scheduled" ? "Отменить запись" : "Отменить заявку"}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
+    );
+    if (compact) {
+        return <CompactBookings orders={sortedOrders} loading={!profile || isLoading} error={isError}
+            reload={() => void refetch()} tab={compactTab} history={historyFilter}
+            changeTab={(next) => { setNotice(null); setSearchParams({ tab: next }); }}
+            changeHistory={(next) => setSearchParams({ tab: "history", status: next })}
+            selected={cancelDialogOrder?.id ?? selectedOrderId} openChat={handleOpenChat}
+            cancel={(order) => {
+                openCancel(order);
+                setSearchParams({ tab: compactTab, orderId: order.id });
+            }} notice={notice}>{cancelDialog}</CompactBookings>;
+    }
 
     if (!profile) return null;
 
@@ -976,7 +1056,7 @@ export function Bookings() {
                                 order={order}
                                 selected={order.id === selectedOrderId}
                                 onOpenChat={handleOpenChat}
-                                onCancel={setCancelDialogOrder}
+                                onCancel={openCancel}
                             />
                         ))}
                     </Stack>
@@ -994,49 +1074,11 @@ export function Bookings() {
                             },
                         }}
                     >
-                        Здесь отображаются записи, которые были отменены.
+                        Здесь отображаются отменённые, отклонённые и истёкшие записи.
                     </Alert>
                 )}
 
-                <Dialog
-                    open={Boolean(cancelDialogOrder)}
-                    onClose={() => {
-                        if (!cancelMutation.isPending) setCancelDialogOrder(null);
-                    }}
-                    fullWidth
-                    maxWidth="xs"
-                >
-                    <DialogTitle>Отменить заявку?</DialogTitle>
-                    <DialogContent>
-                        <Typography sx={{ mb: 1.5, color: theme.palette.text.secondary }}>
-                            Заявка будет отменена, а исполнитель увидит это событие в общем чате.
-                        </Typography>
-                        <TextField
-                            fullWidth
-                            multiline
-                            minRows={2}
-                            label="Причина (необязательно)"
-                            value={cancelReason}
-                            onChange={(event) => setCancelReason(event.target.value)}
-                        />
-                    </DialogContent>
-                    <DialogActions sx={{ px: 3, pb: 2 }}>
-                        <Button
-                            onClick={() => setCancelDialogOrder(null)}
-                            disabled={cancelMutation.isPending}
-                        >
-                            Назад
-                        </Button>
-                        <Button
-                            color="error"
-                            variant="contained"
-                            onClick={() => cancelDialogOrder && cancelMutation.mutate(cancelDialogOrder)}
-                            disabled={cancelMutation.isPending}
-                        >
-                            Отменить заявку
-                        </Button>
-                    </DialogActions>
-                </Dialog>
+                {cancelDialog}
             </Stack>
         </DashboardLayout>
     );

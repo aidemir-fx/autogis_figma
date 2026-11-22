@@ -1,3 +1,4 @@
+import { useAuthReturn } from "../MobileAuth";
 import { useEffect, useMemo, useState } from "react";
 import { Box, Paper, FormControlLabel, Checkbox, Link, Typography } from "@mui/material";
 import { useForm, Controller } from "react-hook-form";
@@ -55,6 +56,8 @@ export const RegisterScreen = () => {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const returnTo = useAuthReturn();
+    const destination = returnTo ?? "/cabinet";
 
     const { control, handleSubmit, formState, setError } =
         useForm<FormData>({
@@ -72,9 +75,9 @@ export const RegisterScreen = () => {
     useEffect(() => {
         const accessToken = localStorage.getItem("accessToken");
         if (accessToken) {
-            navigate("/cabinet");
+            navigate(destination, { replace: true });
         }
-    }, [navigate]);
+    }, [destination, navigate]);
 
     const onSubmit = async (data: FormData) => {
         setLoading(true);
@@ -114,7 +117,7 @@ export const RegisterScreen = () => {
                 );
             }
 
-            navigate("/cabinet");
+            navigate(destination, { replace: true });
         } catch (err: any) {
             const errorMessage =
                 err?.response?.data?.message || "Не удалось зарегистрироваться";

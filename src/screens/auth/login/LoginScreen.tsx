@@ -1,3 +1,4 @@
+import { useAuthReturn, usePhoneVerificationConfig } from "../MobileAuth";
 import { useState, useEffect } from "react";
 import { Box, Paper, Stack, Typography } from "@mui/material";
 import { useForm, Controller } from "react-hook-form";
@@ -55,7 +56,10 @@ type FormData = {
 export const LoginScreen = () => {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const { data: verificationEnabled } = usePhoneVerificationConfig();
     const queryClient = useQueryClient();
+    const returnTo = useAuthReturn();
+    const destination = returnTo ?? "/";
 
     const {
         control,
@@ -74,9 +78,9 @@ export const LoginScreen = () => {
     useEffect(() => {
         const accessToken = localStorage.getItem("accessToken");
         if (accessToken) {
-            navigate("/cabinet");
+            navigate(destination, { replace: true });
         }
-    }, [navigate]);
+    }, [destination, navigate]);
 
     const onSubmit = async (data: FormData) => {
         setLoading(true);
@@ -104,7 +108,7 @@ export const LoginScreen = () => {
                 // Обновляем React Query кэш с новыми данными
                 queryClient.setQueryData(["userProfile"], normalizedUser);
             }
-            navigate("/cabinet");
+            navigate(destination, { replace: true });
         } catch (err: any) {
             if (
                 err?.response?.status === 400 ||
@@ -225,6 +229,7 @@ export const LoginScreen = () => {
                     АвтоГис — надежный сервис поиска автомастеров
                 </AboutTitle>
             </AboutWrapper>
+                {verificationEnabled && <RegisterTitle to={`/recover${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}>Не помню пароль</RegisterTitle>}
             </SlideUp>
         </AuthLayout>
     );

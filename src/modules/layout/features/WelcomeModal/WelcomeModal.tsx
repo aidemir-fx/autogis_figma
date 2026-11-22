@@ -26,7 +26,7 @@ import {
 } from "./styles";
 import { BOTTOM_NAV_RESERVED_SPACE } from "../layoutViewport";
 
-const EXCLUDED_PATHS = ["/login", "/register"];
+const EXCLUDED_PATHS = ["/login", "/register", "/recover", "/privacy", "/terms", "/cabinet/bookings", "/cabinet/chats"];
 
 export const WelcomeModal = () => {
     const [open, setOpen] = useState(false);

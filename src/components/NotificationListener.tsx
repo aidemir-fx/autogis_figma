@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { http } from '@common/lib/http';
 
@@ -18,6 +18,7 @@ export const NotificationListener: React.FC<{ userRole?: string }> = ({ userRole
 
     useEffect(() => {
         const fetchNotifications = async () => {
+            if (!localStorage.getItem("accessToken")) return;
             try {
                 const { data } = await http.get<Notification[]>('/notifications', {
                     params: { role: userRole },

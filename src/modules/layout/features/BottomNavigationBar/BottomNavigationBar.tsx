@@ -70,7 +70,7 @@ function getActiveValue(pathname: string): NavigationValue {
         return "chats";
     }
 
-    if (pathname.startsWith("/cabinet")) {
+    if (["/login", "/register", "/recover"].includes(pathname) || pathname.startsWith("/cabinet")) {
         return "profile";
     }
 
@@ -101,7 +101,7 @@ export const BottomNavigationBar = () => {
         : 0;
     const unreadChatsCount = useUnreadChatsCount(shouldFetchNavData);
 
-    if (!isMobile) {
+    if (!isMobile || pathname === "/privacy" || pathname === "/terms") {
         return null;
     }
 

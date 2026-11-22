@@ -24,10 +24,12 @@ import {
     Stories,
     BusinessCRM,
 } from "@screens/cabinet";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, Link } from "react-router-dom";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import LoginScreen from "@screens/auth/login/LoginScreen";
 import RegisterScreen from "@screens/auth/register/RegisterScreen";
+import { MobileAuth, LegalScreen, usePhoneVerificationConfig } from "@screens/auth/MobileAuth";
+import { CompactCustomerHeader } from "@screens/cabinet/Bookings/CompactBookings";
 import { DashboardLayout } from "@modules/layout/features/UserCabinetLayout/DashboardLayout";
 import "./global.css";
 import { muiTheme } from "@common/theme/muiTheme";
@@ -58,6 +60,32 @@ import {
     BOTTOM_NAV_RESERVED_SPACE,
     COMPACT_LAYOUT_MEDIA_QUERY,
 } from "@modules/layout/features/layoutViewport";
+
+function AuthEntry({ mode }: { mode: "login" | "register" }) {
+    const compact = useMediaQuery(COMPACT_LAYOUT_MEDIA_QUERY);
+    const { data: verificationEnabled } = usePhoneVerificationConfig();
+    if (compact || (mode === "register" && verificationEnabled)) return <MobileAuth key={mode} mode={mode} />;
+    return mode === "login" ? <LoginScreen /> : <RegisterScreen />;
+}
+
+function CustomerEntry({ section }: { section: "bookings" | "chats" }) {
+    const compact = useMediaQuery(COMPACT_LAYOUT_MEDIA_QUERY);
+    const location = useLocation();
+    const hasSession = Boolean(localStorage.getItem("accessToken"));
+    if (!hasSession && compact) {
+        return (
+            <div className="compact-auth">
+                <CompactCustomerHeader guest />
+                <Box component="main" sx={{ minHeight: "calc(100dvh - 129px - env(safe-area-inset-bottom, 0px))", display: "grid", placeContent: "center", justifyItems: "center", px: 2 }}>
+                    <h1>{section === "bookings" ? "Войдите, чтобы видеть записи" : "Войдите, чтобы видеть чаты"}</h1>
+                    <Link className="compact-auth-primary" style={{ width: 155, marginTop: 24 }}
+                        to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}>Войти</Link>
+                </Box>
+            </div>
+        );
+    }
+    return <ProtectedRoute>{section === "bookings" ? <Bookings /> : <Chats />}</ProtectedRoute>;
+}
 
 export function App() {
     const shouldReserveBottomNavSpace = useMediaQuery(COMPACT_LAYOUT_MEDIA_QUERY);
@@ -117,12 +145,16 @@ export function App() {
                                         />
                                         <Route
                                             path="/login"
-                                            element={<LoginScreen />}
+                                            element={<AuthEntry mode="login" />}
                                         />
                                         <Route
                                             path="/register"
-                                            element={<RegisterScreen />}
+                                            element={<AuthEntry mode="register" />}
                                         />
+
+                                        <Route path="/recover" element={<MobileAuth mode="recover" />} />
+                                        <Route path="/privacy" element={<LegalScreen kind="privacy" />} />
+                                        <Route path="/terms" element={<LegalScreen kind="terms" />} />
 
                                         <Route
                                             path="/cabinet"
@@ -137,11 +169,7 @@ export function App() {
 
                                         <Route
                                             path="/cabinet/bookings"
-                                            element={
-                                                <ProtectedRoute>
-                                                    <Bookings />
-                                                </ProtectedRoute>
-                                            }
+                                            element={<CustomerEntry section="bookings" />}
                                         />
                                         <Route
                                             path="/cabinet/bookings/cancelled"
@@ -204,11 +232,7 @@ export function App() {
                                         />
                                         <Route
                                             path="/cabinet/chats"
-                                            element={
-                                                <ProtectedRoute>
-                                                    <Chats />
-                                                </ProtectedRoute>
-                                            }
+                                            element={<CustomerEntry section="chats" />}
                                         />
                                         <Route
                                             path="/cabinet/activity-types"
