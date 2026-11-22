@@ -51,6 +51,7 @@ type OrderRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.Order, error)
 	GetDirectChatID(ctx context.Context, customerID, providerID string) (*string, error)
 	GetByCustomerID(ctx context.Context, customerID string) ([]*domain.Order, error)
+	GetBookingProviderDetails(ctx context.Context, activity, userID string) (*domain.BookingProviderDetails, error)
 	GetByProviderID(ctx context.Context, providerID string) ([]*domain.Order, error)
 	GetAll(ctx context.Context) ([]*domain.Order, error)
 	HasPhotoAssetForParticipant(ctx context.Context, assetID, userID string) (bool, error)

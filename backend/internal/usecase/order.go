@@ -244,9 +244,19 @@ func (uc *OrderUseCase) GetCustomerOrders(ctx context.Context, customerID string
 		return nil, apperrors.ErrInternalServer
 	}
 
+	contacts := make(map[[2]string]*domain.BookingProviderDetails)
 	responses := make([]*domain.OrderResponse, len(orders))
 	for i, order := range orders {
-		responses[i] = uc.orderToResponse(order)
+		response := uc.orderToResponse(order)
+		if order.ProviderID != nil && order.ActivityType != nil {
+			key := [2]string{order.ActivityType.Name, *order.ProviderID}
+			if _, exists := contacts[key]; !exists {
+				// A missing profile doesn't hide existing customer orders.
+				contacts[key], _ = uc.orderRepo.GetBookingProviderDetails(ctx, key[0], key[1])
+			}
+			response.BookingProvider = contacts[key]
+		}
+		responses[i] = response
 	}
 	return responses, nil
 }

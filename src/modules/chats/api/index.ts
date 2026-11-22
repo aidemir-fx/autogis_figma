@@ -45,6 +45,7 @@ export interface ChatOrder {
     updatedAt?: string;
     customer: ChatUser;
     provider?: ChatUser;
+    bookingProvider?: { name?: string; phone?: string; address?: string; coordinates?: ChatUser["coordinates"] };
     activityType: ActivityTypeInfo;
 }
 

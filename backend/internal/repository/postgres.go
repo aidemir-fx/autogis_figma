@@ -102,6 +102,25 @@ func (r *OrderRepositoryImpl) GetDirectChatID(ctx context.Context, customerID, p
 	return row.ChatID, nil
 }
 
+func (r *OrderRepositoryImpl) GetBookingProviderDetails(ctx context.Context, activity, userID string) (*domain.BookingProviderDetails, error) {
+	tables := map[string]string{
+		"master": "masters", "auto_service": "auto_services", "auto_wash": "auto_washes", "auto_shop": "auto_shops",
+	}
+	table, ok := tables[activity]
+	if !ok {
+		return nil, nil
+	}
+	var info domain.BookingProviderDetails
+	result := r.db.WithContext(ctx).Table(table).
+		Select("full_name, working_phone, address, coordinates").
+		Where("user_id = ?", userID).
+		Limit(1).Scan(&info)
+	if result.Error != nil || result.RowsAffected == 0 {
+		return nil, result.Error
+	}
+	return &info, nil
+}
+
 func (r *OrderRepositoryImpl) GetByCustomerID(ctx context.Context, customerID string) ([]*domain.Order, error) {
 	var orders []*domain.Order
 	err := r.db.WithContext(ctx).

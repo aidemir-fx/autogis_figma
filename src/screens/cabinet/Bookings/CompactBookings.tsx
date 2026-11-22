@@ -32,13 +32,17 @@ const emptyCopy: Record<CompactTab, [string, string]> = {
 };
 const dateFormat = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Moscow" });
 const format = (value?: string) => value && Number.isFinite(Date.parse(value)) ? dateFormat.format(new Date(value)) : undefined;
-const name = (order: ChatOrder) => order.provider?.name || "Исполнитель";
+const name = (order: ChatOrder) => order.bookingProvider?.name || order.provider?.name || "Исполнитель";
 const service = (order: ChatOrder) => order.activityType?.displayName || order.description || "Услуга";
-const tel = (order: ChatOrder) => order.provider?.phone ? `tel:${order.provider.phone.replace(/[^+0-9]/g, "")}` : null;
+function tel(order: ChatOrder) {
+    const phone = order.bookingProvider?.phone || order.provider?.phone;
+    return phone ? `tel:${phone.replace(/[^+0-9]/g, "")}` : null;
+}
 function route(order: ChatOrder) {
-    const coords = order.provider?.coordinates?.coordinates;
-    if (!coords || coords.length !== 2 || !coords.every(Number.isFinite)) return null;
-    return `https://yandex.ru/maps/?rtext=~${coords[1]},${coords[0]}&rtt=auto`;
+    const coords = (order.bookingProvider?.coordinates ?? order.provider?.coordinates)?.coordinates;
+    const address = order.bookingProvider?.address;
+    const target = coords?.length === 2 && coords.every(Number.isFinite) ? `${coords[1]},${coords[0]}` : address;
+    return target ? `https://yandex.ru/maps/?rtext=~${encodeURIComponent(target)}&rtt=auto` : null;
 }
 
 export function CompactCustomerHeader({ guest = false }: { guest?: boolean }) {
@@ -67,6 +71,7 @@ function BookingItem({ order, selected, onChat, onCancel }: {
         ["Требуемая услуга", service(order)],
         ["Желаемое время и дата", format(order.desiredDateTime)],
         ["Подтверждённое время", format(order.confirmedDateTime)],
+        ["Адрес", order.bookingProvider?.address],
         ["Описание", order.description],
         ["Причина", order.cancelReason],
         ["Заявка истекла", order.status === "expired" ? format(order.responseDeadline) : undefined],
@@ -131,6 +136,7 @@ export function CompactBookings({
                     {next.provider?.avatarUrl && <img src={next.provider.avatarUrl} alt="" />}
                     <div>{name(next)}<small>{service(next)}</small></div>
                 </div>
+                {next.bookingProvider?.address && <small className="compact-booking-address">{next.bookingProvider.address}</small>}
                 <div className="compact-booking-actions">
                     {nextRoute ? <a href={nextRoute} target="_blank" rel="noreferrer"><Location />Маршрут</a>
                         : <button type="button" onClick={() => openChat(next.id)}>Открыть чат</button>}

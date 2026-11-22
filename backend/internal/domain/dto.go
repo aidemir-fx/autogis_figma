@@ -108,30 +108,38 @@ type UpdateOrderStatusRequest struct {
 	ExpectedUpdatedAt *string     `json:"expectedUpdatedAt,omitempty"`
 }
 
+type BookingProviderDetails struct {
+	FullName     *string `json:"name,omitempty"`
+	WorkingPhone *string `json:"phone,omitempty"`
+	Address      *string `json:"address,omitempty"`
+	Coordinates  *Point  `json:"coordinates,omitempty"`
+}
+
 type OrderResponse struct {
-	ID                string                `json:"id"`
-	CustomerID        string                `json:"customerId"`
-	ProviderID        string                `json:"providerId"`
-	ActivityTypeID    string                `json:"activityTypeId"`
-	Name              string                `json:"name"`
-	Phone             string                `json:"phone"`
-	CarBrand          string                `json:"carBrand"`
-	Description       string                `json:"description"`
-	TimePreference    *OrderTimePreference  `json:"timePreference,omitempty"`
-	PhotoAssetIDs     []string              `json:"photoAssetIds,omitempty"`
-	Price             *float32              `json:"price,omitempty"`
-	ConfirmedDateTime *string               `json:"confirmedDateTime,omitempty"`
-	CancelReason      *string               `json:"cancelReason,omitempty"`
-	ChatID            *string               `json:"chatId,omitempty"`
-	Status            OrderStatus           `json:"status"`
-	Customer          *UserResponse         `json:"customer,omitempty"`
-	Provider          *UserResponse         `json:"provider,omitempty"`
-	ActivityType      *ActivityTypeResponse `json:"activityType,omitempty"`
-	CreatedAt         string                `json:"createdAt"`
-	UpdatedAt         string                `json:"updatedAt"`
-	VehicleYear       *int                  `json:"vehicleYear,omitempty"`
-	DesiredDateTime   *string               `json:"desiredDateTime,omitempty"`
-	ResponseDeadline  *string               `json:"responseDeadline,omitempty"`
+	ID                string                  `json:"id"`
+	CustomerID        string                  `json:"customerId"`
+	ProviderID        string                  `json:"providerId"`
+	ActivityTypeID    string                  `json:"activityTypeId"`
+	Name              string                  `json:"name"`
+	Phone             string                  `json:"phone"`
+	CarBrand          string                  `json:"carBrand"`
+	Description       string                  `json:"description"`
+	TimePreference    *OrderTimePreference    `json:"timePreference,omitempty"`
+	PhotoAssetIDs     []string                `json:"photoAssetIds,omitempty"`
+	Price             *float32                `json:"price,omitempty"`
+	ConfirmedDateTime *string                 `json:"confirmedDateTime,omitempty"`
+	CancelReason      *string                 `json:"cancelReason,omitempty"`
+	ChatID            *string                 `json:"chatId,omitempty"`
+	Status            OrderStatus             `json:"status"`
+	Customer          *UserResponse           `json:"customer,omitempty"`
+	Provider          *UserResponse           `json:"provider,omitempty"`
+	ActivityType      *ActivityTypeResponse   `json:"activityType,omitempty"`
+	CreatedAt         string                  `json:"createdAt"`
+	UpdatedAt         string                  `json:"updatedAt"`
+	VehicleYear       *int                    `json:"vehicleYear,omitempty"`
+	DesiredDateTime   *string                 `json:"desiredDateTime,omitempty"`
+	ResponseDeadline  *string                 `json:"responseDeadline,omitempty"`
+	BookingProvider   *BookingProviderDetails `json:"bookingProvider,omitempty"`
 }
 
 type SendOrderMessageRequest struct {
