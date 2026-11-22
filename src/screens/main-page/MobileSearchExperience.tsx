@@ -9,6 +9,7 @@ import { ActivityType, Provider, ProvidersMap } from "@modules/providers";
 import { StoryStrip } from "@modules/stories";
 import { ErrorState } from "@common/components";
 import { LogoIcon, MapPinIcon, PhoneIcon, StarIcon } from "@common/icons";
+import { NotificationBell } from "../../components/NotificationBell";
 import { RadiusPickerModal } from "./components/RadiusPickerModal";
 
 export type MobileProviderCategory = {
@@ -475,9 +476,11 @@ export function MobileSearchExperience({
             <MobileHeader>
                 <a href="/" aria-label="АвтоГис"><img src={LogoIcon} alt="АвтоГис" /></a>
                 <MobileHeaderActions>
-                    <MobileBellButton type="button" aria-label="Уведомления" onClick={() => { if (!isAuthenticated) navigate("/login"); }}>
-                        <NotificationsNoneRoundedIcon />
-                    </MobileBellButton>
+                    {isAuthenticated ? <NotificationBell compact /> : (
+                        <MobileBellButton type="button" aria-label="Уведомления" onClick={() => navigate("/login")}>
+                            <NotificationsNoneRoundedIcon />
+                        </MobileBellButton>
+                    )}
                     {isAuthenticated ? (
                         <MobileProfileButton type="button" onClick={() => navigate("/cabinet")} aria-label="Профиль">
                             {profileAvatarUrl ? <img src={profileAvatarUrl} alt="" /> : getInitials(profileName)}
@@ -533,6 +536,12 @@ export function MobileSearchExperience({
                             <MobileError><ErrorState message={errorMessage} onRetry={onRetry} /></MobileError>
                         ) : isLoading ? (
                             <MobileLoading>Загрузка предложений…</MobileLoading>
+                        ) : filteredAllProviders.length === 0 && (query.some((part) => part.trim()) || onlyAvailable || !isAllTypesActive) ? (
+                            <MobileNoResults>
+                                <strong>Ничего не найдено</strong>
+                                <span>Попробуйте изменить запрос или фильтры.</span>
+                                <button type="button" onClick={() => { onQueryChange([]); onOnlyAvailableChange(false); onAllTypesClick(); }}>Сбросить фильтры</button>
+                            </MobileNoResults>
                         ) : (
                             <MobileCatalog>
                                 {categories.map((category) => {
@@ -638,7 +647,7 @@ const MobileHeader = styled.header`
 const MobileHeaderActions = styled.div`
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 32px;
 `;
 
 const MobileBellButton = styled.button`
@@ -920,8 +929,28 @@ const MobileCardsTrack = styled.div`
     > * { flex: 0 0 auto; scroll-snap-align: start; }
 `;
 
+const MobileNoResults = styled.div`
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 38px 16px;
+    text-align: center;
+    color: var(--ds-color-gray-900);
+    span { color: var(--ds-color-gray-700); font-size: 12px; }
+    button {
+        margin-top: 8px;
+        padding: 8px 14px;
+        border: 0;
+        border-radius: var(--ds-radius-8);
+        background: var(--ds-color-blue-600);
+        color: var(--ds-color-white);
+        font: inherit;
+        cursor: pointer;
+    }
+`;
+
 const MobileEmptyCard = styled.div`
-    width: min(250px, calc(100vw - 48px));
+    width: min(242px, calc(100vw - 48px));
     box-sizing: border-box;
     min-height: 150px;
     display: grid;
@@ -935,8 +964,8 @@ const MobileEmptyCard = styled.div`
 `;
 
 const MobileCard = styled.article<{ $organization: boolean }>`
-    width: min(250px, calc(100vw - 48px));
-    min-width: min(250px, calc(100vw - 48px));
+    width: min(242px, calc(100vw - 48px));
+    min-width: min(242px, calc(100vw - 48px));
     height: ${({ $organization }) => $organization ? "381px" : "266px"};
     display: flex;
     flex-direction: column;
@@ -982,7 +1011,7 @@ const MobileAvatar = styled.div<{ $status: "open" | "closed" }>`
     overflow: visible;
     border: 2px solid var(--ds-color-white);
     border-radius: var(--ds-radius-12);
-    box-shadow: 0 0 0 2px var(--ds-color-gray-500), 0 0 0 4px var(--ds-color-white);
+    box-shadow: var(--ds-shadow-story-ring);
     background: linear-gradient(135deg, var(--ds-color-gray-100), var(--ds-color-gray-300));
     color: var(--ds-color-blue-500);
     font-size: 14px;
@@ -1015,9 +1044,9 @@ const MobileStatusDot = styled.span<{ $status: "open" | "closed" }>`
         animation: mobile-status-pulse 1.8s ease-out infinite;
         @media (prefers-reduced-motion: reduce) { animation: none; }
         @keyframes mobile-status-pulse {
-            0% { box-shadow: 0 0 0 0 rgb(90 138 54 / 0.5); }
-            70% { box-shadow: 0 0 0 5px rgb(90 138 54 / 0); }
-            100% { box-shadow: 0 0 0 0 rgb(90 138 54 / 0); }
+            0% { box-shadow: var(--ds-shadow-online-pulse-start); }
+            70% { box-shadow: var(--ds-shadow-online-pulse-end); }
+            100% { box-shadow: var(--ds-shadow-online-pulse-reset); }
         }
     `}
 `;

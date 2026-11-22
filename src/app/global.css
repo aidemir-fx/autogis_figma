@@ -24,6 +24,10 @@
     --ds-radius-24: 24px;
     --ds-radius-round: 50%;
     --ds-radius-pill: 999px;
+    --ds-shadow-story-ring: 0 0 0 2px var(--ds-color-gray-500), 0 0 0 4px var(--ds-color-white);
+    --ds-shadow-online-pulse-start: 0 0 0 0 rgb(90 138 54 / 0.5);
+    --ds-shadow-online-pulse-end: 0 0 0 5px rgb(90 138 54 / 0);
+    --ds-shadow-online-pulse-reset: 0 0 0 0 rgb(90 138 54 / 0);
     --ds-shadow-list: 0 6px 10px rgba(33, 44, 63, 0.1);
     --ds-shadow-filter: 0 0 10px rgba(33, 44, 63, 0.1);
 }
