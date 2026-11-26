@@ -7,9 +7,6 @@ import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
-import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
-import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
-import QrCode2OutlinedIcon from "@mui/icons-material/QrCode2Outlined";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
 import { Map as YandexMap, Placemark, YMaps } from "@pbe/react-yandex-maps";
@@ -24,6 +21,7 @@ import { formatRegistrationDate } from "@common/lib/formatRegistrationDate";
 import { getProviderReviews, type Review } from "@modules/reviews";
 import { ProviderReviewAction, ReviewPhotos } from "@modules/reviews/components/ProviderReviewAction";
 import { addAutoServiceFavorite, getAutoServiceFavorite, removeAutoServiceFavorite } from "@modules/providers";
+import { ProfilePaymentMethods } from "./ProfilePaymentMethods";
 import {
     ActionButton,
     ActionIconButton,
@@ -40,9 +38,6 @@ import {
     MapCanvas,
     MobileMasterPage,
     MobileSection,
-    PaymentMethod,
-    PaymentMethodLabel,
-    PaymentMethodList,
     ProfileHeader,
     ProfileHeaderTitle,
     ProfileIdentity,
@@ -229,11 +224,7 @@ export function MobileAutoServiceProfile({ provider }: { provider: Provider }) {
             {(provider.payments?.length ?? 0) > 0 && <MobileSection>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                     <SectionTitle>Способы оплаты</SectionTitle>
-                    <PaymentMethodList>
-                        {provider.payments?.includes("cash") && <PaymentMethod><PaymentsOutlinedIcon titleAccess="Наличные" /><PaymentMethodLabel>Наличные</PaymentMethodLabel></PaymentMethod>}
-                        {provider.payments?.includes("card") && <PaymentMethod><CreditCardOutlinedIcon titleAccess="Карта" /><PaymentMethodLabel>Карта</PaymentMethodLabel></PaymentMethod>}
-                        {(provider.payments?.includes("sbp") || provider.payments?.includes("qr")) && <PaymentMethod><QrCode2OutlinedIcon titleAccess="СБП" /><PaymentMethodLabel>СБП</PaymentMethodLabel></PaymentMethod>}
-                    </PaymentMethodList>
+                    <ProfilePaymentMethods payments={provider.payments} />
                 </div>
             </MobileSection>}
 

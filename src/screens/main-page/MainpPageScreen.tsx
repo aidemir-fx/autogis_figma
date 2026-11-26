@@ -554,8 +554,8 @@ export const MainpPageScreen = () => {
         const order = [
             ActivityType.master,
             ActivityType.auto_service,
-            ActivityType.auto_shop,
             ActivityType.auto_wash,
+            ActivityType.auto_shop,
         ];
         return categoriesToRender
             .slice()

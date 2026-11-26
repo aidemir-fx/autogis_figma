@@ -36,12 +36,32 @@ function shortId(id: string): string {
     return id.length <= 6 ? id.toUpperCase() : id.slice(0, 6).toUpperCase();
 }
 
+function getCustomerStatusLabel(status: ChatOrder["status"]): string {
+    switch (status) {
+        case "scheduled":
+            return "Заявка подтверждена";
+        case "completed":
+            return "Заявка завершена";
+        case "cancelled":
+            return "Заявка отменена";
+        case "rejected":
+            return "Заявка отклонена";
+        case "expired":
+            return "Срок заявки истёк";
+        case "pending":
+        default:
+            return "Ваша заявка на рассмотрении";
+    }
+}
+
 type OrderPreviewCardProps = {
     order: ChatOrder;
     onOpen?: () => void;
+    mode?: "provider" | "customer";
 };
 
-export function OrderPreviewCard({ order, onOpen }: OrderPreviewCardProps) {
+export function OrderPreviewCard({ order, onOpen, mode = "provider" }: OrderPreviewCardProps) {
+    const compact = mode === "customer";
     const isUrgent = order.timePreference === "urgent";
     const activityName =
         order.activityType?.displayName || order.activityType?.name || "Заявка";
@@ -59,12 +79,15 @@ export function OrderPreviewCard({ order, onOpen }: OrderPreviewCardProps) {
             label: "Автомобиль",
             value: order.carBrand || "—",
         },
-        {
+    ];
+
+    if (!compact) {
+        rows.push({
             icon: <PersonRoundedIcon sx={{ fontSize: 14 }} />,
             label: "Клиент",
             value: customerName,
-        },
-    ];
+        });
+    }
 
     if (order.timePreference) {
         rows.push({
@@ -84,13 +107,13 @@ export function OrderPreviewCard({ order, onOpen }: OrderPreviewCardProps) {
     }
 
     return (
-        <Box sx={{ display: "flex", justifyContent: "flex-start" }}>
+        <Box sx={{ display: "flex", justifyContent: compact ? "flex-end" : "flex-start" }}>
             <Box
                 sx={{
-                    width: "94%",
+                    width: compact ? "88%" : "94%",
                     maxWidth: 360,
                     background: accent.surface,
-                    borderRadius: "16px 16px 16px 6px",
+                    borderRadius: compact ? "16px 16px 6px 16px" : "16px 16px 16px 6px",
                     border: `1px solid ${accent.border}`,
                     overflow: "hidden",
                     boxShadow: "0 8px 24px -16px rgba(30,40,70,0.18)",
@@ -136,7 +159,7 @@ export function OrderPreviewCard({ order, onOpen }: OrderPreviewCardProps) {
                                     textOverflow: "ellipsis",
                                 }}
                             >
-                                Заявка №{shortId(order.id)}
+                                {compact ? "Ваша заявка" : `Заявка №${shortId(order.id)}`}
                             </Typography>
                             <Typography
                                 sx={{
@@ -145,7 +168,7 @@ export function OrderPreviewCard({ order, onOpen }: OrderPreviewCardProps) {
                                     fontWeight: 500,
                                 }}
                             >
-                                Создана в {formatTime(order.createdAt)}
+                                {compact ? `№${shortId(order.id)} · ${formatTime(order.createdAt)}` : `Создана в ${formatTime(order.createdAt)}`}
                             </Typography>
                         </Box>
                     </Box>
@@ -174,6 +197,21 @@ export function OrderPreviewCard({ order, onOpen }: OrderPreviewCardProps) {
                         />
                     )}
                 </Box>
+
+                {compact && (
+                    <Box sx={{ px: 1.75, pt: 1.1, pb: 0.25 }}>
+                        <Typography
+                            sx={{
+                                fontSize: 12.5,
+                                color: accent.primary,
+                                fontWeight: 700,
+                                lineHeight: 1.3,
+                            }}
+                        >
+                            {getCustomerStatusLabel(order.status)}
+                        </Typography>
+                    </Box>
+                )}
 
                 <Box sx={{ px: 1.75, py: 1.25 }}>
                     <Stack spacing={0.85}>
@@ -227,7 +265,7 @@ export function OrderPreviewCard({ order, onOpen }: OrderPreviewCardProps) {
                         ))}
                     </Stack>
 
-                    {order.description && (
+                    {!compact && order.description && (
                         <>
                             <Divider
                                 sx={{ my: 1, borderColor: accent.border, borderStyle: "dashed" }}
@@ -260,7 +298,7 @@ export function OrderPreviewCard({ order, onOpen }: OrderPreviewCardProps) {
                         </>
                     )}
 
-                    {photoCount > 0 && (
+                    {!compact && photoCount > 0 && (
                         <>
                             <Box
                                 sx={{

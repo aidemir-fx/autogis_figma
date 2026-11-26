@@ -8,9 +8,6 @@ import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
-import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
-import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
-import QrCode2OutlinedIcon from "@mui/icons-material/QrCode2Outlined";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -23,6 +20,7 @@ import { ProviderReviewAction, ReviewPhotos } from "@modules/reviews/components/
 import { StoryHighlights } from "@modules/stories";
 import { CreateOrderModal } from "@modules/masters/features/CreateOrderModal";
 import { Map as YandexMap, Placemark, YMaps } from "@pbe/react-yandex-maps";
+import { ProfilePaymentMethods } from "./ProfilePaymentMethods";
 import {
     ActionButton,
     ActionIconButton,
@@ -51,7 +49,6 @@ import {
     ServiceChip,
     ServicesWrap,
     StatusText,
-    PaymentIcons,
     ReviewCard,
     ReviewHeader,
     ReviewAuthor,
@@ -243,11 +240,10 @@ export function MobileMasterProfile({ master }: { master: Master }) {
             </MobileSection>
 
             <MobileSection>
-                <SectionHeader><SectionTitle>Особенности</SectionTitle><PaymentIcons>
-                    {master.payments?.includes("cash") && <PaymentsOutlinedIcon titleAccess="Наличные" />}
-                    {master.payments?.includes("card") && <CreditCardOutlinedIcon titleAccess="Карта" />}
-                    {(master.payments?.includes("sbp") || master.payments?.includes("qr")) && <QrCode2OutlinedIcon titleAccess="СБП" />}
-                </PaymentIcons></SectionHeader>
+                <SectionHeader as="div">
+                    <SectionTitle>Особенности</SectionTitle>
+                    <ProfilePaymentMethods payments={master.payments} />
+                </SectionHeader>
                 <FeatureList>{featureKeys.map((feature) => <FeatureItem key={feature}><CheckRoundedIcon />{FEATURE_LABELS[feature]}</FeatureItem>)}</FeatureList>
             </MobileSection>
 

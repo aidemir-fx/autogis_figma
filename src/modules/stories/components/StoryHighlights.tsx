@@ -27,7 +27,9 @@ export function StoryHighlights({ authorId, compact = false, manage = false }: S
         queryKey: ["stories", "highlights", authorId],
         queryFn: () => fetchAuthorHighlights(authorId),
         enabled: Boolean(authorId),
-        staleTime: 60_000,
+        staleTime: 5 * 60_000,
+        gcTime: 30 * 60_000,
+        refetchOnWindowFocus: false,
     });
     const highlights = query.data ?? [];
     const selectedHighlight = selected === null ? undefined : highlights[selected];

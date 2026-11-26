@@ -8,8 +8,8 @@ import { MobileSearchExperience, type MobileProviderCategory } from "@screens/ma
 const categories: MobileProviderCategory[] = [
     { type: ActivityType.master, title: "Частные исполнители", empty: "Исполнители не найдены. Попробуйте изменить фильтры." },
     { type: ActivityType.auto_service, title: "Автосервисы", empty: "Автосервисы не найдены. Попробуйте увеличить радиус." },
-    { type: ActivityType.auto_shop, title: "Автомагазины", empty: "Автомагазины не найдены. Попробуйте увеличить радиус." },
     { type: ActivityType.auto_wash, title: "Автомойки", empty: "Автомойки не найдены. Попробуйте увеличить радиус." },
+    { type: ActivityType.auto_shop, title: "Автомагазины", empty: "Автомагазины не найдены. Попробуйте увеличить радиус." },
 ];
 
 const provider = (type: ActivityType, n: number): Provider => ({

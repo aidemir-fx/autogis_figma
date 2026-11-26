@@ -68,7 +68,9 @@ export function StoryStrip({
         queryKey: authorId ? ["stories", "author", authorId] : ["stories", "home"],
         queryFn: () => authorId ? fetchAuthorStories(authorId) : fetchHomeStories(),
         enabled: Boolean(authorId) || !authorId || isAuthenticated,
-        staleTime: 30_000,
+        staleTime: 5 * 60_000,
+        gcTime: 30 * 60_000,
+        refetchOnWindowFocus: false,
     });
     const groups = useMemo(() => groupStories(query.data ?? []), [query.data]);
     if (query.isLoading) {
@@ -101,7 +103,20 @@ export function StoryStrip({
                             <Box sx={{ width: compact ? 54 : 62, height: compact ? 54 : 62, boxSizing: "border-box", position: "relative", mx: "auto", display: "grid", placeItems: "center", p: singleStoryColor ? 0 : "3px", border: singleStoryColor ? `3px solid ${singleStoryColor}` : 0, background: singleStoryColor ? "transparent" : getStoryRingBackground(group), borderRadius: compact ? "16px" : 2.5 }}>
                                 <Box sx={{ width: compact ? 48 : 56, height: compact ? 48 : 56, position: "relative", zIndex: 2, overflow: "hidden", display: "grid", placeItems: "center", border: "1px solid #fff", borderRadius: "13px", background: "linear-gradient(135deg, #dbe3ed, #9ba9bc)", color: "#ffffff" }}>
                                     {story.author.avatarUrl ? (
-                                        <Box component="img" src={story.author.avatarUrl} alt="" sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                                        <Box
+                                            component="img"
+                                            src={story.author.avatarUrl}
+                                            alt=""
+                                            sx={{
+                                                position: "absolute",
+                                                inset: 0,
+                                                width: "100%",
+                                                height: "100%",
+                                                objectFit: "cover",
+                                                objectPosition: "center",
+                                                display: "block",
+                                            }}
+                                        />
                                     ) : (
                                         <Typography sx={{ color: "inherit", fontSize: compact ? 15 : 18, fontWeight: 800 }}>
                                             {getAuthorInitials(story.author.displayName) || "А"}

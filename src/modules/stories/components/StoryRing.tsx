@@ -51,7 +51,9 @@ export function StoryRing({ authorId, children, size, interactive = false, manag
         queryKey: ["stories", "author", authorId],
         queryFn: () => fetchAuthorStories(authorId!),
         enabled: Boolean(authorId),
-        staleTime: 30_000,
+        staleTime: 5 * 60_000,
+        gcTime: 30 * 60_000,
+        refetchOnWindowFocus: false,
     });
     const stories = query.data ?? [];
     const hasStories = stories.length > 0;
@@ -59,7 +61,9 @@ export function StoryRing({ authorId, children, size, interactive = false, manag
         queryKey: ["stories", "highlights", authorId],
         queryFn: () => fetchAuthorHighlights(authorId!),
         enabled: Boolean(authorId && manage),
-        staleTime: 60_000,
+        staleTime: 5 * 60_000,
+        gcTime: 30 * 60_000,
+        refetchOnWindowFocus: false,
     });
     const deleteMutation = useMutation({
         mutationFn: deleteStory,

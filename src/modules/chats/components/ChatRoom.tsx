@@ -53,6 +53,12 @@ function toDateKey(value: string): string {
     return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
+function isRedundantOrderSystemMessage(message: ChatMessage): boolean {
+    const normalized = message.message.trim().toLowerCase();
+    return normalized === "клиент создал заявку и ожидает ответа мастера." ||
+        normalized === "клиент создал заявку и ожидает ответа мастера";
+}
+
 export function ChatRoom(props: ChatRoomProps) {
     const {
         companion,
@@ -76,6 +82,10 @@ export function ChatRoom(props: ChatRoomProps) {
 
     const order = orderChat?.order;
     const activityName = order?.activityType?.displayName || order?.activityType?.name;
+    const isCustomer = order?.customer?.id === profileId;
+    const visibleMessages = orderChat?.messages.filter(
+        (chatMessage) => !isRedundantOrderSystemMessage(chatMessage),
+    ) ?? [];
     const navigate = useNavigate();
 
     const handleOpenOrder = () => {
@@ -190,7 +200,11 @@ export function ChatRoom(props: ChatRoomProps) {
                     <Stack spacing={0.75}>
                         {order && (
                             <Box sx={{ pt: 0.5, pb: 0.25 }}>
-                                <OrderPreviewCard order={order} onOpen={handleOpenOrder} />
+                                <OrderPreviewCard
+                                    order={order}
+                                    onOpen={handleOpenOrder}
+                                    mode={isCustomer ? "customer" : "provider"}
+                                />
                                 {order.status === "completed" &&
                                     order.customer?.id === profileId && (
                                         <OrderReviewPrompt orderId={order.id} variant="chat" />
@@ -198,7 +212,7 @@ export function ChatRoom(props: ChatRoomProps) {
                             </Box>
                         )}
 
-                        {orderChat.messages.length === 0 && (
+                        {visibleMessages.length === 0 && (
                             <Alert
                                 severity="info"
                                 sx={{
@@ -211,7 +225,7 @@ export function ChatRoom(props: ChatRoomProps) {
                             </Alert>
                         )}
 
-                        {orderChat.messages.map((chatMessage, index) => {
+                        {visibleMessages.map((chatMessage, index) => {
                             const isMine = chatMessage.sender.id === profileId;
                             const footer = `${formatRelativeTime(chatMessage.createdAt)}${
                                 isMine ? ` • ${getStatusLabel(chatMessage.status)}` : ""

@@ -364,10 +364,10 @@ export function Dashboard() {
 
             <StyledPaper
                 sx={{
-                    p: 2,
+                    p: 1.25,
                     width: "100%",
-                    borderRadius: "14px",
-                    marginBottom: "24px",
+                    borderRadius: "12px",
+                    marginBottom: "16px",
                     cursor: "pointer",
                     boxShadow: "none",
                     border: "1px solid #0000001a",
@@ -376,15 +376,15 @@ export function Dashboard() {
             >
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <ActivityTypeIconWrapper>
+                        <ActivityTypeIconWrapper style={{ width: 36, height: 36, borderRadius: 9 }}>
                             <ChatIcon />
                         </ActivityTypeIconWrapper>
-                        <TitleWrapper>
-                            <BlockTitle>Написать в поддержку</BlockTitle>
-                            <BlockSubtitle>Связаться с командой АвтоГис</BlockSubtitle>
+                        <TitleWrapper style={{ minHeight: 36 }}>
+                            <BlockTitle style={{ fontSize: 14 }}>Написать в поддержку</BlockTitle>
+                            <BlockSubtitle style={{ fontSize: 12 }}>Связаться с командой АвтоГис</BlockSubtitle>
                         </TitleWrapper>
                     </Box>
-                    <NavigateNextIcon />
+                    <NavigateNextIcon fontSize="small" />
                 </Box>
             </StyledPaper>
 
